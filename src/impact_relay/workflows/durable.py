@@ -44,6 +44,7 @@ Easy file-backed pilot workspace (**no Docker required**):
 |------|---------|
 | `workflows.db` | SQLite workflow store (waits, signals, receipts) |
 | `ledger_commands.jsonl` | Money command log (K17 rehydrate — stable expense ids) |
+| `storage.db` | Tenant registry + queryable ledger entity snapshot (host apps) |
 | `meta.json` | Tenant + paths |
 | `HOWTO.md` | This guide |
 
@@ -107,6 +108,7 @@ class DurableWorkspace:
     ledger_log: FileLedgerCommandLog
     runtime: WorkflowRuntime
     tenant_id: str
+    storage: Any | None = None  # StorageBundle for entity snapshots / tenant registry
 
     @property
     def log_path(self) -> Path:
@@ -120,6 +122,25 @@ class DurableWorkspace:
     def db_path(self) -> Path:
         return self.data_dir / "workflows.db"
 
+    def persist_ledger_snapshot(self) -> dict[str, Any]:
+        """Write queryable ledger entity snapshot for host apps (Hacker-Dojo etc.).
+
+        Money truth remains the command log; this is a denormalized save for
+        list_expenses / get_receipt without replaying the full log.
+        """
+        if self.storage is None:
+            return {"ok": False, "skipped": True, "reason": "no_storage"}
+        ledger = self.binding.for_tenant(self.tenant_id)
+        self.storage.ledger.save_ledger(ledger)
+        expenses = self.storage.ledger.list_expenses(self.tenant_id)
+        receipts = self.storage.ledger.list_receipts(self.tenant_id)
+        return {
+            "ok": True,
+            "tenant_id": self.tenant_id,
+            "expense_count": len(expenses),
+            "receipt_count": len(receipts),
+        }
+
     def save(self) -> None:
         """Persist meta + HOWTO. Workflows live in SQLite; ledger log is append-only."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -132,8 +153,10 @@ class DurableWorkspace:
             "tenant_id": self.tenant_id,
             "ledger_log": self.log_path.name,
             "workflows_db": self.db_path.name if not db_url else None,
+            "storage_db": "storage.db",
             "database_url_set": bool(db_url),
             "durability": "sqlite+command_log" if not db_url else "postgres+command_log",
+            "entity_snapshot": True,
         }
         self.meta_path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
@@ -225,6 +248,15 @@ def open_workspace(
         )
 
     store = open_sql_store(data_dir)
+    # Multi-tenant storage (entity snapshot + tenant registry) under same data-dir
+    from impact_relay.storage import open_storage
+    from impact_relay.storage.template import (
+        CANONICAL_PILOT_TENANT_ID,
+        ensure_canonical_hacker_dojo_tenant,
+        register_cloned_tenant,
+    )
+
+    storage = open_storage(data_dir)
     base = _base_ledger(fixture_path)
     org = base.organization
     ledger = ledger_log.rehydrate(org, base_ledger=base)
@@ -244,6 +276,16 @@ def open_workspace(
         except json.JSONDecodeError:
             pass
 
+    # Register tenant for host apps (HD is canonical pilot)
+    if tenant_id == CANONICAL_PILOT_TENANT_ID:
+        ensure_canonical_hacker_dojo_tenant(storage)
+    elif storage.tenants.get(tenant_id) is None:
+        register_cloned_tenant(
+            storage,
+            tenant_id=tenant_id,
+            display_name=org.name or tenant_id,
+        )
+
     ws = DurableWorkspace(
         data_dir=data_dir,
         store=store,
@@ -251,6 +293,7 @@ def open_workspace(
         ledger_log=ledger_log,
         runtime=runtime,
         tenant_id=tenant_id,
+        storage=storage,
     )
     ws.save()
     return ws
@@ -275,6 +318,10 @@ def durable_seed(
             "workflows.db-journal",
             "workflows.db-wal",
             "workflows.db-shm",
+            "storage.db",
+            "storage.db-journal",
+            "storage.db-wal",
+            "storage.db-shm",
         ):
             p = data_dir / name
             if p.is_file():
@@ -299,6 +346,7 @@ def durable_seed(
         if r.claimed == 0:
             break
 
+    snap = ws.persist_ledger_snapshot()
     ws.save()
     cases = list_operator_cases(ws.store, ws.tenant_id, filters=("waiting", "all"))
     return {
@@ -307,6 +355,7 @@ def durable_seed(
         "tenant_id": ws.tenant_id,
         "started": started,
         "waiting": [c.to_dict() for c in cases if c.bucket == "waiting"],
+        "entity_snapshot": snap,
         "next": f"python -m impact_relay durable list --data-dir {data_dir}",
         "howto": str((data_dir / "HOWTO.md").resolve()),
     }
@@ -378,6 +427,7 @@ def durable_approve(
         workflow_id=target.workflow_id,
         approval=approval,
     )
+    snap = ws.persist_ledger_snapshot()
     ws.save()
     ledger = ws.binding.for_tenant(ws.tenant_id)
     exp_id = (updated.context or {}).get("expense_id") if updated else None
@@ -392,6 +442,7 @@ def durable_approve(
         "expense_id": exp_id,
         "expense_state": exp_state,
         "same_ids_after_rehydrate": True,
+        "entity_snapshot": snap,
         "next": f"python -m impact_relay durable status --data-dir {data_dir or DEFAULT_DATA_DIR}",
     }
 
@@ -409,13 +460,21 @@ def durable_status(data_dir: Path | str | None = None) -> dict[str, Any]:
     log_rows = ws.ledger_log.iter_rows(ws.tenant_id)
     ledger = ws.binding.for_tenant(ws.tenant_id)
     backend = "postgres" if getattr(ws.store, "_is_postgres", False) else "sqlite"
+    snapshot = None
+    if ws.storage is not None:
+        snapshot = {
+            "expenses": len(ws.storage.ledger.list_expenses(ws.tenant_id)),
+            "receipts": len(ws.storage.ledger.list_receipts(ws.tenant_id)),
+            "tenant_registered": ws.storage.tenants.get(ws.tenant_id) is not None,
+        }
     return {
         "ok": True,
         "data_dir": str(data_dir.resolve()),
         "tenant_id": ws.tenant_id,
         "workflow_store": backend,
-        "durability": f"{backend}+command_log",
+        "durability": f"{backend}+command_log+entity_snapshot",
         "ledger_commands": len(log_rows),
+        "entity_snapshot": snapshot,
         "expenses": {
             e.id: {"state": e.state.value, "external_source_id": e.external_source_id}
             for e in ledger.expenses.values()
@@ -537,6 +596,7 @@ def durable_worker(
     stop_when_idle = once or finite
 
     ticks = worker.run(max_ticks=max_ticks, stop_when_idle=stop_when_idle)
+    snap = ws.persist_ledger_snapshot()
     ws.save()
     cases = list_operator_cases(
         ws.store,
@@ -558,6 +618,7 @@ def durable_worker(
         "config": cfg.to_dict(),
         "summary": summary,
         "ticks": [t.to_dict() for t in ticks],
+        "entity_snapshot": snap,
         "waiting": [c.to_dict() for c in cases if c.bucket == "waiting"],
         "next": (
             f"python -m impact_relay --durable list --data-dir {data_dir}"

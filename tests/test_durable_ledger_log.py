@@ -113,12 +113,16 @@ def test_durable_seed_approve_check(tmp_path: Path) -> None:
     seed = durable_seed(data_dir, expense_batch=BATCH)
     assert seed["ok"]
     assert seed["waiting"]
+    assert seed.get("entity_snapshot", {}).get("ok") is True
     exp_id_before = None
     ws = open_workspace(data_dir)
     # after seed, expense exists in ledger (imported)
     ledger = ws.binding.for_tenant(ws.tenant_id)
     assert ledger.expenses
     exp_id_before = next(iter(ledger.expenses))
+    # Host-app path: entity snapshot auto-saved under storage.db
+    assert ws.storage is not None
+    assert ws.storage.ledger.get_expense(ws.tenant_id, exp_id_before) is not None
 
     listed = durable_list(data_dir)
     assert listed["count"] >= 1
@@ -128,6 +132,7 @@ def test_durable_seed_approve_check(tmp_path: Path) -> None:
     assert approved["ok"]
     assert approved["expense_id"] == exp_id_before
     assert approved["expense_state"] == ExpenseState.APPROVED.value
+    assert approved.get("entity_snapshot", {}).get("ok") is True
 
     # Restart simulation
     check = durable_rehydrate_check(data_dir)
@@ -139,6 +144,13 @@ def test_durable_seed_approve_check(tmp_path: Path) -> None:
     status = durable_status(data_dir)
     assert status["ok"]
     assert status["ledger_commands"] >= 1
+    assert status.get("entity_snapshot", {}).get("expenses", 0) >= 1
+    # Snapshot reflects approved state for host list views
+    snap_exp = open_workspace(data_dir).storage.ledger.get_expense(
+        status["tenant_id"], exp_id_before
+    )
+    assert snap_exp is not None
+    assert snap_exp["state"] == ExpenseState.APPROVED.value
 
 
 def test_cli_durable_flow(tmp_path: Path) -> None:

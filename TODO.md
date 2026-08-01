@@ -53,6 +53,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Structured event outbox skeleton.
 - [x] Hacker-Dojo integration + template guide — `docs/HACKER-DOJO-INTEGRATION.md`.
 - [x] Ledger entity SQL repo (`ledger_entity` / `ledger_meta`) — save/load + list expenses/receipts for host apps.
+- [x] Auto-save entity snapshot after durable seed / approve / worker (host-app query path).
 - [ ] Encrypted / S3-compatible object backend.
 - [ ] OIDC identity boundary.
 - [ ] Add RBAC roles: donor, finance reviewer, finance approver, program verifier, communications approver, auditor, tenant admin.
