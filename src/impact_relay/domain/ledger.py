@@ -465,30 +465,19 @@ class Ledger:
         if attr_amt > donor_alloc_total:
             raise InvariantError("attributed_amount cannot exceed donor allocation to fund")
 
-        # Guard against silent double-attribution beyond donation support.
-        already = sum(
-            (
-                a.attributed_amount
-                for a in self.attributions.values()
-                if a.donation_id == donation_id
-                and a.allocation_id == allocation_id
-                and self.expenses[a.expense_id].state in VERIFIED_EXPENSE_STATES
-            ),
-            Decimal("0.00"),
+        # After replacing any prior attr for the same donation+expense+allocation,
+        # sum of attrs on non-REVERSED/non-SUPERSEDED expenses + new amount must not
+        # exceed the donor's allocation to this fund.
+        others = self._active_attribution_total(
+            donation_id=donation_id,
+            allocation_id=allocation_id,
+            exclude_expense_id=expense_id,
         )
-        # Current expense may not yet be verified; include pending attrs on this donation.
-        pending = sum(
-            (
-                a.attributed_amount
-                for a in self.attributions.values()
-                if a.donation_id == donation_id and a.allocation_id == allocation_id
-            ),
-            Decimal("0.00"),
-        )
-        if pending + attr_amt > donor_alloc_total + Decimal("0.00"):
-            # Allow re-attribute by replacing existing attrs for same donation+expense.
-            pass
-        _ = already
+        if others + attr_amt > donor_alloc_total:
+            raise InvariantError(
+                f"donor attributions would exceed donation allocation to fund: "
+                f"{others + attr_amt} > {donor_alloc_total}"
+            )
 
         # Replace prior attribution for same donation+expense+allocation.
         self.attributions = {
@@ -555,9 +544,23 @@ class Ledger:
         if attr.method not in ALLOWED_ATTRIBUTION_METHODS:
             raise AttributionError(f"disallowed attribution method: {attr.method.value}")
 
+        # Single active donor-facing receipt per (donation, expense, allocation).
+        # Corrections go through reverse_expense / supersede_expense only.
+        existing_live = self._find_live_receipt(donation_id, expense_id, allocation_id)
+        if existing_live is not None:
+            raise StateError(
+                f"use-of-funds receipt already published for this donation/expense/allocation "
+                f"(receipt_id={existing_live.receipt_id}); "
+                f"use reverse_expense or supersede_expense for corrections"
+            )
+
         remaining = self.allocation_remaining_balance(allocation_id)
         # Donor-facing remaining on their designated balance for this fund.
         donor_remaining = self.donor_remaining_on_allocation(donation_id, allocation_id)
+        if donor_remaining < Decimal("0.00"):
+            raise InvariantError(
+                f"donor remaining designated balance cannot be negative: {donor_remaining}"
+            )
 
         evidence_summary = self._donor_visible_evidence_summary(expense_id)
         created = created_at or _now_iso()
@@ -978,6 +981,49 @@ class Ledger:
                 and attr.allocation_id == allocation_id
             ):
                 return attr
+        return None
+
+    def _active_attribution_total(
+        self,
+        *,
+        donation_id: str,
+        allocation_id: str,
+        exclude_expense_id: str | None = None,
+    ) -> Decimal:
+        """Sum attributed amounts for donation+allocation on non-corrected expenses.
+
+        REVERSED and SUPERSEDED expenses do not count. Optionally exclude one expense
+        so a same-triple re-attribute can replace its prior amount.
+        """
+        total = Decimal("0.00")
+        for attr in self.attributions.values():
+            if attr.donation_id != donation_id or attr.allocation_id != allocation_id:
+                continue
+            if exclude_expense_id is not None and attr.expense_id == exclude_expense_id:
+                continue
+            exp = self.expenses.get(attr.expense_id)
+            if exp is None:
+                continue
+            if exp.state in CORRECTED_EXPENSE_STATES:
+                continue
+            if exp.state == ExpenseState.REJECTED:
+                continue
+            total += attr.attributed_amount
+        return total
+
+    def _find_live_receipt(
+        self, donation_id: str, expense_id: str, allocation_id: str
+    ) -> UseOfFundsReceipt | None:
+        """Return the active (non-correction) receipt for this triple, if any."""
+        for receipt in self.receipts.values():
+            if receipt.corrected:
+                continue
+            if (
+                receipt.donation_id == donation_id
+                and receipt.expenditure_expense_id == expense_id
+                and receipt.allocation_id == allocation_id
+            ):
+                return receipt
         return None
 
     def _donor_visible_evidence_summary(self, expense_id: str) -> str | None:

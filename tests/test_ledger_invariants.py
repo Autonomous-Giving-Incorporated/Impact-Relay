@@ -262,3 +262,204 @@ def test_silent_approved_expense_mutation_forbidden() -> None:
     led.approve_expense("e1", approved_by="finance")
     with pytest.raises(StateError, match="silent mutation|forbidden"):
         led.mutate_approved_expense("e1", amount=Decimal("1.00"))
+
+
+def test_donor_attribution_cannot_exceed_donation_allocation_across_expenses() -> None:
+    """Two DIRECT_RESTRICTED attrs of 60+60 on a 100 donation must fail at second attr.
+
+    Fund has capacity from a second donor so expense approvals succeed; the failure
+    is the donor-level invariant via the public Ledger API.
+    """
+    org = Organization(id="org_t", name="Test Org", policy_version="v1.0")
+    led = Ledger(org)
+    led.register_donor(Donor(id="d1", organization_id="org_t", display_name="Primary"))
+    led.register_donor(Donor(id="d2", organization_id="org_t", display_name="Pool filler"))
+    led.register_allocation(
+        Allocation(
+            id="a1",
+            organization_id="org_t",
+            name="Fund A",
+            purpose="test",
+            restriction_type=RestrictionType.DONOR_RESTRICTED,
+        )
+    )
+    led.import_donation(
+        Donation(
+            id="don_primary",
+            organization_id="org_t",
+            donor_id="d1",
+            amount=Decimal("100.00"),
+            currency="USD",
+            cleared=True,
+            external_source_id="p1",
+            received_at="2026-01-01",
+        )
+    )
+    led.assign_donation_allocation(
+        donation_id="don_primary", allocation_id="a1", amount=Decimal("100.00")
+    )
+    led.import_donation(
+        Donation(
+            id="don_filler",
+            organization_id="org_t",
+            donor_id="d2",
+            amount=Decimal("100.00"),
+            currency="USD",
+            cleared=True,
+            external_source_id="p2",
+            received_at="2026-01-01",
+        )
+    )
+    led.assign_donation_allocation(
+        donation_id="don_filler", allocation_id="a1", amount=Decimal("100.00")
+    )
+
+    for eid, amt in (("e1", "60.00"), ("e2", "60.00")):
+        led.import_expense(
+            Expense(
+                id=eid,
+                organization_id="org_t",
+                vendor="V",
+                amount=Decimal(amt),
+                currency="USD",
+                purchase_date="2026-02-01",
+                category="TOOLS",
+                description=eid,
+                state=ExpenseState.IMPORTED,
+            )
+        )
+        led.allocate_expense(
+            expense_id=eid, allocation_id="a1", amount=Decimal(amt)
+        )
+        led.approve_expense(eid, approved_by="finance")
+
+    led.attribute_donor_to_expense(
+        donor_id="d1",
+        donation_id="don_primary",
+        expense_id="e1",
+        allocation_id="a1",
+        method=AttributionMethod.DIRECT_RESTRICTED,
+        attributed_amount=Decimal("60.00"),
+    )
+    r1 = led.publish_use_of_funds_receipt(
+        expense_id="e1",
+        donation_id="don_primary",
+        allocation_id="a1",
+        actor="finance",
+    )
+    assert r1.remaining_designated_balance == Decimal("40.00")
+    assert r1.remaining_designated_balance >= Decimal("0.00")
+
+    with pytest.raises(InvariantError, match="exceed donation allocation"):
+        led.attribute_donor_to_expense(
+            donor_id="d1",
+            donation_id="don_primary",
+            expense_id="e2",
+            allocation_id="a1",
+            method=AttributionMethod.DIRECT_RESTRICTED,
+            attributed_amount=Decimal("60.00"),
+        )
+
+    # No second receipt; donor remaining never goes negative via public path.
+    assert led.donor_remaining_on_allocation("don_primary", "a1") == Decimal("40.00")
+    live = [
+        r
+        for r in led.receipts.values()
+        if not r.corrected and r.donation_id == "don_primary"
+    ]
+    assert len(live) == 1
+    assert live[0].receipt_id == r1.receipt_id
+    assert all(r.remaining_designated_balance >= Decimal("0.00") for r in live)
+
+
+def test_same_expense_reattribute_replaces_prior_amount() -> None:
+    """Re-attribute on the same expense+donation+allocation replaces, not stacks."""
+    led = _ledger()
+    led.import_expense(
+        Expense(
+            id="e1",
+            organization_id="org_t",
+            vendor="V",
+            amount=Decimal("40.00"),
+            currency="USD",
+            purchase_date="2026-02-01",
+            category="TOOLS",
+            description="x",
+            state=ExpenseState.IMPORTED,
+        )
+    )
+    led.allocate_expense(expense_id="e1", allocation_id="a1", amount=Decimal("40.00"))
+    led.approve_expense("e1", approved_by="finance")
+    led.attribute_donor_to_expense(
+        donor_id="d1",
+        donation_id="don1",
+        expense_id="e1",
+        allocation_id="a1",
+        method=AttributionMethod.DIRECT_RESTRICTED,
+        attributed_amount=Decimal("25.00"),
+    )
+    replaced = led.attribute_donor_to_expense(
+        donor_id="d1",
+        donation_id="don1",
+        expense_id="e1",
+        allocation_id="a1",
+        method=AttributionMethod.DIRECT_RESTRICTED,
+        attributed_amount=Decimal("40.00"),
+    )
+    assert replaced.attributed_amount == Decimal("40.00")
+    receipt = led.publish_use_of_funds_receipt(
+        expense_id="e1",
+        donation_id="don1",
+        allocation_id="a1",
+        actor="finance",
+    )
+    # If amounts stacked (25+40), remaining would be 35; replace leaves 60.
+    assert receipt.attributed_amount == Decimal("40.00")
+    assert receipt.remaining_designated_balance == Decimal("60.00")
+    assert receipt.remaining_designated_balance >= Decimal("0.00")
+
+
+def test_double_publish_same_triple_rejected() -> None:
+    led = _ledger()
+    led.import_expense(
+        Expense(
+            id="e1",
+            organization_id="org_t",
+            vendor="V",
+            amount=Decimal("10.00"),
+            currency="USD",
+            purchase_date="2026-02-01",
+            category="TOOLS",
+            description="x",
+            state=ExpenseState.IMPORTED,
+        )
+    )
+    led.allocate_expense(expense_id="e1", allocation_id="a1", amount=Decimal("10.00"))
+    led.approve_expense("e1", approved_by="finance")
+    led.attribute_donor_to_expense(
+        donor_id="d1",
+        donation_id="don1",
+        expense_id="e1",
+        allocation_id="a1",
+        method=AttributionMethod.DIRECT_RESTRICTED,
+        attributed_amount=Decimal("10.00"),
+    )
+    first = led.publish_use_of_funds_receipt(
+        expense_id="e1",
+        donation_id="don1",
+        allocation_id="a1",
+        actor="finance",
+        created_at="2026-02-02T00:00:00+00:00",
+    )
+    with pytest.raises(StateError, match="already published"):
+        led.publish_use_of_funds_receipt(
+            expense_id="e1",
+            donation_id="don1",
+            allocation_id="a1",
+            actor="finance",
+            created_at="2026-02-02T00:00:00+00:00",
+        )
+    live = [r for r in led.receipts.values() if not r.corrected]
+    assert len(live) == 1
+    assert live[0].receipt_id == first.receipt_id
+    assert live[0].receipt_hash == first.receipt_hash
