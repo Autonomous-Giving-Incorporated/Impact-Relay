@@ -25,8 +25,16 @@ from impact_relay.domain.types import (
 class TenantWorkspace:
     """Single-organization state: ledger + impact + notification stores."""
 
-    def __init__(self, organization: Organization) -> None:
-        self.ledger = Ledger(organization)
+    def __init__(
+        self,
+        organization: Organization,
+        *,
+        ledger: Ledger | None = None,
+    ) -> None:
+        # Optional existing ledger (agent vertical slice reuses a populated pilot ledger).
+        self.ledger = ledger if ledger is not None else Ledger(organization)
+        if self.ledger.organization.id != organization.id:
+            raise TenantIsolationError("ledger organization_id mismatch")
         self.programs: dict[str, Program] = {}
         self.assets: dict[str, FundedAsset] = {}
         self.impact_events: dict[str, ImpactEvent] = {}

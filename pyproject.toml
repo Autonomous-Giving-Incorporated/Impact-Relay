@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "impact-relay"
-version = "0.4.0"
-description = "Impact Relay — ledger, public export, digests, Every.org aggregate bridge"
+version = "0.5.0"
+description = "Impact Relay — ledger, agents, public export, digests, Every.org aggregate bridge"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.11"

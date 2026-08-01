@@ -114,3 +114,96 @@ def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
 
 def load_every_org_as_reconcile_aggregate(path: Path | str | None = None) -> dict[str, Any]:
     return every_org_to_reconcile_aggregate(load_every_org_summary(path))
+
+
+# Required fields for an operator live OBSERVED aggregate file.
+LIVE_OBSERVED_REQUIRED_FIELDS: tuple[str, ...] = (
+    "processor",
+    "exportKind",
+    "nonprofitSlug",
+    "exportedAt",
+    "claimLevel",
+    "source",
+    "totals",
+)
+
+
+def validate_live_aggregate(
+    summary: dict[str, Any],
+    *,
+    require_observed: bool = True,
+    refuse_path_markers: bool = True,
+    source_path: str | None = None,
+) -> dict[str, Any]:
+    """Validate an operator Every.org aggregate before writing impact-state.
+
+    Returns a report dict. Raises ReconcileError on hard failures when
+    ``require_observed`` is True.
+    """
+    from impact_relay.reconcile import is_pilot_or_synthetic_source, resolve_raised_provenance
+
+    if refuse_path_markers and source_path:
+        lower = source_path.lower()
+        for marker in ("fixture", "template", "pilot", "synthetic"):
+            if marker in lower:
+                raise ReconcileError(
+                    f"refusing path that looks like {marker!r}: {source_path}"
+                )
+
+    _assert_every_org_safe(summary)
+    missing = [f for f in LIVE_OBSERVED_REQUIRED_FIELDS if f not in summary or summary[f] in (None, "")]
+    if missing:
+        raise ReconcileError(f"live aggregate missing required fields: {missing}")
+
+    totals = summary.get("totals") or {}
+    if totals.get("raised") is None and totals.get("raisedUsd") is None and totals.get("amountRaised") is None:
+        raise ReconcileError("totals.raised is required")
+    if (
+        totals.get("donorCount") is None
+        and totals.get("uniqueDonors") is None
+        and totals.get("donorsCount") is None
+    ):
+        raise ReconcileError("totals.donorCount is required")
+
+    aggregate = every_org_to_reconcile_aggregate(summary)
+    raised_source, claim_label = resolve_raised_provenance(aggregate)
+    report = {
+        "ok": True,
+        "raisedSource": raised_source,
+        "raisedClaimLabel": claim_label,
+        "aggregateSource": aggregate.get("source"),
+        "raisedPublic": aggregate.get("raisedPublic"),
+        "committedPublic": aggregate.get("committedPublic"),
+        "donorCountPublic": aggregate.get("donorCountPublic"),
+        "pilotSource": is_pilot_or_synthetic_source(str(aggregate.get("source") or "")),
+    }
+    if require_observed and raised_source != "processor_aggregate":
+        raise ReconcileError(
+            "live aggregate did not resolve to processor_aggregate/OBSERVED: "
+            f"{report}"
+        )
+    if require_observed and claim_label != "OBSERVED":
+        raise ReconcileError(
+            f"live aggregate claim label must be OBSERVED, got {claim_label}"
+        )
+    return report
+
+
+def validate_live_aggregate_file(
+    path: Path | str,
+    *,
+    require_observed: bool = True,
+) -> dict[str, Any]:
+    """Load and validate a live aggregate JSON file path."""
+    p = Path(path)
+    if not p.is_file():
+        raise ReconcileError(f"aggregate file not found: {p}")
+    summary = load_every_org_summary(p)
+    report = validate_live_aggregate(
+        summary,
+        require_observed=require_observed,
+        refuse_path_markers=True,
+        source_path=str(p),
+    )
+    report["path"] = str(p)
+    return report

@@ -45,4 +45,4 @@ __all__ = [
     "every_org_to_reconcile_aggregate",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

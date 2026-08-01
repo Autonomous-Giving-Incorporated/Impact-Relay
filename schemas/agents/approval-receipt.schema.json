@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://impact-relay.local/schemas/agents/approval-receipt.schema.json",
+  "title": "ApprovalReceipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approval_id",
+    "tenant_id",
+    "proposal_id",
+    "command_idempotency_key",
+    "decision",
+    "approver_id",
+    "approver_role",
+    "approved_at"
+  ],
+  "properties": {
+    "approval_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "proposal_id": { "type": "string", "minLength": 1 },
+    "command_idempotency_key": { "type": "string", "minLength": 1 },
+    "decision": {
+      "type": "string",
+      "enum": ["APPROVE", "REJECT", "REQUEST_INFORMATION", "EDIT"]
+    },
+    "approver_id": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "^agent:" }
+    },
+    "approver_role": { "type": "string", "minLength": 1 },
+    "approved_at": { "type": "string", "minLength": 1 },
+    "rationale": { "type": "string" },
+    "policy_version": { "type": "string" }
+  }
+}

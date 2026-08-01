@@ -2,7 +2,7 @@
 
 Impact Relay is moving from a fixture-backed transparency prototype to a human-governed donor-impact platform. Milestones are capability gates, not calendar promises.
 
-## Current baseline — v0.4
+## Current baseline — v0.5
 
 Shipped:
 
@@ -12,7 +12,10 @@ Shipped:
 - fixture-backed notification and impact services;
 - multi-tenant domain isolation;
 - privacy-safe public Pages exports;
-- Every.org aggregate and Notion public-evidence bridges.
+- Every.org aggregate and Notion public-evidence bridges;
+- **agent contracts (L0–L3), Privacy Sentinel, simulation executor** (HD-IR-007);
+- **fixture expense → human approval → ledger → UOF vertical slice** (HD-IR-007);
+- live Every.org OBSERVED dry-run validation + operator script.
 
 Deferred:
 
@@ -27,32 +30,32 @@ Deferred:
 
 **Goal:** establish bounded agent contracts without changing financial authority.
 
-- [ ] Add agent command, proposal, validation, approval, execution, and run-receipt models.
-- [ ] Add L0–L3 authority enforcement.
-- [ ] Add versioned policy loading.
-- [ ] Separate proposal evaluation from command execution.
-- [ ] Add workflow state-machine contracts.
-- [ ] Add agent simulation/dry-run mode.
-- [ ] Add confidence, contradiction, and expiration behavior.
-- [ ] Add deterministic Privacy Sentinel gates.
-- [ ] Add adversarial agent test fixtures.
+- [x] Add agent command, proposal, validation, approval, execution, and run-receipt models.
+- [x] Add L0–L3 authority enforcement.
+- [x] Add versioned policy loading (`policies/tenants/`, `impact_relay.policy`).
+- [x] Separate proposal evaluation from command execution.
+- [x] Add workflow state-machine contracts.
+- [x] Add agent simulation/dry-run mode.
+- [x] Add confidence, contradiction, and expiration behavior.
+- [x] Add deterministic Privacy Sentinel gates.
+- [x] Add adversarial agent test fixtures (PII, cross-tenant, self-approval).
 
-**Exit gate:** no agent can directly approve an expense, publish a receipt, or deliver a notification.
+**Exit gate:** no agent can directly approve an expense, publish a receipt, or deliver a notification. **Met in HD-IR-007.**
 
 ## v0.6 — Financial Review Engine
 
 **Goal:** implement one complete expense-to-ledger human approval workflow.
 
-- [ ] Add normalized expense-provider adapter contract.
-- [ ] Add expense deduplication and evidence attachment.
-- [ ] Add allocation-classification proposals.
-- [ ] Add evidence sufficiency and redaction assessment.
-- [ ] Build finance review packets.
-- [ ] Add authenticated approval, rejection, edit, and request-information commands.
-- [ ] Record signed approval receipts.
+- [x] Add normalized expense-provider adapter contract (fixture batch).
+- [x] Add expense deduplication and evidence attachment.
+- [x] Add allocation-classification proposals.
+- [x] Add evidence sufficiency and redaction assessment.
+- [x] Build finance review packets.
+- [x] Add approval / rejection gates via `ApprovalReceipt` (authN UI still deferred).
+- [x] Record approval receipts on the run.
 - [ ] Add durable retry and blocked-case handling.
 
-**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision.
+**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture path met; live OIDC still deferred.**
 
 ## v0.7 — Donor Receipt Engine
 
