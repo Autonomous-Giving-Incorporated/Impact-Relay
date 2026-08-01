@@ -76,15 +76,20 @@ def assert_execution_authorized(
         raise AuthorityError("approver_id must be a human operator identity")
 
 
-def assert_proposal_executable(proposal: AgentProposal, now: str | None = None) -> None:
+def assert_proposal_executable(
+    proposal: AgentProposal,
+    now: str | None = None,
+    *,
+    block_below: float = 0.75,
+) -> None:
     if proposal.is_expired(now):
         raise AuthorityError(f"proposal {proposal.proposal_id} has expired")
     if proposal.contradictions:
         raise AuthorityError(
             f"proposal {proposal.proposal_id} has contradictions: {proposal.contradictions}"
         )
-    if proposal.confidence is not None and proposal.confidence < 0.75:
+    if proposal.confidence is not None and proposal.confidence < block_below:
         raise AuthorityError(
-            f"proposal {proposal.proposal_id} confidence {proposal.confidence} < 0.75; "
-            "blocked for human review"
+            f"proposal {proposal.proposal_id} confidence {proposal.confidence} "
+            f"< {block_below}; blocked for human review"
         )

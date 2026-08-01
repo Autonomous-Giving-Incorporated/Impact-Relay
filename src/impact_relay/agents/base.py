@@ -36,6 +36,14 @@ class AgentContext:
     prompt_version: str | None = None
     facts: dict[str, Any] = field(default_factory=dict)
     now: str | None = None
+    # Optional TenantPolicy.to_dict() or raw policy fields for confidence gates.
+    policy: dict[str, Any] | None = None
+
+    @property
+    def confidence_block_below(self) -> float:
+        if self.policy and isinstance(self.policy.get("confidence"), dict):
+            return float(self.policy["confidence"].get("block_below", 0.75))
+        return 0.75
 
 
 class Agent(Protocol):
@@ -70,7 +78,11 @@ class CommandExecutor:
         proposal: AgentProposal | None = None,
     ) -> ExecutionReceipt:
         if proposal is not None:
-            assert_proposal_executable(proposal)
+            block_below = 0.75
+            # Executors may stash policy threshold on the instance.
+            if hasattr(self, "confidence_block_below"):
+                block_below = float(getattr(self, "confidence_block_below"))
+            assert_proposal_executable(proposal, block_below=block_below)
         assert_execution_authorized(command, approval, agent_name=agent_name)
 
         if command.idempotency_key in self._seen_keys:

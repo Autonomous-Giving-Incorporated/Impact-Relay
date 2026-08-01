@@ -1,0 +1,45 @@
+# Hacker Dojo tenant policy pack — deterministic rules only (no model weights).
+# Loaded by impact_relay.policy; changes require dual maintainer review (AGENTS.md).
+
+version: v1.0
+tenant_id: org_hacker_dojo
+display_name: Hacker Dojo
+
+confidence:
+  block_below: 0.75
+  recommend_high: 0.95
+
+evidence:
+  sufficient_kinds:
+    - invoice
+    - receipt
+    - accounting_ref
+  require_donor_visible: true
+
+attribution:
+  default_method: DIRECT_RESTRICTED
+  allowed_methods:
+    - DIRECT_RESTRICTED
+    - PRO_RATA_POOL
+    - FIFO_ALLOCATION
+    - COHORT_ALLOCATION
+    - ASSET_SPONSORSHIP
+    - EXPENSE_BACKED
+    - MANUAL_APPROVED
+
+notifications:
+  require_separate_send_approval: true
+  default_email_topics:
+    - MONEY_USED
+    - CORRECTION
+  fixture_consent_allowed: true
+
+authority:
+  l3_command_types:
+    - approve_expense
+    - reject_expense
+    - publish_use_of_funds_receipt
+    - send_notification
+    - publish_public_evidence
+    - change_attribution_policy
+    - correct_published_amount

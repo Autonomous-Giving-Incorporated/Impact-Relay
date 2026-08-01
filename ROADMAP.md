@@ -32,7 +32,7 @@ Deferred:
 
 - [x] Add agent command, proposal, validation, approval, execution, and run-receipt models.
 - [x] Add L0–L3 authority enforcement.
-- [ ] Add versioned policy loading.
+- [x] Add versioned policy loading (`policies/tenants/`, `impact_relay.policy`).
 - [x] Separate proposal evaluation from command execution.
 - [x] Add workflow state-machine contracts.
 - [x] Add agent simulation/dry-run mode.

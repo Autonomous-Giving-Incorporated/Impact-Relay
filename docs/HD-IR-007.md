@@ -75,6 +75,19 @@ pytest tests/test_agent_contracts.py tests/test_expense_approval_slice.py \
   tests/test_live_raised_provenance.py
 ```
 
+## Versioned policy packs
+
+| Piece | Location |
+|-------|----------|
+| Loader | `src/impact_relay/policy.py` |
+| Hacker Dojo v1.0 | `policies/tenants/hacker-dojo.v1.0.yaml` |
+
+```bash
+python -c "from impact_relay.policy import load_tenant_policy; print(load_tenant_policy('org_hacker_dojo').to_dict())"
+```
+
+Confidence thresholds, evidence kinds, L3 command lists, and send-approval rules are loaded from the pack and stamped on agent run context.
+
 ## Non-goals (this ticket)
 
 - Temporal / durable workflow runtime

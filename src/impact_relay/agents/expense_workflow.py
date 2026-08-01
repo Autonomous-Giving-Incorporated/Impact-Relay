@@ -51,6 +51,7 @@ from impact_relay.domain.types import (
     UseOfFundsReceipt,
     money,
 )
+from impact_relay.policy import TenantPolicy, default_policy, load_tenant_policy
 from impact_relay.public_export import receipt_to_public
 
 
@@ -245,10 +246,11 @@ class AllocationClassifierAgent:
                 reasons=["contradictory classification signals"],
                 warnings=proposal.contradictions,
             )
-        if proposal.confidence is not None and proposal.confidence < 0.75:
+        threshold = context.confidence_block_below
+        if proposal.confidence is not None and proposal.confidence < threshold:
             return ValidationResult(
                 status=ValidationStatus.NEEDS_INFORMATION,
-                reasons=[f"low confidence {proposal.confidence}"],
+                reasons=[f"low confidence {proposal.confidence} < {threshold}"],
             )
         return ValidationResult(status=ValidationStatus.ACCEPTED)
 
@@ -304,6 +306,9 @@ class EvidenceValidatorAgent:
     def assess(
         evidence_items: list[dict[str, Any]],
         flags: dict[str, Any] | None = None,
+        *,
+        sufficient_kinds: tuple[str, ...] | list[str] | None = None,
+        require_donor_visible: bool = True,
     ) -> EvidenceSufficiency:
         flags = flags or {}
         if flags.get("contradictory"):
@@ -314,11 +319,16 @@ class EvidenceValidatorAgent:
             return EvidenceSufficiency.REDACTION_REQUIRED
         if not evidence_items:
             return EvidenceSufficiency.MISSING
-        donor_visible = [e for e in evidence_items if e.get("donor_visible", True)]
-        if not donor_visible:
-            return EvidenceSufficiency.PARTIAL
-        kinds = {e.get("kind") for e in evidence_items}
-        if "invoice" in kinds or "receipt" in kinds or "accounting_ref" in kinds:
+        kinds_ok = tuple(sufficient_kinds or ("invoice", "receipt", "accounting_ref"))
+        if require_donor_visible:
+            donor_visible = [e for e in evidence_items if e.get("donor_visible", True)]
+            if not donor_visible:
+                return EvidenceSufficiency.PARTIAL
+            scan = donor_visible
+        else:
+            scan = evidence_items
+        kinds = {e.get("kind") for e in scan}
+        if any(k in kinds for k in kinds_ok):
             return EvidenceSufficiency.SUFFICIENT
         return EvidenceSufficiency.PARTIAL
 
@@ -671,6 +681,7 @@ def run_expense_approval_slice(
     evidence_flags: dict[str, Any] | None = None,
     send_email: bool = False,
     communications_approver_id: str | None = None,
+    tenant_policy: TenantPolicy | None = None,
 ) -> ExpenseSliceResult:
     """Run intake → classify → evidence → review → (optional human approve) → ledger.
 
@@ -681,12 +692,17 @@ def run_expense_approval_slice(
     """
     started = utc_now_iso()
     tenant_id = ledger.organization.id
+    policy = tenant_policy or default_policy(
+        tenant_id, ledger.organization.policy_version
+    )
     ctx = AgentContext(
         tenant_id=tenant_id,
-        policy_version=ledger.organization.policy_version,
+        policy_version=policy.version,
         facts={
             "default_allocation_id": next(iter(ledger.allocations), None),
+            "default_attribution_method": policy.attribution.default_method,
         },
+        policy=policy.to_dict(),
     )
     intake = ExpenseIntakeAgent()
     classifier = AllocationClassifierAgent()
@@ -776,28 +792,50 @@ def run_expense_approval_slice(
             or ctx.facts.get("default_allocation_id")
         )
 
-        # 2) Evidence assessment (L0)
+        # 2) Evidence assessment (L0) — policy-driven sufficient kinds
+        sufficiency = EvidenceValidatorAgent.assess(
+            evidence_items,
+            evidence_flags or {},
+            sufficient_kinds=policy.evidence.sufficient_kinds,
+            require_donor_visible=policy.evidence.require_donor_visible,
+        )
         ev_cmd = AgentCommand(
             command_type="assess_evidence",
             tenant_id=tenant_id,
             payload={
                 "expense_id": expense_id,
                 "evidence": evidence_items,
-                "flags": evidence_flags or {},
+                "flags": evidence_flags
+                or (
+                    {"contradictory": True}
+                    if sufficiency == EvidenceSufficiency.CONTRADICTORY
+                    else {}
+                ),
             },
             required_authority=AuthorityLevel.L0_OBSERVE,
         )
         # L0 evaluate does not propose; call evaluate with observe command
+        # Align payload flags with pre-assessed sufficiency for contradictory path
+        if sufficiency == EvidenceSufficiency.CONTRADICTORY:
+            ev_cmd = AgentCommand(
+                command_type="assess_evidence",
+                tenant_id=tenant_id,
+                payload={
+                    "expense_id": expense_id,
+                    "evidence": evidence_items,
+                    "flags": {"contradictory": True},
+                },
+                required_authority=AuthorityLevel.L0_OBSERVE,
+            )
         ev_prop = evidence_agent.evaluate(ctx, ev_cmd)
         proposals.append(ev_prop)
         ev_v = evidence_agent.validate(ctx, ev_prop)
         validations.append(ev_v)
-        sufficiency = EvidenceSufficiency.SUFFICIENT
         if ev_prop.warnings:
             try:
                 sufficiency = EvidenceSufficiency(ev_prop.warnings[0])
             except ValueError:
-                sufficiency = EvidenceSufficiency.PARTIAL
+                pass
         if not ev_v.ok:
             workflow = WorkflowState.BLOCKED
             packets.append(
@@ -997,6 +1035,9 @@ def run_expense_approval_slice(
 
                 # 7) Email preview (projection only) + separate L3 send approval
                 if send_email:
+                    if not policy.notifications.require_separate_send_approval:
+                        # Policy may allow co-approval in future; v1 still uses L3 send.
+                        pass
                     email_prev = compose_email_from_uof(rec)
                     assert_preview_matches_receipt(email_prev, rec)
                     executor.register_preview(email_prev)
