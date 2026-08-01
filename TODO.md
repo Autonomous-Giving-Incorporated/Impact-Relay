@@ -32,13 +32,14 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 ## P1 — Durable workflows
 
-- [ ] Select Temporal or document the bounded PostgreSQL worker alternative.
-- [ ] Implement expense-to-receipt workflow state machine.
-- [ ] Add human approval pause/resume behavior.
-- [ ] Add retry policy and dead-letter state.
-- [ ] Add workflow replay tests.
+- [x] Select Temporal or document the bounded PostgreSQL worker alternative (PG worker for pilot; Temporal later — see DURABLE-WORKFLOWS.md).
+- [x] Implement expense-to-receipt workflow state machine (MVP memory path M1–M6).
+- [x] Add human approval pause/resume behavior.
+- [x] Add retry policy and dead-letter state.
+- [x] Add workflow replay / parity tests.
 - [ ] Add scheduled digest workflow.
 - [ ] Add correction and retraction workflow.
+- [ ] PostgreSQL workflow store + co-durable ledger (pilot P1–P3).
 
 ## P1 — Storage and service boundaries
 

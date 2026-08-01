@@ -113,6 +113,7 @@ class WorkflowRuntime:
             "send_email": send_email,
             "policy": pol.to_dict(),
             "policy_version": pol.version,
+            "evidence_flags": {},  # optional; set by façade
         }
         if pre_imported_expense_id:
             state = WorkflowState.NORMALIZED
@@ -455,10 +456,12 @@ class WorkflowRuntime:
 
         pol = inst.context.get("policy") or {}
         evid = pol.get("evidence") or {}
+        evidence_flags = inst.context.get("evidence_flags") or {}
         out = step_evidence(
             ctx,
             expense_id=expense_id,
             evidence_items=evidence_items,
+            evidence_flags=evidence_flags if evidence_flags else None,
             sufficient_kinds=tuple(
                 evid.get("sufficient_kinds") or ("invoice", "receipt", "accounting_ref")
             ),

@@ -222,11 +222,11 @@ def test_failed_receipt_not_stored() -> None:
         )
 
 
-def test_facade_default_is_legacy(monkeypatch) -> None:
+def test_facade_default_is_runtime(monkeypatch) -> None:
     monkeypatch.delenv("WORKFLOW_SLICE_FACADE", raising=False)
     from impact_relay.workflows.facade import facade_mode
 
-    assert facade_mode() == "legacy"
+    assert facade_mode() == "runtime"
 
 
 def test_facade_runtime_mode_end_to_end(monkeypatch) -> None:

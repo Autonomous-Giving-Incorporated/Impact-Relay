@@ -1,6 +1,7 @@
-"""Batch façade over WorkflowRuntime (PR-M3).
+"""Batch façade over WorkflowRuntime (PR-M3/M6).
 
-Default remains legacy linear slice unless WORKFLOW_SLICE_FACADE=runtime.
+Default is ``runtime`` (PR-M6). Set WORKFLOW_SLICE_FACADE=legacy to force the
+linear driver. Easy rollback: export WORKFLOW_SLICE_FACADE=legacy.
 """
 
 from __future__ import annotations
@@ -8,10 +9,11 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
+from impact_relay.agents.authority import AuthorityError
 from impact_relay.agents.base import AgentContext, build_run_receipt
 from impact_relay.agents.expense_workflow import (
     ExpenseSliceResult,
-    run_expense_approval_slice as legacy_run_expense_approval_slice,
+    run_expense_approval_slice_legacy as legacy_run_expense_approval_slice,
 )
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import (
@@ -34,8 +36,12 @@ if TYPE_CHECKING:
     from impact_relay.domain.ledger import Ledger
 
 
+_DEFAULT_FACADE = "runtime"
+
+
 def facade_mode() -> str:
-    return os.environ.get("WORKFLOW_SLICE_FACADE", "legacy").strip().lower()
+    """Return active façade mode. Default runtime (PR-M6); override via env."""
+    return os.environ.get("WORKFLOW_SLICE_FACADE", _DEFAULT_FACADE).strip().lower()
 
 
 def run_expense_approval_slice(
@@ -195,6 +201,9 @@ def run_expense_approval_slice_via_runtime(
         if publish_specs and spec is None and len(publish_specs) == 1:
             spec = publish_specs[0]
 
+        if human_approver_id.startswith("agent:"):
+            raise AuthorityError("human_approver_id must not be an agent identity")
+
         inst = runtime.start_expense_to_receipt(
             tenant_id=tenant_id,
             expense_row=row,
@@ -205,9 +214,49 @@ def run_expense_approval_slice_via_runtime(
             business_key=str(row.get("external_source_id") or expense_id),
             pre_imported_expense_id=expense_id,
         )
+        if evidence_flags:
+            inst.context["evidence_flags"] = dict(evidence_flags)
+            runtime.store.update_instance(inst)
         inst = runtime.run_until_wait_or_terminal(
             inst.workflow_id, tenant_id=tenant_id
         )
+
+        # Harvest success receipts from store (parity with linear executor.receipts)
+        for (tid, _), rec in getattr(store, "_receipts", {}).items():
+            if tid == tenant_id and rec not in executions:
+                executions.append(rec)
+
+        # Blocked on evidence: synthesize a review packet (legacy parity)
+        if inst.workflow_state == WorkflowState.BLOCKED and not inst.context.get("packet"):
+            from impact_relay.agents.expense_workflow import FinanceReviewPacket
+
+            packets.append(
+                FinanceReviewPacket(
+                    packet_id=f"pkt_blocked_{expense_id[:8]}",
+                    tenant_id=tenant_id,
+                    expense_id=expense_id,
+                    vendor=row.get("vendor", ""),
+                    amount=str(row.get("amount", "")),
+                    currency=row.get("currency", "USD"),
+                    purchase_date=row.get("purchase_date", ""),
+                    category=row.get("category", ""),
+                    description=row.get("description", ""),
+                    proposed_allocation_id=row.get("allocation_id"),
+                    evidence_sufficiency=inst.context.get(
+                        "evidence_sufficiency", "CONTRADICTORY"
+                    ),
+                    evidence_summaries=[],
+                    classifier_confidence=None,
+                    warnings=[inst.context.get("evidence_sufficiency", "BLOCKED")],
+                    contradictions=["contradictory evidence"]
+                    if (evidence_flags or {}).get("contradictory")
+                    else [],
+                    workflow_state=WorkflowState.BLOCKED.value,
+                    policy_version=policy.version,
+                )
+            )
+            instance_states.append((inst.workflow_id, inst.workflow_state))
+            continue
 
         # Synthetic human approvals at gates
         if approve and inst.workflow_state == WorkflowState.REVIEW_PENDING:
@@ -234,6 +283,9 @@ def run_expense_approval_slice_via_runtime(
                 inst = runtime.run_until_wait_or_terminal(
                     inst.workflow_id, tenant_id=tenant_id
                 )
+                for (tid, _), rec in getattr(store, "_receipts", {}).items():
+                    if tid == tenant_id and rec not in executions:
+                        executions.append(rec)
 
         if approve and inst.workflow_state == WorkflowState.PUBLICATION_PENDING:
             wait = inst.context.get("wait") or {}
@@ -259,6 +311,9 @@ def run_expense_approval_slice_via_runtime(
                 inst = runtime.run_until_wait_or_terminal(
                     inst.workflow_id, tenant_id=tenant_id
                 )
+                for (tid, _), rec in getattr(store, "_receipts", {}).items():
+                    if tid == tenant_id and rec not in executions:
+                        executions.append(rec)
 
         if approve and inst.workflow_state == WorkflowState.NOTIFICATION_PENDING:
             wait = inst.context.get("wait") or {}
@@ -284,6 +339,9 @@ def run_expense_approval_slice_via_runtime(
                 inst = runtime.run_until_wait_or_terminal(
                     inst.workflow_id, tenant_id=tenant_id
                 )
+                for (tid, _), rec in getattr(store, "_receipts", {}).items():
+                    if tid == tenant_id and rec not in executions:
+                        executions.append(rec)
 
         # Collect packet
         if inst.context.get("packet"):
@@ -320,14 +378,17 @@ def run_expense_approval_slice_via_runtime(
 
         if inst.context.get("email_preview"):
             email_previews.append(inst.context["email_preview"])
-        if inst.context.get("delivery"):
+        if inst.context.get("delivery") or inst.workflow_state == WorkflowState.DELIVERED:
+            delivery = dict(inst.context.get("delivery") or {})
+            # Normalize executor status SUCCEEDED → DELIVERED for slice parity
+            status = "DELIVERED"
+            if inst.workflow_state == WorkflowState.DELIVERED:
+                status = "DELIVERED"
             delivery_refs.append(
                 {
-                    "receipt_id": None,
-                    "status": "DELIVERED"
-                    if inst.workflow_state == WorkflowState.DELIVERED
-                    else inst.workflow_state.value,
-                    **inst.context["delivery"],
+                    "receipt_id": delivery.get("receipt_id"),
+                    "status": status,
+                    "output_refs": delivery.get("output_refs"),
                 }
             )
 
