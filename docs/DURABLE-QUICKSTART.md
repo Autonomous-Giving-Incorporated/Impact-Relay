@@ -75,7 +75,16 @@ SQL engines without a durable ledger command log are refused (K11).
 | `.impact-relay/durable/HOWTO.md` | Copy of these steps |
 | `workflows.db` | SQLite workflow store (instances, waits, signals, receipts) |
 | `ledger_commands.jsonl` | Successful money commands (K17 rehydrate — stable expense ids) |
+| `storage.db` | Tenant registry + ledger entity snapshot (host app queries) |
 | `meta.json` | Tenant pointer + backend |
+
+After `seed` / `approve` / `worker`, Impact Relay **auto-saves** a queryable entity snapshot under `storage.db` for the Hacker-Dojo (or other host) app:
+
+```python
+from impact_relay.storage import open_storage
+store = open_storage(".impact-relay/durable")
+store.ledger.list_expenses("org_hacker_dojo")
+```
 
 ## Optional Postgres
 
