@@ -106,15 +106,60 @@ function render(state) {
   document.title = `Impact Relay · ${organization.name}`;
 }
 
+function renderUseOfFunds(exportDoc) {
+  if (!exportDoc) {
+    text('uofTotal', '—');
+    document.getElementById('uofList').innerHTML =
+      '<p class="note">No public use-of-funds receipts published yet.</p>';
+    return;
+  }
+
+  if (exportDoc.privacy?.piiAllowed || exportDoc.privacy?.donorNamesAllowed) {
+    throw new Error('Use-of-funds privacy contract violation.');
+  }
+
+  const total = Number(exportDoc.summary?.totalAttributed || 0);
+  text('uofTotal', money.format(total));
+
+  const rows = exportDoc.receipts || [];
+  document.getElementById('uofList').innerHTML = rows.map(r => `
+    <article class="uof-card">
+      <div class="meta">
+        <span>${escapeHtml(r.verificationState)}</span>
+        <span>${escapeHtml(r.purchaseDate)}</span>
+      </div>
+      <h3>${escapeHtml(r.allocationName)}</h3>
+      <p>${escapeHtml(r.description)}</p>
+      <div class="uof-facts">
+        <div><span class="metric-label">Attributed</span><strong>${money.format(Number(r.attributedAmount || 0))}</strong></div>
+        <div><span class="metric-label">Category</span><strong>${escapeHtml(r.category)}</strong></div>
+        <div><span class="metric-label">Method</span><strong>${escapeHtml(r.attributionMethod)}</strong></div>
+        <div><span class="metric-label">Remaining fund</span><strong>${money.format(Number(r.remainingDesignatedBalance || 0))}</strong></div>
+      </div>
+      <p class="note">Vendor: ${escapeHtml(r.vendor)} · Receipt ${escapeHtml(r.receiptId)}</p>
+    </article>`).join('') || '<p class="note">No public use-of-funds receipts published yet.</p>';
+}
+
+async function loadJson(path) {
+  const response = await fetch(path, { cache: 'no-store' });
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error(`Failed to load ${path} (${response.status})`);
+  }
+  return response.json();
+}
+
 async function boot() {
   try {
-    const response = await fetch('data/impact-state.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`Failed to load impact state (${response.status})`);
-    const state = await response.json();
+    const state = await loadJson('data/impact-state.json');
+    if (!state) throw new Error('impact-state.json missing');
     if (state.privacy?.piiAllowed || state.privacy?.donorNamesAllowed) {
       throw new Error('Privacy contract violation: personal data flags must remain false.');
     }
     render(state);
+
+    const uof = await loadJson('data/use-of-funds-public.json');
+    renderUseOfFunds(uof);
   } catch (error) {
     console.error(error);
     text('campaignName', 'Unable to load impact state');

@@ -66,6 +66,13 @@
       "title": "Live totals await reconciliation",
       "body": "Raised and committed amounts remain zero until an authorized Every.org export is reconciled into the public aggregate feed.",
       "publishedAt": "2026-08-01T14:05:00Z"
+    },
+    {
+      "id": "uof-pilot-published",
+      "severity": "success",
+      "title": "Use-of-funds pilot receipts published",
+      "body": "HD-IR-002 published privacy-safe use-of-funds receipts from the verified pilot fixture. Donor identity is not included.",
+      "publishedAt": "2026-08-01T14:30:00Z"
     }
   ],
   "privacy": {

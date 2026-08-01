@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrimshawlife-ctrl.github.io/Impact-Relay/schemas/use-of-funds-public.schema.json",
+  "title": "Impact Relay public use-of-funds export",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "source", "authority", "privacy", "summary", "receipts"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "updatedAt": { "type": "string", "format": "date" },
+    "source": { "type": "string", "minLength": 1 },
+    "authority": { "type": "string", "const": "public_aggregate_only" },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "piiAllowed",
+        "donorNamesAllowed",
+        "individualDonorAttributionAllowed",
+        "operatorIdentityAllowed"
+      ],
+      "properties": {
+        "classification": { "type": "string", "const": "public_aggregate_only" },
+        "piiAllowed": { "type": "boolean", "const": false },
+        "donorNamesAllowed": { "type": "boolean", "const": false },
+        "individualDonorAttributionAllowed": { "type": "boolean", "const": false },
+        "operatorIdentityAllowed": { "type": "boolean", "const": false }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receiptCount", "totalAttributed", "currency"],
+      "properties": {
+        "receiptCount": { "type": "integer", "minimum": 0 },
+        "totalAttributed": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]{2})?$" },
+        "currency": { "type": "string", "enum": ["USD"] }
+      }
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receiptId",
+          "organizationName",
+          "allocationName",
+          "restrictionType",
+          "category",
+          "description",
+          "vendor",
+          "currency",
+          "grossAmount",
+          "attributedAmount",
+          "purchaseDate",
+          "verificationState",
+          "attributionMethod",
+          "remainingDesignatedBalance",
+          "receiptHash",
+          "createdAt",
+          "corrected"
+        ],
+        "properties": {
+          "receiptId": { "type": "string" },
+          "organizationName": { "type": "string" },
+          "allocationName": { "type": "string" },
+          "restrictionType": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "vendor": { "type": "string" },
+          "currency": { "type": "string", "enum": ["USD"] },
+          "grossAmount": { "type": "string" },
+          "attributedAmount": { "type": "string" },
+          "purchaseDate": { "type": "string" },
+          "verificationState": { "type": "string" },
+          "attributionMethod": { "type": "string" },
+          "remainingDesignatedBalance": { "type": "string" },
+          "evidenceSummary": { "type": ["string", "null"] },
+          "receiptHash": { "type": "string", "minLength": 16 },
+          "createdAt": { "type": "string" },
+          "corrected": { "type": "boolean" },
+          "correctionKind": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

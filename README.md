@@ -160,6 +160,39 @@ Fixture systems of record: [docs/pilot-systems-of-record.md](docs/pilot-systems-
 
 ---
 
+## HD-IR-002 public use-of-funds export
+
+**Status:** privacy-safe Pages export from the pilot ledger.
+
+### What it ships
+
+```text
+pilot ledger receipts
+  → public_export.receipt_to_public (strip donor/operator identity)
+  → data/use-of-funds-public.json
+  → GitHub Pages “Use of funds” section
+```
+
+Commands:
+
+```bash
+# Write Pages-safe export from the pilot fixture
+python -m impact_relay --write-public data/use-of-funds-public.json
+
+# Print only the public payload
+python -m impact_relay --public-only
+```
+
+Public export never includes:
+
+- donor ids or display names
+- donation references
+- operator emails / approved_by actors
+
+CI runs the domain suite, regenerates the public export, and fails if the committed file drifts.
+
+---
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
