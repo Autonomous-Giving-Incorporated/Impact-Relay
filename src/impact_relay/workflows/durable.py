@@ -57,6 +57,27 @@ python -m impact_relay --durable check    # prove ids survive restart
 python -m impact_relay --durable status
 ```
 
+## After a crash / restart
+
+Same data-dir. Ledger rehydrates from `ledger_commands.jsonl`; workflows from `workflows.db`.
+
+```bash
+python -m impact_relay --durable status --data-dir ./my-pilot
+python -m impact_relay --durable check --data-dir ./my-pilot
+# Drain PENDING work left after a kill mid-advance:
+python -m impact_relay --durable worker --once --data-dir ./my-pilot
+python -m impact_relay --durable list --data-dir ./my-pilot
+```
+
+Or: `python -m impact_relay.workflows.worker --data-dir ./my-pilot --once`
+
+Continuous worker (multi-process pilot):
+
+```bash
+export WORKFLOW_WORKER_ENABLED=1
+python -m impact_relay --durable worker --data-dir ./my-pilot --poll-interval 1
+```
+
 Custom directory:
 
 ```bash
@@ -436,4 +457,111 @@ def durable_rehydrate_check(data_dir: Path | str | None = None) -> dict[str, Any
         "states_before": before,
         "states_after": after,
         "ids_stable": set(before.keys()) == set(after.keys()),
+    }
+
+
+def durable_worker(
+    data_dir: Path | str | None = None,
+    *,
+    once: bool = False,
+    max_ticks: int | None = None,
+    poll_interval: float = 1.0,
+    worker_id: str | None = None,
+    force: bool = False,
+    claim_batch_size: int = 10,
+) -> dict[str, Any]:
+    """Claim-and-advance against a durable workspace (pilot P3).
+
+    Always rehydrates the ledger from ``ledger_commands.jsonl`` (K17) via
+    ``open_workspace``. Refuses SQL engines without a command log (K11).
+
+    Easy path: ``--once`` (or finite ``--max-ticks``) needs no env flag.
+    Continuous loop requires ``WORKFLOW_WORKER_ENABLED=1`` or ``force=True``.
+    """
+    from impact_relay.workflows.guards import (
+        DurabilityGuardError,
+        assert_durable_worker_allowed,
+        durability_from_sql_store,
+    )
+
+    data_dir = Path(data_dir or DEFAULT_DATA_DIR)
+    finite = once or max_ticks is not None
+
+    try:
+        ws = open_workspace(data_dir)
+    except FileNotFoundError:
+        raise
+
+    # Durable workspace always uses FileLedgerCommandLog (K17 fold path).
+    has_command_log = isinstance(ws.ledger_log, FileLedgerCommandLog)
+    cfg = durability_from_sql_store(
+        ws.store,
+        has_command_log=has_command_log,
+        once=finite,
+        force=force,
+    )
+    try:
+        assert_durable_worker_allowed(
+            workflow_engine=cfg.workflow_engine,
+            ledger_durability=cfg.ledger_durability,
+            simulation_only=cfg.simulation_only,
+            worker_enabled=cfg.worker_enabled,
+            require_enabled=True,
+        )
+    except DurabilityGuardError as exc:
+        return {
+            "ok": False,
+            "error": "durability_guard",
+            "message": str(exc),
+            "config": cfg.to_dict(),
+            "hint": (
+                "python -m impact_relay --durable worker --once --data-dir "
+                f"{data_dir}"
+            ),
+        }
+
+    wid = worker_id or f"durable-worker_{os.getpid()}"
+    # Finite runs: no sleep between ticks for snappy CLI; continuous uses poll_interval
+    interval = 0.0 if finite else max(0.0, float(poll_interval))
+    worker = WorkflowWorker(
+        ws.runtime,
+        WorkerConfig(
+            worker_id=wid,
+            claim_batch_size=claim_batch_size,
+            poll_interval_seconds=interval,
+        ),
+    )
+
+    if once and max_ticks is None:
+        max_ticks = 50  # safety cap for --once drain
+    stop_when_idle = once or finite
+
+    ticks = worker.run(max_ticks=max_ticks, stop_when_idle=stop_when_idle)
+    ws.save()
+    cases = list_operator_cases(
+        ws.store,
+        ws.tenant_id,
+        filters=("waiting", "blocked", "dead_letter", "active", "all"),
+    )
+    summary = {
+        "claimed": sum(t.claimed for t in ticks),
+        "advanced": sum(t.advanced for t in ticks),
+        "dead_lettered": sum(t.dead_lettered for t in ticks),
+        "timed_out": sum(t.timed_out for t in ticks),
+        "tick_count": len(ticks),
+    }
+    return {
+        "ok": True,
+        "data_dir": str(data_dir.resolve()),
+        "tenant_id": ws.tenant_id,
+        "worker_id": wid,
+        "config": cfg.to_dict(),
+        "summary": summary,
+        "ticks": [t.to_dict() for t in ticks],
+        "waiting": [c.to_dict() for c in cases if c.bucket == "waiting"],
+        "next": (
+            f"python -m impact_relay --durable list --data-dir {data_dir}"
+            if any(c.bucket == "waiting" for c in cases)
+            else f"python -m impact_relay --durable status --data-dir {data_dir}"
+        ),
     }

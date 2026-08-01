@@ -63,6 +63,7 @@ from impact_relay.workflows.ops import (
     seed_session_to_wait,
     signal_approval_and_pump,
 )
+from impact_relay.workflows.guards import DurabilityGuardError
 from impact_relay.workflows.worker import TickResult, WorkerConfig, WorkflowWorker
 from impact_relay.workflows.types import (
     CLAIMABLE_RUN_STATUSES,
@@ -90,6 +91,7 @@ __all__ = [
     "ClassifiedError",
     "Clock",
     "DEFAULT_RUN_STATUS",
+    "DurabilityGuardError",
     "EXPENSE_TO_RECEIPT_TRANSITIONS",
     "ErrorClass",
     "ExecutableCommand",
