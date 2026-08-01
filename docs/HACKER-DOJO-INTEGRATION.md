@@ -42,20 +42,42 @@ Hacker-Dojo App (template for other nonprofits)
 
 ```python
 from impact_relay.host import open_hacker_dojo_session
+from impact_relay.host.hacker_dojo import finance_approver_fixture, hacker_dojo_oidc_mapper
 
-with open_hacker_dojo_session("./data/hd-pilot") as session:
+# Production: validate OIDC access token in the host, then:
+#   mapper = MyAuth0Provider(...)  # implements OidcIdentityProvider
+#   principal = mapper.map_principal(claims, tenant_id="org_hacker_dojo")
+
+# Local pilot without live IdP:
+principal = finance_approver_fixture()  # or hacker_dojo_oidc_mapper().principal_for_token("email:…")
+
+with open_hacker_dojo_session(
+    "./data/hd-pilot",
+    require_principal_for_approve=True,
+) as session:
+    session = session.with_principal(principal)
     session.seed()
     waiting = session.list_waiting()
-    session.approve(
-        workflow_id=waiting["cases"][0]["workflow_id"],
-        approver_id="finance@hackersdojo.org",  # human only
-    )
+    session.approve(workflow_id=waiting["cases"][0]["workflow_id"])
     for exp in session.list_expenses():
         print(exp["id"], exp["state"])
 ```
 
 Default data dir: `.impact-relay/hacker-dojo`  
-Identity helpers: `from impact_relay.host.hacker_dojo import hacker_dojo_identity`
+Identity: `impact_relay.auth` (roles, RBAC, OIDC ports) + `hacker_dojo_identity()`
+
+### Roles (platform vocabulary)
+
+| Role | Can approve expenses | Notes |
+|------|----------------------|--------|
+| `finance_approver` | yes | L3 money path |
+| `finance_reviewer` | no | list / read |
+| `communications_approver` | no | publish/send later |
+| `auditor` | no | read-only |
+| `tenant_admin` | yes (all perms) | host ops |
+| `donor` | no | own receipts (host filters) |
+
+Separation of duties: same person cannot approve their own proposal (`proposer_id`).
 
 ### Easy local pilot (CLI alone)
 
