@@ -42,6 +42,60 @@ from impact_relay.reconcile import (
 )
 
 
+def _run_durable(args: argparse.Namespace) -> int:
+    """Pilot P1: file-backed durable seed / list / approve / status / check."""
+    from impact_relay.workflows.durable import (
+        DEFAULT_DATA_DIR,
+        HOWTO,
+        durable_approve,
+        durable_list,
+        durable_rehydrate_check,
+        durable_seed,
+        durable_status,
+    )
+
+    data_dir = args.data_dir or DEFAULT_DATA_DIR
+    cmd = args.durable
+    if cmd == "help":
+        print(HOWTO)
+        print(f"\nDefault --data-dir: {DEFAULT_DATA_DIR.resolve()}")
+        return 0
+    if cmd == "seed":
+        out = durable_seed(
+            data_dir,
+            expense_batch=args.expense_batch,
+            fixture_path=args.fixture,
+        )
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    if cmd == "list":
+        out = durable_list(data_dir, filters=args.workflow_filter)
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok", True) else 1
+    if cmd == "approve":
+        out = durable_approve(
+            data_dir,
+            workflow_id=args.workflow_id,
+            approver_id=args.approver_id,
+        )
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    if cmd == "status":
+        out = durable_status(data_dir)
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    if cmd == "check":
+        try:
+            out = durable_rehydrate_check(data_dir)
+        except FileNotFoundError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+            return 2
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    print(json.dumps({"error": f"unknown durable cmd: {cmd}"}), file=sys.stderr)
+    return 2
+
+
 def _run_workflow_ops(args: argparse.Namespace) -> int:
     """PR-M5 operator CLI: list / signal / seed / demo."""
     import json as _json
@@ -387,6 +441,21 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--durable",
+        choices=["seed", "list", "approve", "status", "check", "help"],
+        default=None,
+        help=(
+            "Easy durable pilot workspace (file-backed ledger log + workflows). "
+            "seed → list → approve. Survives restart in --data-dir."
+        ),
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=None,
+        help="Durable workspace directory (default: .impact-relay/durable)",
+    )
+    parser.add_argument(
         "--workflow-ops",
         choices=["list", "signal", "seed", "demo"],
         default=None,
@@ -467,6 +536,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     import os
+
+    # --- Easy durable workspace (pilot P1) ---
+    if args.durable is not None:
+        return _run_durable(args)
 
     # --- Operator workflow ops (PR-M5) ---
     if args.workflow_ops is not None:
