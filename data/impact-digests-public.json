@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-01",
+  "source": "hd_ir_003_events_pilot",
+  "authority": "public_aggregate_only",
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "attendeeNamesAllowed": false,
+    "contactDataAllowed": false
+  },
+  "summary": {
+    "eventCount": 3,
+    "totalAttendancePublic": 131,
+    "classCounts": {
+      "fundraiser": 1,
+      "workshop": 1,
+      "open_lab": 1
+    }
+  },
+  "events": [
+    {
+      "eventId": "evt_supperhappy_briefing",
+      "title": "SupperHappyFundHouse Campaign Briefing",
+      "class": "fundraiser",
+      "occurredOn": "2026-07-28",
+      "attendeeCountPublic": 61,
+      "impactSummary": "Public campaign briefing with aggregate fundraising milestones only.",
+      "linkedAllocationName": null,
+      "locationLabel": "Main hall"
+    },
+    {
+      "eventId": "evt_intro_electronics",
+      "title": "Intro to Electronics Workshop",
+      "class": "workshop",
+      "occurredOn": "2026-07-22",
+      "attendeeCountPublic": 22,
+      "impactSummary": "Beginner workshop using classroom tools funded by the hardware allocation.",
+      "linkedAllocationName": "Community Hardware Fund",
+      "locationLabel": "Classroom A"
+    },
+    {
+      "eventId": "evt_open_lab_july",
+      "title": "Hardware Lab Open Night",
+      "class": "open_lab",
+      "occurredOn": "2026-07-15",
+      "attendeeCountPublic": 48,
+      "impactSummary": "Community access session for soldering stations and safety training.",
+      "linkedAllocationName": "Community Hardware Fund",
+      "locationLabel": "Hacker Dojo main floor"
+    }
+  ]
+}

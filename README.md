@@ -4,8 +4,9 @@ Donation fund-use transparency and impact notification platform.
 
 This repository has related surfaces:
 
-1. **Public tracker (GitHub Pages)** — aggregate campaign progress only (no donor PII).
+1. **Public tracker (GitHub Pages)** — aggregate campaign progress, use-of-funds receipts, and event digests (no donor PII).
 2. **Domain core (Python)** — HD-IR-001 ledger + Phases 2–6 fixture-backed product capabilities (donor reads, notifications, impact, multi-tenant pilot).
+3. **HD-IR-003 Pages bridge** — aggregate reconciliation into `impact-state.json` + public digests export.
 
 Live public site:
 

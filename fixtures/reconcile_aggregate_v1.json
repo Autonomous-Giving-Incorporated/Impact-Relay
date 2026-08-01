@@ -1,0 +1,9 @@
+{
+  "source": "fixture://everyorg/aggregate-export-v1",
+  "reconciledAt": "2026-08-01T15:00:00Z",
+  "status": "active",
+  "raisedPublic": 12840,
+  "committedPublic": 2500,
+  "donorCountPublic": 37,
+  "note": "Synthetic aggregate-only pilot reconciliation. Not live processor data."
+}
