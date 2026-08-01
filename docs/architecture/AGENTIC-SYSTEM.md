@@ -66,7 +66,7 @@ Do not split into microservices until independently scaling or isolating a bound
 | Validation | Pydantic v2 + JSON Schema |
 | Database | PostgreSQL |
 | Persistence | SQLAlchemy 2 + Alembic |
-| Durable workflow | Temporal preferred; bounded PostgreSQL worker acceptable for MVP |
+| Durable workflow | **Pilot default:** bounded SQL worker (SQLite local / Postgres + SKIP LOCKED) with co-durable ledger command log. Temporal remains a scale-up option |
 | Evidence storage | S3-compatible encrypted object storage |
 | Identity | OIDC |
 | Policy | versioned YAML evaluated by deterministic application code |

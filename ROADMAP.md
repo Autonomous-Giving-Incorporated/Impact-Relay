@@ -21,7 +21,7 @@ Deferred:
 
 - live accounting ingestion;
 - production email, push, and SMS delivery;
-- durable workflow runtime;
+- production multi-tenant DR / observability for workflows (pilot durable path **shipped**: memory MVP + SQLite/Postgres store + command log + worker CLI);
 - authenticated finance console;
 - native Hacker Dojo donor experience;
 - human finance pilot sign-off.
