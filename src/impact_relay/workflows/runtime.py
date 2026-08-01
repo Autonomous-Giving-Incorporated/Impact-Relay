@@ -178,6 +178,67 @@ class WorkflowRuntime:
             clear_lease=True,
         )
 
+    def start_correction(
+        self,
+        *,
+        tenant_id: str,
+        expense_id: str,
+        kind: str = "REVERSE",
+        reason: str,
+        replacement: dict[str, Any] | None = None,
+        splits: list[Any] | None = None,
+        simulation: bool = False,
+        policy: TenantPolicy | None = None,
+        business_key: str | None = None,
+    ) -> WorkflowInstance:
+        """Start reverse/supersede correction workflow (PR-L1, K15)."""
+        pol = policy or default_policy(tenant_id)
+        kind_u = kind.upper()
+        if kind_u not in ("REVERSE", "SUPERSEDE"):
+            raise WorkflowStateError(f"unknown correction kind: {kind}")
+        bk = business_key or f"corr:{kind_u.lower()}:{expense_id}"
+        now = self.clock.now_iso()
+        wid = _new_id("wf_corr")
+        ctx_data: dict[str, Any] = {
+            "correction_kind": kind_u,
+            "expense_id": expense_id,
+            "reason": reason,
+            "replacement": replacement,
+            "splits": splits,
+            "policy": pol.to_dict(),
+            "policy_version": pol.version,
+        }
+        inst = WorkflowInstance(
+            workflow_id=wid,
+            tenant_id=tenant_id,
+            workflow_type=WorkflowType.CORRECTION,
+            business_key=bk,
+            workflow_state=WorkflowState.RECEIVED,
+            run_status=WorkflowRunStatus.PENDING,
+            context=ctx_data,
+            simulation=simulation,
+            next_run_at=now,
+            policy_version=pol.version,
+            created_at=now,
+            updated_at=now,
+        )
+        self.store.create(inst)
+        self.store.append_events(
+            tenant_id,
+            wid,
+            [
+                WorkflowEventWrite(
+                    event_type=WorkflowEventType.CREATED,
+                    payload={
+                        "business_key": bk,
+                        "kind": kind_u,
+                        "expense_id": expense_id,
+                    },
+                )
+            ],
+        )
+        return self.store.get(tenant_id, wid)  # type: ignore[return-value]
+
     def advance_once(self, instance: WorkflowInstance) -> WorkflowInstance:
         """Advance one step; returns updated instance from store."""
         tenant_id = instance.tenant_id
@@ -200,6 +261,10 @@ class WorkflowRuntime:
             },
             policy=inst.context.get("policy") or pol.to_dict(),
         )
+
+        # Correction workflow branch (PR-L1)
+        if inst.workflow_type == WorkflowType.CORRECTION:
+            return self._advance_correction(inst, executor, ctx, ledger)
 
         # Human gate: need signal or repark
         if inst.workflow_state in HUMAN_GATE_STATES:
@@ -733,6 +798,15 @@ class WorkflowRuntime:
             inst.workflow_state = WorkflowState.LEDGER_COMMITTED
             inst.run_status = WorkflowRunStatus.PENDING
             inst.next_run_at = self.clock.now_iso()
+        elif cmd.command_type in ("reverse_expense", "supersede_expense"):
+            inst.workflow_state = WorkflowState.LEDGER_COMMITTED
+            inst.run_status = WorkflowRunStatus.PENDING
+            inst.next_run_at = self.clock.now_iso()
+            inst.context["correction_result"] = {
+                "command_type": cmd.command_type,
+                "output_refs": list(receipt.output_refs),
+                "status": receipt.status,
+            }
         elif cmd.command_type == "publish_use_of_funds_receipt":
             inst.workflow_state = WorkflowState.PUBLISHED
             if inst.context.get("send_email"):
@@ -778,10 +852,99 @@ class WorkflowRuntime:
             consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
         )
 
+    def _advance_correction(
+        self,
+        inst: WorkflowInstance,
+        executor: CommandExecutor,
+        ctx: AgentContext,
+        ledger: Any,
+    ) -> WorkflowInstance:
+        """Correction workflow (PR-L1): propose L3 reverse/supersede → wait → complete."""
+        from impact_relay.workflows.corrections import (
+            step_after_ledger_correction,
+            step_propose_correction,
+        )
+
+        if inst.run_status in (
+            WorkflowRunStatus.COMPLETED,
+            WorkflowRunStatus.FAILED_TERMINAL,
+            WorkflowRunStatus.DEAD_LETTER,
+            WorkflowRunStatus.CANCELLED,
+        ):
+            return inst
+
+        if inst.workflow_state in HUMAN_GATE_STATES:
+            return self._advance_human_gate(inst, executor, ctx)
+
+        if inst.workflow_state == WorkflowState.RECEIVED:
+            kind = str(inst.context.get("correction_kind") or "REVERSE").upper()
+            expense_id = inst.context.get("expense_id")
+            reason = inst.context.get("reason") or ""
+            if not expense_id or not reason:
+                inst.workflow_state = WorkflowState.NEEDS_INFORMATION
+                inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+                inst.last_error = "correction requires expense_id and reason"
+                return self._commit(inst)
+            if not inst.simulation and expense_id not in ledger.expenses:
+                inst.workflow_state = WorkflowState.BLOCKED
+                inst.run_status = WorkflowRunStatus.FAILED_TERMINAL
+                inst.last_error = f"expense not found: {expense_id}"
+                return self._commit(inst)
+
+            out = step_propose_correction(
+                tenant_id=inst.tenant_id,
+                kind=kind,  # type: ignore[arg-type]
+                expense_id=str(expense_id),
+                reason=str(reason),
+                replacement=inst.context.get("replacement"),
+                splits=inst.context.get("splits"),
+                current=WorkflowState.RECEIVED,
+            )
+            inst.context.update(out.context_patch)
+            wait = out.context_patch.get("wait") or out.wait_payload
+            if wait:
+                inst.context["wait"] = wait
+                inst.wait_descriptor = {
+                    "signal_type": "APPROVAL",
+                    "command_idempotency_key": wait.get("command_idempotency_key")
+                    or (wait.get("frozen_command") or {}).get("idempotency_key"),
+                    "proposal_id": wait.get("proposal_id"),
+                }
+            inst.wait_deadline = (
+                str(out.wait_deadline) if out.wait_deadline else None
+            )
+            inst.workflow_state = out.next_state
+            inst.run_status = out.run_status
+            inst.lease_owner = None
+            inst.lease_expires_at = None
+            return self._commit(inst, events=out.events)
+
+        if inst.workflow_state == WorkflowState.LEDGER_COMMITTED:
+            out = step_after_ledger_correction(current=WorkflowState.LEDGER_COMMITTED)
+            inst.workflow_state = out.next_state
+            inst.run_status = out.run_status
+            return self._commit(inst, events=out.events)
+
+        if inst.workflow_state == WorkflowState.NEEDS_INFORMATION:
+            # Operator must resubmit via new start or RESUBMIT signal — repark
+            inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+            inst.lease_owner = None
+            inst.lease_expires_at = None
+            return self._commit(inst)
+
+        # Unknown — repark
+        inst.run_status = WorkflowRunStatus.PENDING
+        inst.next_run_at = self.clock.now_iso()
+        return self._commit(inst)
+
     def _advance_after_ledger(
         self, inst: WorkflowInstance, executor: CommandExecutor, ctx: AgentContext
     ) -> WorkflowInstance:
         """After LEDGER_COMMITTED: optional publish or complete."""
+        # Correction workflows complete via _advance_correction (safety net)
+        if inst.workflow_type == WorkflowType.CORRECTION:
+            return self._advance_correction(inst, executor, ctx, self.ledger_binding.for_tenant(inst.tenant_id))
+
         spec = inst.context.get("publish_spec")
         if not spec:
             inst.run_status = WorkflowRunStatus.COMPLETED

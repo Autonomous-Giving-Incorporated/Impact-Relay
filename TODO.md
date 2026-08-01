@@ -38,7 +38,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add retry policy and dead-letter state.
 - [x] Add workflow replay / parity tests.
 - [ ] Add scheduled digest workflow.
-- [ ] Add correction and retraction workflow.
+- [x] Add correction and retraction workflow (PR-L1 reverse/supersede L3 + workflow).
 - [x] Pilot P1: file ledger command log rehydrate + durable CLI (seed/list/approve/check).
 - [x] Pilot P2: SQL WorkflowStore (SQLite default, Postgres + SKIP LOCKED optional).
 - [x] Pilot P3: durable worker entrypoint (`--durable worker` / `python -m impact_relay.workflows.worker`) + restart runbook + K11 guard.

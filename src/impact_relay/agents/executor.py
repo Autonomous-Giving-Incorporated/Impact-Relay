@@ -79,6 +79,10 @@ class LedgerCommandExecutor(CommandExecutor):
             return self._publish_receipt(command.payload)
         if command.command_type == "send_notification":
             return self._send_notification(command.payload)
+        if command.command_type == "reverse_expense":
+            return self._reverse_expense(command.payload)
+        if command.command_type == "supersede_expense":
+            return self._supersede_expense(command.payload)
         raise NotImplementedError(f"unsupported command_type={command.command_type}")
 
     def _import_normalized(self, row: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
@@ -238,4 +242,103 @@ class LedgerCommandExecutor(CommandExecutor):
             "delivery_success": delivery.success if delivery else None,
             "provider_receipt": delivery.provider_receipt if delivery else None,
             "preview_id": preview.preview_id,
+        }
+
+    def _reverse_expense(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+        """L3 reverse — maps ledger.reverse_expense (K15)."""
+        expense_id = payload["expense_id"]
+        actor = payload.get("actor") or payload.get("approved_by")
+        reason = payload.get("reason") or ""
+        if not actor:
+            raise AuthorityError("reverse_expense requires actor from human approval")
+        if not reason:
+            raise AuthorityError("reverse_expense requires reason")
+        exp = self.ledger.expenses.get(expense_id)
+        if exp is not None and exp.state == ExpenseState.REVERSED:
+            # Idempotent no-op success (design: already reversed)
+            return [expense_id], {
+                "expense_id": expense_id,
+                "state": exp.state.value,
+                "noop": True,
+            }
+        reversed_exp, corrections = self.ledger.reverse_expense(
+            expense_id, actor=actor, reason=reason
+        )
+        corr_ids = [c.receipt_id for c in corrections]
+        return [expense_id, *corr_ids], {
+            "expense_id": expense_id,
+            "state": reversed_exp.state.value,
+            "correction_receipt_ids": corr_ids,
+            "correction_kind": "REVERSAL",
+        }
+
+    def _supersede_expense(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+        """L3 supersede — maps ledger.supersede_expense (K15)."""
+        expense_id = payload["expense_id"]
+        actor = payload.get("actor") or payload.get("approved_by")
+        reason = payload.get("reason") or ""
+        approved_by = payload.get("approved_by") or actor
+        if not actor:
+            raise AuthorityError("supersede_expense requires actor from human approval")
+        if not reason:
+            raise AuthorityError("supersede_expense requires reason")
+        exp = self.ledger.expenses.get(expense_id)
+        if exp is not None and exp.state == ExpenseState.SUPERSEDED:
+            return [expense_id], {
+                "expense_id": expense_id,
+                "state": exp.state.value,
+                "noop": True,
+            }
+
+        repl_raw = payload.get("replacement") or {}
+        if not repl_raw:
+            raise AuthorityError("supersede_expense requires replacement expense payload")
+        replacement_id = repl_raw.get("id") or repl_raw.get("expense_id") or _new_id("exp")
+        replacement = Expense(
+            id=replacement_id,
+            organization_id=self.ledger.organization.id,
+            vendor=repl_raw["vendor"],
+            amount=money(repl_raw["amount"]),
+            currency=repl_raw.get("currency", "USD"),
+            purchase_date=repl_raw["purchase_date"],
+            category=repl_raw.get("category", "UNCLASSIFIED"),
+            description=repl_raw.get("description", ""),
+            state=ExpenseState.IMPORTED,
+            external_source_id=repl_raw.get("external_source_id"),
+        )
+        splits_raw = payload.get("splits") or []
+        if not splits_raw:
+            raise AuthorityError("supersede_expense requires splits")
+        splits: list[tuple[str, Any]] = []
+        for item in splits_raw:
+            if isinstance(item, (list, tuple)) and len(item) == 2:
+                splits.append((str(item[0]), item[1]))
+            elif isinstance(item, dict):
+                splits.append(
+                    (
+                        str(item["allocation_id"]),
+                        item.get("amount", replacement.amount),
+                    )
+                )
+            else:
+                raise AuthorityError(f"invalid split entry: {item!r}")
+
+        superseded, approved, corrections = self.ledger.supersede_expense(
+            expense_id,
+            replacement=replacement,
+            splits=splits,
+            actor=actor,
+            reason=reason,
+            approved_by=approved_by,
+        )
+        corr_ids = [c.receipt_id for c in corrections]
+        if approved.external_source_id:
+            self._external_index[approved.external_source_id] = approved.id
+        return [expense_id, approved.id, *corr_ids], {
+            "expense_id": expense_id,
+            "state": superseded.state.value,
+            "replacement_expense_id": approved.id,
+            "replacement_state": approved.state.value,
+            "correction_receipt_ids": corr_ids,
+            "correction_kind": "SUPERSEDE",
         }

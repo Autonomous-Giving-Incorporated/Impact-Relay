@@ -94,6 +94,35 @@ EXPENSE_TO_RECEIPT_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = 
     ),
 }
 
+# Correction workflow (PR-L1): reuse business states; separate transition table.
+CORRECTION_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = {
+    WorkflowState.RECEIVED: frozenset(
+        {
+            WorkflowState.REVIEW_PENDING,
+            WorkflowState.BLOCKED,
+            WorkflowState.NEEDS_INFORMATION,
+        }
+    ),
+    WorkflowState.REVIEW_PENDING: frozenset(
+        {
+            WorkflowState.LEDGER_COMMITTED,
+            WorkflowState.REJECTED,
+            WorkflowState.NEEDS_INFORMATION,
+            WorkflowState.BLOCKED,
+        }
+    ),
+    WorkflowState.LEDGER_COMMITTED: frozenset({WorkflowState.DELIVERED}),
+    WorkflowState.DELIVERED: frozenset(),
+    WorkflowState.BLOCKED: frozenset(
+        {WorkflowState.RECEIVED, WorkflowState.REVIEW_PENDING, WorkflowState.NEEDS_INFORMATION}
+    ),
+    WorkflowState.NEEDS_INFORMATION: frozenset(
+        {WorkflowState.RECEIVED, WorkflowState.REVIEW_PENDING}
+    ),
+    WorkflowState.REJECTED: frozenset(),
+}
+
+
 HUMAN_GATE_STATES: frozenset[WorkflowState] = frozenset(
     {
         WorkflowState.REVIEW_PENDING,
@@ -123,20 +152,39 @@ DEFAULT_RUN_STATUS: dict[WorkflowState, WorkflowRunStatus] = {
 }
 
 
-def can_transition(current: WorkflowState, nxt: WorkflowState) -> bool:
+def can_transition(
+    current: WorkflowState,
+    nxt: WorkflowState,
+    *,
+    table: dict[WorkflowState, frozenset[WorkflowState]] | None = None,
+) -> bool:
     if current == nxt:
         return True
-    allowed = EXPENSE_TO_RECEIPT_TRANSITIONS.get(current)
+    edges = table if table is not None else EXPENSE_TO_RECEIPT_TRANSITIONS
+    allowed = edges.get(current)
     if allowed is None:
         return False
     return nxt in allowed
 
 
-def assert_transition(current: WorkflowState, nxt: WorkflowState) -> None:
-    if not can_transition(current, nxt):
+def assert_transition(
+    current: WorkflowState,
+    nxt: WorkflowState,
+    *,
+    table: dict[WorkflowState, frozenset[WorkflowState]] | None = None,
+) -> None:
+    if not can_transition(current, nxt, table=table):
         raise WorkflowStateError(
             f"illegal workflow transition {current.value} → {nxt.value}"
         )
+
+
+def can_correction_transition(current: WorkflowState, nxt: WorkflowState) -> bool:
+    return can_transition(current, nxt, table=CORRECTION_TRANSITIONS)
+
+
+def assert_correction_transition(current: WorkflowState, nxt: WorkflowState) -> None:
+    assert_transition(current, nxt, table=CORRECTION_TRANSITIONS)
 
 
 def is_human_gate(state: WorkflowState) -> bool:

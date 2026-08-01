@@ -32,11 +32,20 @@ from impact_relay.workflows.facade import (
     run_expense_approval_slice_via_runtime,
 )
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
+from impact_relay.workflows.corrections import (
+    build_reverse_command,
+    build_supersede_command,
+    step_after_ledger_correction,
+    step_propose_correction,
+)
 from impact_relay.workflows.machine import (
+    CORRECTION_TRANSITIONS,
     DEFAULT_RUN_STATUS,
     EXPENSE_TO_RECEIPT_TRANSITIONS,
     HUMAN_GATE_STATES,
+    assert_correction_transition,
     assert_transition,
+    can_correction_transition,
     can_transition,
     default_run_status,
     is_human_gate,
@@ -88,6 +97,7 @@ from impact_relay.workflows.types import (
 __all__ = [
     "AdvanceCommitBundle",
     "CLAIMABLE_RUN_STATUSES",
+    "CORRECTION_TRANSITIONS",
     "ClassifiedError",
     "Clock",
     "DEFAULT_RUN_STATUS",
@@ -131,8 +141,12 @@ __all__ = [
     "WorkflowType",
     "WorkflowWorker",
     "approval_from_dict",
+    "assert_correction_transition",
     "assert_transition",
     "build_executable_command",
+    "build_reverse_command",
+    "build_supersede_command",
+    "can_correction_transition",
     "can_transition",
     "classify_error",
     "default_executor_factory",
@@ -142,6 +156,8 @@ __all__ = [
     "is_human_gate",
     "is_retryable",
     "is_terminal",
+    "step_after_ledger_correction",
+    "step_propose_correction",
     "list_blocked",
     "list_operator_cases",
     "load_ops_session",

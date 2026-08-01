@@ -76,6 +76,7 @@ class WorkflowState(str, Enum):
 
 
 # Consequential command types that always require a human ApprovalReceipt.
+# K15: reverse_expense / supersede_expense are explicit L3 (not L1 aliases).
 L3_COMMAND_TYPES: frozenset[str] = frozenset(
     {
         "approve_expense",
@@ -85,6 +86,8 @@ L3_COMMAND_TYPES: frozenset[str] = frozenset(
         "publish_public_evidence",
         "change_attribution_policy",
         "correct_published_amount",
+        "reverse_expense",
+        "supersede_expense",
     }
 )
 

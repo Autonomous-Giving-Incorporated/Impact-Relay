@@ -62,6 +62,8 @@ class AuthorityPolicy:
         "publish_public_evidence",
         "change_attribution_policy",
         "correct_published_amount",
+        "reverse_expense",
+        "supersede_expense",
     )
 
 
