@@ -64,6 +64,10 @@
         "raisedClaimLabel": {
           "type": "string",
           "enum": ["PILOT", "OBSERVED", "NOT_COMPUTABLE"]
+        },
+        "aggregateSource": {
+          "type": "string",
+          "description": "Provenance URI or processor source id for the aggregate (never a donor list)"
         }
       }
     },
