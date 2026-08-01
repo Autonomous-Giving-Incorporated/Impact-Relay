@@ -1,8 +1,7 @@
 """Fixture-backed expense → human approval → ledger → UOF receipt vertical slice.
 
-This is the first v0.5/v0.6 path that wraps the deterministic ledger with
-agent proposals and hard human gates. Agents never call Ledger mutation APIs
-directly — only LedgerCommandExecutor does, after ApprovalReceipt checks.
+Agents propose; ``LedgerCommandExecutor`` (agents.executor) is the sole ledger
+mutation gateway. Step handlers live in ``workflows.expense_to_receipt``.
 """
 
 from __future__ import annotations
@@ -10,11 +9,11 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from impact_relay.agents.authority import AuthorityError, assert_agent_may_propose
 from impact_relay.agents.base import AgentContext, CommandExecutor, build_run_receipt
+from impact_relay.agents.executor import LedgerCommandExecutor
 from impact_relay.agents.notification_composer import (
     EmailPreview,
     NotificationComposerAgent,
@@ -38,21 +37,13 @@ from impact_relay.agents.types import (
     to_jsonable,
     utc_now_iso,
 )
-from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.tenant import TenantWorkspace
-from impact_relay.domain.types import (
-    AttributionMethod,
-    ConsentRecord,
-    EvidenceRecord,
-    Expense,
-    ExpenseState,
-    NotificationChannel,
-    NotificationPreference,
-    UseOfFundsReceipt,
-    money,
-)
-from impact_relay.policy import TenantPolicy, default_policy, load_tenant_policy
+from impact_relay.domain.types import UseOfFundsReceipt
+from impact_relay.policy import TenantPolicy, default_policy
 from impact_relay.public_export import receipt_to_public
+
+if TYPE_CHECKING:
+    from impact_relay.domain.ledger import Ledger
 
 
 def _new_id(prefix: str) -> str:
@@ -430,212 +421,11 @@ class FinanceReviewAgent:
         return ValidationResult(status=ValidationStatus.ACCEPTED)
 
 
-# ---------------------------------------------------------------------------
-# Ledger-backed executor (only mutation path)
-# ---------------------------------------------------------------------------
-
-
-class LedgerCommandExecutor(CommandExecutor):
-    """Dispatches approved/reversible commands onto a Ledger instance."""
-
-    def __init__(
-        self,
-        ledger: Ledger,
-        *,
-        simulation: bool = False,
-        workspace: TenantWorkspace | None = None,
-    ) -> None:
-        super().__init__(simulation=simulation)
-        self.ledger = ledger
-        self.workspace = workspace
-        # external_source_id -> expense_id for dedup
-        self._external_index: dict[str, str] = {
-            e.external_source_id: e.id
-            for e in ledger.expenses.values()
-            if e.external_source_id
-        }
-        # preview_id -> EmailPreview for send gate
-        self.previews: dict[str, EmailPreview] = {}
-
-    def register_preview(self, preview: EmailPreview) -> None:
-        self.previews[preview.preview_id] = preview
-
-    def _dispatch(self, command: AgentCommand) -> tuple[list[str], dict[str, Any]]:
-        if command.tenant_id != self.ledger.organization.id:
-            raise AuthorityError("cross-tenant command rejected")
-
-        if command.command_type == "import_normalized_expense":
-            return self._import_normalized(command.payload["expense"])
-        if command.command_type == "allocate_expense":
-            return self._allocate(command.payload)
-        if command.command_type == "approve_expense":
-            return self._approve(command.payload)
-        if command.command_type == "reject_expense":
-            return self._reject(command.payload)
-        if command.command_type == "publish_use_of_funds_receipt":
-            return self._publish_receipt(command.payload)
-        if command.command_type == "send_notification":
-            return self._send_notification(command.payload)
-        raise NotImplementedError(f"unsupported command_type={command.command_type}")
-
-    def _import_normalized(self, row: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        ext = row["external_source_id"]
-        if ext in self._external_index:
-            eid = self._external_index[ext]
-            return [eid], {"expense_id": eid, "duplicate": True}
-
-        expense_id = row.get("expense_id") or _new_id("exp")
-        expense = Expense(
-            id=expense_id,
-            organization_id=self.ledger.organization.id,
-            vendor=row["vendor"],
-            amount=money(row["amount"]),
-            currency=row.get("currency", "USD"),
-            purchase_date=row["purchase_date"],
-            category=row.get("category", "UNCLASSIFIED"),
-            description=row.get("description", ""),
-            state=ExpenseState.IMPORTED,
-            external_source_id=ext,
-        )
-        self.ledger.import_expense(expense)
-        for ev in row.get("evidence") or []:
-            self.ledger.attach_evidence(
-                EvidenceRecord(
-                    id=ev.get("id") or _new_id("ev"),
-                    expense_id=expense_id,
-                    kind=ev.get("kind", "invoice"),
-                    summary=ev.get("summary", ""),
-                    donor_visible=bool(ev.get("donor_visible", True)),
-                )
-            )
-        self._external_index[ext] = expense_id
-        return [expense_id], {"expense_id": expense_id, "duplicate": False}
-
-    def _allocate(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        expense_id = payload["expense_id"]
-        allocation_id = payload["allocation_id"]
-        amount = payload.get("amount")
-        if amount is None:
-            amount = self.ledger.expenses[expense_id].amount
-        ea = self.ledger.allocate_expense(
-            expense_id=expense_id,
-            allocation_id=allocation_id,
-            amount=amount,
-        )
-        return [ea.id], {"expense_allocation_id": ea.id, "expense_id": expense_id}
-
-    def _approve(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        expense_id = payload["expense_id"]
-        approved_by = payload.get("approved_by")
-        if not approved_by:
-            raise AuthorityError("approve_expense payload requires approved_by from human")
-        updated = self.ledger.approve_expense(expense_id, approved_by=approved_by)
-        return [expense_id], {"expense_id": expense_id, "state": updated.state.value}
-
-    def _reject(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        # Soft reject: mark via audit only — domain has no REJECT transition helper;
-        # we record intent without inventing ledger API.
-        expense_id = payload["expense_id"]
-        if expense_id not in self.ledger.expenses:
-            raise KeyError(expense_id)
-        return [expense_id], {
-            "expense_id": expense_id,
-            "decision": "REJECT",
-            "note": payload.get("rationale", ""),
-        }
-
-    def _publish_receipt(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        method = payload["attribution_method"]
-        if isinstance(method, str):
-            method = AttributionMethod(method)
-        actor = payload.get("actor") or payload.get("approved_by")
-        if not actor:
-            raise AuthorityError("publish_use_of_funds_receipt requires actor")
-        # Attribution must exist before a canonical receipt can be published.
-        self.ledger.attribute_donor_to_expense(
-            donor_id=payload["donor_id"],
-            donation_id=payload["donation_id"],
-            expense_id=payload["expense_id"],
-            allocation_id=payload["allocation_id"],
-            method=method,
-            attributed_amount=Decimal(str(payload["attributed_amount"])),
-        )
-        receipt = self.ledger.publish_use_of_funds_receipt(
-            expense_id=payload["expense_id"],
-            donation_id=payload["donation_id"],
-            allocation_id=payload["allocation_id"],
-            actor=actor,
-            created_at=payload.get("created_at"),
-        )
-        public = receipt_to_public(receipt)
-        assert_public_safe(public)
-        return [receipt.receipt_id], {
-            "receipt_id": receipt.receipt_id,
-            "public": public,
-        }
-
-    def _send_notification(self, payload: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
-        if self.workspace is None:
-            raise AuthorityError("send_notification requires a TenantWorkspace")
-        preview_id = payload.get("preview_id")
-        preview = self.previews.get(preview_id) if preview_id else None
-        if preview is None:
-            raise AuthorityError("send_notification requires a registered email preview")
-        receipt_id = payload["receipt_id"]
-        receipt = self.ledger.receipts.get(receipt_id)
-        if receipt is None:
-            raise KeyError(f"receipt not found: {receipt_id}")
-        assert_preview_matches_receipt(preview, receipt)
-        if payload.get("content_hash") != preview.content_hash:
-            raise AuthorityError("send payload content_hash does not match registered preview")
-        if payload.get("receipt_hash") != receipt.receipt_hash:
-            raise AuthorityError("send payload receipt_hash does not match ledger receipt")
-
-        # Fixture consent if not already present (operator path would load CRM consent).
-        ns = self.workspace.notifications()
-        if not self.workspace.consents.get((receipt.donor_id, NotificationChannel.EMAIL.value)):
-            ns.record_consent(
-                ConsentRecord(
-                    donor_id=receipt.donor_id,
-                    organization_id=self.ledger.organization.id,
-                    channel=NotificationChannel.EMAIL,
-                    granted=True,
-                    provenance="fixture://consent/email-v1",
-                    recorded_at=utc_now_iso(),
-                )
-            )
-            ns.set_preference(
-                NotificationPreference(
-                    donor_id=receipt.donor_id,
-                    organization_id=self.ledger.organization.id,
-                    channel=NotificationChannel.EMAIL,
-                    enabled=True,
-                    topics=("MONEY_USED", "CORRECTION"),
-                )
-            )
-
-        intent = ns.evaluate_for_use_of_funds(receipt_id, deliver=True)
-        deliveries = [
-            d
-            for d in self.workspace.deliveries.values()
-            if d.intent_id == intent.id
-        ]
-        delivery = deliveries[-1] if deliveries else None
-        refs = [intent.id]
-        if delivery:
-            refs.append(delivery.id)
-        return refs, {
-            "intent_id": intent.id,
-            "intent_status": intent.status.value,
-            "delivery_id": delivery.id if delivery else None,
-            "delivery_success": delivery.success if delivery else None,
-            "provider_receipt": delivery.provider_receipt if delivery else None,
-            "preview_id": preview.preview_id,
-        }
-
+# Re-export for backward compatibility (canonical home: agents.executor)
+__all_executor__ = ("LedgerCommandExecutor",)
 
 # ---------------------------------------------------------------------------
-# Orchestrated vertical slice
+# Orchestrated vertical slice (linear driver over step handlers)
 # ---------------------------------------------------------------------------
 
 
@@ -685,11 +475,22 @@ def run_expense_approval_slice(
 ) -> ExpenseSliceResult:
     """Run intake → classify → evidence → review → (optional human approve) → ledger.
 
+    Linear driver over ``workflows.expense_to_receipt`` step handlers (PR-M2).
     When ``approve`` is False, stops at REVIEW_PENDING with a packet and L3 proposal.
     When ``simulation`` is True, CommandExecutor never mutates the ledger.
     When ``send_email`` is True (after publish), composes an email preview and
     requires a *separate* L3 send approval before fixture delivery.
     """
+    # Lazy import avoids circular import: steps import agent classes from this module.
+    from impact_relay.workflows.expense_to_receipt import (
+        HandlerBundle,
+        step_classify,
+        step_compose_send,
+        step_evidence,
+        step_intake,
+        step_review,
+    )
+
     started = utc_now_iso()
     tenant_id = ledger.organization.id
     policy = tenant_policy or default_policy(
@@ -704,11 +505,7 @@ def run_expense_approval_slice(
         },
         policy=policy.to_dict(),
     )
-    intake = ExpenseIntakeAgent()
-    classifier = AllocationClassifierAgent()
-    evidence_agent = EvidenceValidatorAgent()
-    review = FinanceReviewAgent()
-    composer = NotificationComposerAgent()
+    agents = HandlerBundle()
     workspace = TenantWorkspace(ledger.organization, ledger=ledger)
     executor = LedgerCommandExecutor(
         ledger, simulation=simulation, workspace=workspace
@@ -724,32 +521,30 @@ def run_expense_approval_slice(
     delivery_refs: list[dict[str, Any]] = []
     send_approver = communications_approver_id or human_approver_id
 
-    # 1) Intake batch
-    batch_cmd = AgentCommand(
-        command_type="ingest_expense_batch",
-        tenant_id=tenant_id,
-        payload={"expenses": expense_rows, "input_refs": ["fixture_batch"]},
-        required_authority=AuthorityLevel.L2_REVERSIBLE,
-    )
-    intake_prop = intake.evaluate(ctx, batch_cmd)
-    proposals.append(intake_prop)
-    v = intake.validate(ctx, intake_prop)
-    validations.append(v)
-    if not v.ok:
+    # 1) Intake batch via step handler
+    intake_out = step_intake(ctx, expense_rows, agents=agents)
+    proposals.extend(intake_out.proposals)
+    validations.extend(intake_out.validations)
+    if intake_out.step.next_state == WorkflowState.BLOCKED:
         return _blocked_result(
-            tenant_id, started, proposals, validations, approvals, executor, packets, receipts
+            tenant_id,
+            started,
+            proposals,
+            validations,
+            approvals,
+            executor,
+            packets,
+            receipts,
         )
 
-    for cmd in intake_prop.proposed_commands:
-        executor.execute(cmd)  # L2 import — no human approval
+    for executable in intake_out.step.commands_to_execute:
+        executor.execute(executable.command)
 
-    # Resolve expense ids from ledger (or simulation stubs)
     imported_ids: list[str] = []
-    for cmd in intake_prop.proposed_commands:
-        row = cmd.payload["expense"]
+    for executable in intake_out.step.commands_to_execute:
+        row = executable.command.payload["expense"]
         ext = row["external_source_id"]
         if simulation:
-            # No ledger write; use synthetic id for downstream packet only
             imported_ids.append(f"sim_{ext}")
             continue
         match = next(
@@ -774,7 +569,12 @@ def run_expense_approval_slice(
             description = ledger.expenses[expense_id].description
             currency = ledger.expenses[expense_id].currency
             evidence_items = [
-                {"id": e.id, "kind": e.kind, "summary": e.summary, "donor_visible": e.donor_visible}
+                {
+                    "id": e.id,
+                    "kind": e.kind,
+                    "summary": e.summary,
+                    "donor_visible": e.donor_visible,
+                }
                 for e in ledger.evidence.values()
                 if e.expense_id == expense_id
             ]
@@ -792,52 +592,22 @@ def run_expense_approval_slice(
             or ctx.facts.get("default_allocation_id")
         )
 
-        # 2) Evidence assessment (L0) — policy-driven sufficient kinds
-        sufficiency = EvidenceValidatorAgent.assess(
-            evidence_items,
-            evidence_flags or {},
+        # 2) Evidence
+        ev_out = step_evidence(
+            ctx,
+            expense_id=expense_id,
+            evidence_items=evidence_items,
+            evidence_flags=evidence_flags,
             sufficient_kinds=policy.evidence.sufficient_kinds,
             require_donor_visible=policy.evidence.require_donor_visible,
+            agents=agents,
+            current=WorkflowState.NORMALIZED,
         )
-        ev_cmd = AgentCommand(
-            command_type="assess_evidence",
-            tenant_id=tenant_id,
-            payload={
-                "expense_id": expense_id,
-                "evidence": evidence_items,
-                "flags": evidence_flags
-                or (
-                    {"contradictory": True}
-                    if sufficiency == EvidenceSufficiency.CONTRADICTORY
-                    else {}
-                ),
-            },
-            required_authority=AuthorityLevel.L0_OBSERVE,
-        )
-        # L0 evaluate does not propose; call evaluate with observe command
-        # Align payload flags with pre-assessed sufficiency for contradictory path
-        if sufficiency == EvidenceSufficiency.CONTRADICTORY:
-            ev_cmd = AgentCommand(
-                command_type="assess_evidence",
-                tenant_id=tenant_id,
-                payload={
-                    "expense_id": expense_id,
-                    "evidence": evidence_items,
-                    "flags": {"contradictory": True},
-                },
-                required_authority=AuthorityLevel.L0_OBSERVE,
-            )
-        ev_prop = evidence_agent.evaluate(ctx, ev_cmd)
-        proposals.append(ev_prop)
-        ev_v = evidence_agent.validate(ctx, ev_prop)
-        validations.append(ev_v)
-        if ev_prop.warnings:
-            try:
-                sufficiency = EvidenceSufficiency(ev_prop.warnings[0])
-            except ValueError:
-                pass
-        if not ev_v.ok:
-            workflow = WorkflowState.BLOCKED
+        proposals.extend(ev_out.proposals)
+        validations.extend(ev_out.validations)
+        sufficiency = ev_out.sufficiency or EvidenceSufficiency.MISSING
+        if ev_out.step.next_state != WorkflowState.CLASSIFICATION_PENDING:
+            workflow = ev_out.step.next_state
             packets.append(
                 FinanceReviewPacket(
                     packet_id=_new_id("pkt"),
@@ -853,99 +623,70 @@ def run_expense_approval_slice(
                     evidence_sufficiency=sufficiency.value,
                     evidence_summaries=[e.get("summary", "") for e in evidence_items],
                     classifier_confidence=None,
-                    warnings=ev_prop.warnings,
-                    contradictions=ev_prop.contradictions,
+                    warnings=ev_out.proposals[0].warnings if ev_out.proposals else [],
+                    contradictions=ev_out.proposals[0].contradictions
+                    if ev_out.proposals
+                    else [],
                     workflow_state=workflow.value,
                     policy_version=ctx.policy_version,
                 )
             )
             continue
 
-        # 3) Classification proposal + apply allocation (L1 propose / L2 apply)
-        class_cmd = AgentCommand(
-            command_type="classify_expense",
-            tenant_id=tenant_id,
-            payload={
-                "expense_id": expense_id,
-                "allocation_id": allocation_id,
-                "amount": amount,
-                "confidence": 0.92,
-                "evidence_refs": [e.get("id") for e in evidence_items if e.get("id")],
-            },
-            required_authority=AuthorityLevel.L1_PROPOSE,
+        # 3) Classify + allocate
+        class_out = step_classify(
+            ctx,
+            expense_id=expense_id,
+            allocation_id=allocation_id,
+            amount=amount,
+            evidence_refs=[e.get("id") for e in evidence_items if e.get("id")],
+            agents=agents,
+            current=WorkflowState.CLASSIFICATION_PENDING,
         )
-        class_prop = classifier.evaluate(ctx, class_cmd)
-        proposals.append(class_prop)
-        class_v = classifier.validate(ctx, class_prop)
-        validations.append(class_v)
-        if not class_v.ok:
-            workflow = WorkflowState.NEEDS_INFORMATION
+        proposals.extend(class_out.proposals)
+        validations.extend(class_out.validations)
+        if class_out.step.next_state != WorkflowState.REVIEW_PENDING:
+            workflow = class_out.step.next_state
             continue
 
-        for cmd in class_prop.proposed_commands:
-            # elevate allocate to L2 reversible execution without human gate
-            alloc_cmd = AgentCommand(
-                command_type=cmd.command_type,
-                tenant_id=cmd.tenant_id,
-                payload=cmd.payload,
-                required_authority=AuthorityLevel.L2_REVERSIBLE,
-                idempotency_key=cmd.idempotency_key,
-                expires_at=cmd.expires_at,
-            )
-            executor.execute(alloc_cmd)
+        for executable in class_out.step.commands_to_execute:
+            executor.execute(executable.command)
 
-        # 4) Finance review packet + L3 approve proposal
-        review_cmd = AgentCommand(
-            command_type="assemble_review_packet",
-            tenant_id=tenant_id,
-            payload={
-                "expense_id": expense_id,
-                "vendor": vendor,
-                "amount": amount,
-                "currency": currency,
-                "purchase_date": purchase_date,
-                "category": category,
-                "description": description,
-                "allocation_id": allocation_id,
-                "evidence_sufficiency": sufficiency.value,
-                "evidence_summaries": [e.get("summary", "") for e in evidence_items],
-                "confidence": class_prop.confidence,
-                "warnings": class_prop.warnings + ev_prop.warnings,
-                "contradictions": class_prop.contradictions,
-            },
-            required_authority=AuthorityLevel.L1_PROPOSE,
-        )
-        review_prop = review.evaluate(ctx, review_cmd)
-        proposals.append(review_prop)
-        review_v = review.validate(ctx, review_prop)
-        validations.append(review_v)
-
-        packet = FinanceReviewPacket(
-            packet_id=review_prop.proposed_commands[0].payload.get("packet_id", _new_id("pkt")),
-            tenant_id=tenant_id,
+        class_prop = class_out.proposals[0]
+        # 4) Review packet + L3 wait
+        review_out = step_review(
+            ctx,
             expense_id=expense_id,
             vendor=vendor,
-            amount=str(amount or ""),
+            amount=amount,
             currency=currency,
             purchase_date=purchase_date,
             category=category,
             description=description,
-            proposed_allocation_id=allocation_id,
+            allocation_id=allocation_id,
             evidence_sufficiency=sufficiency.value,
             evidence_summaries=[e.get("summary", "") for e in evidence_items],
-            classifier_confidence=class_prop.confidence,
-            warnings=review_prop.warnings,
-            contradictions=review_prop.contradictions,
-            workflow_state=WorkflowState.REVIEW_PENDING.value,
-            policy_version=ctx.policy_version,
+            confidence=class_prop.confidence,
+            warnings=list(class_prop.warnings)
+            + list(ev_out.proposals[0].warnings if ev_out.proposals else []),
+            contradictions=list(class_prop.contradictions),
+            agents=agents,
+            current=WorkflowState.CLASSIFICATION_PENDING,
         )
+        proposals.extend(review_out.proposals)
+        validations.extend(review_out.validations)
+        packet = review_out.packet
+        if packet is None:
+            workflow = review_out.step.next_state
+            continue
         packets.append(packet)
         workflow = WorkflowState.REVIEW_PENDING
+        review_prop = review_out.proposals[0]
+        review_v = review_out.validations[0]
 
         if not review_v.ok or not approve:
             continue
 
-        # 5) Human approval (cannot be agent:*)
         if human_approver_id.startswith("agent:"):
             raise AuthorityError("human_approver_id must not be an agent identity")
 
@@ -964,10 +705,7 @@ def run_expense_approval_slice(
         )
         approvals.append(approval)
 
-        approve_payload = {
-            **l3_cmd.payload,
-            "approved_by": human_approver_id,
-        }
+        approve_payload = {**l3_cmd.payload, "approved_by": human_approver_id}
         exec_cmd = AgentCommand(
             command_type=l3_cmd.command_type,
             tenant_id=l3_cmd.tenant_id,
@@ -979,14 +717,13 @@ def run_expense_approval_slice(
         exec_receipt = executor.execute(
             exec_cmd,
             approval=approval,
-            agent_name=review.name,
+            agent_name=agents.review.name,
             proposal=review_prop,
         )
         if exec_receipt.status == "SUCCEEDED":
             workflow = WorkflowState.LEDGER_COMMITTED
             packet.workflow_state = workflow.value
 
-        # 6) Optional UOF publish (also L3)
         for spec in publish_specs or []:
             if spec.get("expense_id") not in (expense_id, None, "*"):
                 if spec.get("expense_id") != expense_id:
@@ -1022,7 +759,7 @@ def run_expense_approval_slice(
             )
             approvals.append(pub_approval)
             pub_exec = executor.execute(
-                pub_cmd, approval=pub_approval, agent_name=review.name
+                pub_cmd, approval=pub_approval, agent_name=agents.review.name
             )
             if pub_exec.status == "SUCCEEDED" and not simulation:
                 rid = pub_exec.output_refs[0]
@@ -1033,35 +770,33 @@ def run_expense_approval_slice(
                 public_previews.append(preview)
                 workflow = WorkflowState.PUBLISHED
 
-                # 7) Email preview (projection only) + separate L3 send approval
                 if send_email:
-                    if not policy.notifications.require_separate_send_approval:
-                        # Policy may allow co-approval in future; v1 still uses L3 send.
-                        pass
                     email_prev = compose_email_from_uof(rec)
                     assert_preview_matches_receipt(email_prev, rec)
                     executor.register_preview(email_prev)
                     email_previews.append(email_prev)
-                    compose_cmd = AgentCommand(
-                        command_type="compose_send_proposal",
-                        tenant_id=tenant_id,
-                        payload={"preview": email_prev.to_dict()},
-                        required_authority=AuthorityLevel.L1_PROPOSE,
+                    send_out = step_compose_send(
+                        ctx,
+                        preview_dict=email_prev.to_dict(),
+                        agents=agents,
+                        current=WorkflowState.PUBLISHED,
                     )
-                    compose_prop = composer.evaluate(ctx, compose_cmd)
-                    proposals.append(compose_prop)
-                    compose_v = composer.validate(ctx, compose_prop)
-                    validations.append(compose_v)
-                    if not compose_v.ok:
+                    proposals.extend(send_out.proposals)
+                    validations.extend(send_out.validations)
+                    if (
+                        send_out.step.next_state != WorkflowState.NOTIFICATION_PENDING
+                        or not send_out.proposals
+                        or not send_out.proposals[0].proposed_commands
+                    ):
                         workflow = WorkflowState.NOTIFICATION_PENDING
                         continue
                     workflow = WorkflowState.NOTIFICATION_PENDING
+                    compose_prop = send_out.proposals[0]
                     send_cmd = compose_prop.proposed_commands[0]
                     if send_approver.startswith("agent:"):
                         raise AuthorityError(
                             "communications approver must not be an agent identity"
                         )
-                    # Separation of duties preferred: different human when provided.
                     send_approval = ApprovalReceipt(
                         approval_id=_new_id("appr"),
                         tenant_id=tenant_id,
@@ -1078,7 +813,7 @@ def run_expense_approval_slice(
                     send_exec = executor.execute(
                         send_cmd,
                         approval=send_approval,
-                        agent_name=composer.name,
+                        agent_name=agents.composer.name,
                         proposal=compose_prop,
                     )
                     if send_exec.status == "SUCCEEDED":
