@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "updatedAt": "2026-08-01",
-  "source": "hd_ir_001_pilot_fixture",
+  "source": "hd_ir_all_phases_pilot_fixture",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",

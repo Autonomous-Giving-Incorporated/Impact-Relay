@@ -31,11 +31,7 @@ jobs:
       - name: Refresh public Pages artifacts
         run: |
           set -euo pipefail
-          python -m impact_relay \
-            --reconcile-from fixtures/reconcile_aggregate_v1.json \
-            --write-impact-state data/impact-state.json \
-            --write-public data/use-of-funds-public.json \
-            --write-digests data/impact-digests-public.json
+          python -m impact_relay --publish-pages
       - name: Assert public artifacts are committed and stable
         run: |
           set -euo pipefail

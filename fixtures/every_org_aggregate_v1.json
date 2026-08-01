@@ -1,0 +1,14 @@
+{
+  "processor": "every.org",
+  "exportKind": "aggregate_summary",
+  "nonprofitSlug": "hacker-dojo",
+  "exportedAt": "2026-08-01T15:00:00Z",
+  "currency": "USD",
+  "campaignStatus": "active",
+  "totals": {
+    "raised": 12840,
+    "committed": 2500,
+    "donorCount": 37
+  },
+  "note": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here."
+}

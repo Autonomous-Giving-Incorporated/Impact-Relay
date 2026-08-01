@@ -7,6 +7,7 @@ This repository has related surfaces:
 1. **Public tracker (GitHub Pages)** — aggregate campaign progress, use-of-funds receipts, and event digests (no donor PII).
 2. **Domain core (Python)** — HD-IR-001 ledger + Phases 2–6 fixture-backed product capabilities (donor reads, notifications, impact, multi-tenant pilot).
 3. **HD-IR-003 Pages bridge** — aggregate reconciliation into `impact-state.json` + public digests export.
+4. **HD-IR-004** — domain ImpactService digests + Every.org aggregate adapter + `--publish-pages`.
 
 Live public site:
 
@@ -206,6 +207,26 @@ Public export never includes:
 - operator emails / approved_by actors
 
 CI runs the domain suite, regenerates the public export, and fails if the committed file drifts.
+
+---
+
+## HD-IR-003 / HD-IR-004 Pages pipelines
+
+```bash
+# One-shot Pages publish (CI default)
+python -m impact_relay --publish-pages
+
+# Domain verified impact events → digests (+ optional fixture merge)
+python -m impact_relay --all-phases --digests-from-domain --merge-fixture-digests \
+  --write-digests data/impact-digests-public.json
+
+# Every.org-style aggregate summary → impact-state
+python -m impact_relay \
+  --every-org-aggregate fixtures/every_org_aggregate_v1.json \
+  --write-impact-state data/impact-state.json
+```
+
+See [docs/HD-IR-003.md](docs/HD-IR-003.md) and [docs/HD-IR-004.md](docs/HD-IR-004.md).
 
 ---
 

@@ -43,6 +43,16 @@ ALLOWED_CLASSES = frozenset(
     }
 )
 
+# Domain ImpactEvent.event_type → public digest class
+DOMAIN_EVENT_TYPE_TO_CLASS: dict[str, str] = {
+    "CLASS_HELD": "class_session",
+    "WORKSHOP": "workshop",
+    "OPEN_LAB": "open_lab",
+    "COMMUNITY_EVENT": "community_event",
+    "FUNDRAISER": "fundraiser",
+    "STEWARDSHIP": "stewardship",
+}
+
 
 class DigestError(ValueError):
     """Invalid or privacy-violating digest input."""
@@ -152,3 +162,110 @@ def write_public_digests(path: Path | str, digests: dict[str, Any] | None = None
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return out
+
+
+def impact_event_to_public_row(
+    event: Any,
+    *,
+    program_name: str,
+    allocation_name: str | None = None,
+) -> dict[str, Any]:
+    """Project a domain ImpactEvent into the public digest event shape.
+
+    Only verified events should be passed. Strips reviewer identity.
+    """
+    from impact_relay.domain.types import ImpactEvent, ImpactEventState
+
+    if not isinstance(event, ImpactEvent):
+        raise DigestError("impact_event_to_public_row requires an ImpactEvent")
+    if event.state != ImpactEventState.VERIFIED:
+        raise DigestError("only VERIFIED impact events may enter public digests")
+
+    event_class = DOMAIN_EVENT_TYPE_TO_CLASS.get(event.event_type, "other")
+    title = f"{program_name} — {event.event_type.replace('_', ' ').title()}"
+    summary = (event.description or "").strip() or (
+        f"Verified {event.event_type} with {event.participants} public participants."
+    )
+    row = {
+        "id": event.id,
+        "title": title,
+        "class": event_class,
+        "occurredOn": event.event_date[:10] if event.event_date else event.event_date,
+        "attendeeCountPublic": int(event.participants),
+        "impactSummary": summary,
+        "linkedAllocationName": allocation_name,
+        "locationLabel": "domain_verified",
+    }
+    return event_to_public(row)
+
+
+def digests_from_workspace(
+    workspace: Any,
+    *,
+    source: str = "domain_impact_service",
+    updated_at: str | None = None,
+    extra_events_doc: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build public digests from verified domain impact events on a workspace.
+
+    Optionally merges additional public-safe events from a fixture document.
+    """
+    from impact_relay.domain.types import ImpactEventState
+
+    public_events: list[dict[str, Any]] = []
+    for event in workspace.impact_events.values():
+        if event.state != ImpactEventState.VERIFIED:
+            continue
+        program = workspace.programs.get(event.program_id)
+        program_name = program.name if program is not None else event.program_id
+        allocation_name = None
+        # Prefer allocation from first funded asset when available.
+        for asset_id in event.funded_asset_ids:
+            asset = workspace.assets.get(asset_id)
+            if asset is None:
+                continue
+            alloc = workspace.ledger.allocations.get(asset.allocation_id)
+            if alloc is not None:
+                allocation_name = alloc.name
+                break
+        public_events.append(
+            impact_event_to_public_row(
+                event,
+                program_name=program_name,
+                allocation_name=allocation_name,
+            )
+        )
+
+    if extra_events_doc is not None:
+        for raw in extra_events_doc.get("events", []):
+            public_events.append(event_to_public(raw))
+
+    # Dedupe by eventId (domain ids win if collision after append order).
+    by_id: dict[str, dict[str, Any]] = {}
+    for row in public_events:
+        by_id[row["eventId"]] = row
+    events = sorted(by_id.values(), key=lambda e: e["occurredOn"], reverse=True)
+
+    total_attendance = sum(e["attendeeCountPublic"] for e in events)
+    by_class: dict[str, int] = {}
+    for event in events:
+        by_class[event["class"]] = by_class.get(event["class"], 0) + 1
+
+    return {
+        "version": "1.0.0",
+        "updatedAt": updated_at or date.today().isoformat(),
+        "source": source,
+        "authority": "public_aggregate_only",
+        "privacy": {
+            "classification": "public_aggregate_only",
+            "piiAllowed": False,
+            "attendeeNamesAllowed": False,
+            "contactDataAllowed": False,
+        },
+        "summary": {
+            "eventCount": len(events),
+            "totalAttendancePublic": total_attendance,
+            "classCounts": by_class,
+        },
+        "events": events,
+    }

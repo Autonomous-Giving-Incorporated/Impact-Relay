@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "updatedAt": "2026-08-01",
-  "source": "hd_ir_003_events_pilot",
+  "source": "domain_impact_service+fixture",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
@@ -10,15 +10,26 @@
     "contactDataAllowed": false
   },
   "summary": {
-    "eventCount": 3,
-    "totalAttendancePublic": 131,
+    "eventCount": 4,
+    "totalAttendancePublic": 149,
     "classCounts": {
+      "class_session": 1,
       "fundraiser": 1,
       "workshop": 1,
       "open_lab": 1
     }
   },
   "events": [
+    {
+      "eventId": "imp_class_2026_09_02",
+      "title": "Beginner Electronics Class \u2014 Class Held",
+      "class": "class_session",
+      "occurredOn": "2026-09-02",
+      "attendeeCountPublic": 18,
+      "impactSummary": "Beginner electronics class using donated equipment",
+      "linkedAllocationName": "Community Hardware Fund",
+      "locationLabel": "domain_verified"
+    },
     {
       "eventId": "evt_supperhappy_briefing",
       "title": "SupperHappyFundHouse Campaign Briefing",
