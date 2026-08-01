@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 AGENTS_DIR = ROOT / "src" / "impact_relay" / "agents"
 WORKFLOWS_DIR = ROOT / "src" / "impact_relay" / "workflows"
 
-# Sole gateway for ledger mutations (K14).
-ALLOWED_LEDGER_IMPORT = frozenset({"executor.py"})
+# Sole gateway for ledger mutations (K14). Binding may hold Ledger refs (T1).
+ALLOWED_LEDGER_IMPORT = frozenset({"executor.py", "ledger_binding.py"})
 
 FORBIDDEN_ATTRS = frozenset(
     {
@@ -102,7 +102,8 @@ def test_authority_and_privacy_have_no_mutation_calls() -> None:
 def test_workflows_do_not_import_ledger() -> None:
     for path in WORKFLOWS_DIR.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        hits = _imports_ledger(tree)
+        # TYPE_CHECKING-only Ledger annotations are allowed; runtime imports are not.
+        hits = _imports_ledger_outside_type_checking(tree)
         if hits:
             raise AssertionError(
                 f"workflows/{path.relative_to(WORKFLOWS_DIR)} imports ledger: {hits}"
