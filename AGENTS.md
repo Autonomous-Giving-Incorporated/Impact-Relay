@@ -139,6 +139,8 @@ A language model may improve readability but may not introduce or modify:
 
 ## Workflow states
 
+Logical expense-to-receipt progression (agent / domain view):
+
 ```text
 RECEIVED
 → NORMALIZED
@@ -165,6 +167,8 @@ DELIVERY_FAILED
 SUPERSEDED
 REVERSED
 ```
+
+Durable runtime uses a parallel `WorkflowState` / `RunStatus` model (wait signals, retries, dead-letter) so human gates and worker restarts are safe. See [docs/architecture/DURABLE-WORKFLOWS.md](docs/architecture/DURABLE-WORKFLOWS.md) and [docs/DURABLE-QUICKSTART.md](docs/DURABLE-QUICKSTART.md). Agents still do not own financial truth: only approved commands reach the ledger.
 
 ## Agent run receipt
 

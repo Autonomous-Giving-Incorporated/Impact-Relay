@@ -6,7 +6,7 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
 ---
 
@@ -53,36 +53,42 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 ## Current maturity
 
-**Version:** `0.5.0`
+**Package version:** `0.5.0` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
 
-**Current state:** fixture-backed product capabilities with privacy-safe public projections, bounded agent contracts, and a fixture expense→approval→ledger vertical slice (HD-IR-007). Live accounting ingestion, production notification delivery, authenticated finance UI, and native Hacker Dojo application screens remain pending.
+**Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
 
 ### Shipped capabilities
 
 | Capability | Module / surface |
 |---|---|
-| Donation, allocation, expense, and attribution ledger | `src/impact_relay/domain/ledger.py` |
-| Append-only correction and receipt lineage | `src/impact_relay/domain/ledger.py` |
-| Donor balances, fund timeline, and receipt detail | `src/impact_relay/domain/donor_views.py` |
-| Consent, policy deduplication, and fixture delivery adapters | `src/impact_relay/domain/notifications.py` |
-| Programs, impact events, and impact receipts | `src/impact_relay/domain/impact.py` |
-| Multi-organization domain isolation | `src/impact_relay/domain/tenant.py` |
-| Pilot runners and fixture loaders | `src/impact_relay/pilot.py` |
+| Donation, allocation, expense, attribution ledger | `src/impact_relay/domain/ledger.py` |
+| Append-only correction and receipt lineage | domain + `workflows/corrections.py` |
+| Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
+| Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
+| Consent, preferences, fixture delivery adapters | `domain/notifications.py` · `notifications/` |
+| Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
 | Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
+| Durable workflows (memory + SQLite/Postgres) | `workflows/` · [DURABLE-QUICKSTART](docs/DURABLE-QUICKSTART.md) |
+| Ledger command log rehydrate (K11/K17) | `domain/ledger_log.py` · `storage/command_log.py` |
+| Tenant registry, SQL ledger entities, outbox | `storage/` · [STORAGE](docs/architecture/STORAGE.md) |
+| Object storage (local FS + S3/MinIO) | `storage/objects.py` |
+| RBAC roles, SoD, OIDC ports, HD role map | `auth/` |
+| Host façade + finance/donor consoles | `host/` · `console_server.py` |
+| Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
 | Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
+| Ops threat model, runbooks, pilot findings template | `docs/ops/` · `docs/pilot/` |
 
-### Deferred production capabilities
+### Deferred / host-owned production capabilities
 
-- live accounting provider adapter;
-- production Every.org donation ingestion;
-- durable workflow runtime;
-- authenticated finance review and approval console;
-- email, push, and SMS provider delivery;
-- Hacker Dojo donor timeline and receipt screens;
-- human finance cohort validation;
-- reusable nonprofit onboarding.
+- live accounting provider adapter (beyond fixture batch);
+- production Every.org donation ingestion (aggregate dry-run path exists);
+- production multi-region workflow DR and full observability (pilot local+SQL path shipped);
+- live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
+- production email / push / SMS credentials (adapters + fixture delivery shipped);
+- human finance live-cohort execution and findings fill (runbooks ready);
+- self-service multi-nonprofit onboarding UI (clone-from-Hacker-Dojo template API shipped).
 
 ---
 
@@ -97,16 +103,16 @@ Donation and accounting providers
 Provider adapters
         │ normalized records
         ▼
-Agent workflow layer
+Agent workflow layer  (+ durable WorkflowStore)
         │ proposals, evidence checks, review packets
         ▼
-Human approval gates
-        │ approved commands
+Human approval gates  (console API / host UI / CLI)
+        │ approved commands + ApprovalReceipt
         ▼
 Deterministic domain services
         │ ledger events and canonical receipts
         ▼
-Donor projections and notification adapters
+Donor projections, host APIs, notification adapters
 ```
 
 ### Initial agent topology
@@ -135,14 +141,15 @@ Consequential actions require independently authenticated human approval. Full c
 
 ## First production workflow
 
-HD-IR-007 ships the fixture-backed core of the vertical slice (through ledger commit + optional UOF publish). Remaining before pilot:
+HD-IR-007 ships the fixture-backed core of the vertical slice (through ledger commit + optional UOF publish). Durable pilot and host console extend the same path:
 
 ```text
 fixture or accounting expense          ✅
 → allocation proposal                  ✅
 → evidence validation                  ✅
-→ finance approval (ApprovalReceipt)   ✅ fixture human gate
-→ ledger commit                        ✅
+→ finance approval (ApprovalReceipt)   ✅ CLI / console / host UI
+→ durable wait / worker advance        ✅
+→ ledger commit + entity snapshot      ✅
 → donor attribution + UOF receipt      ✅
 → email preview                        ✅
 → independent send approval            ✅
@@ -156,14 +163,44 @@ python -m impact_relay --expense-approval-slice --no-approve
 python -m impact_relay --expense-approval-slice --simulate-agents
 python -m impact_relay --expense-approval-slice --send-email
 
+# Easy durable pilot (SQLite under --data-dir)
+python -m impact_relay --durable seed
+python -m impact_relay --durable list
+python -m impact_relay --durable approve
+python -m impact_relay --durable check
+python -m impact_relay --durable status
+
 # Validate a live Every.org aggregate without writing (path must not be under fixtures/)
 python -m impact_relay --validate-every-org-aggregate ~/private/every_org_live.json
 ./scripts/apply_live_every_org_aggregate.sh --dry-run ~/private/every_org_live.json
 ```
 
-See [docs/HD-IR-007.md](docs/HD-IR-007.md) and [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md).
+See [docs/HD-IR-007.md](docs/HD-IR-007.md), [docs/DURABLE-QUICKSTART.md](docs/DURABLE-QUICKSTART.md), and [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md).
 
-No autonomous impact inference, production SMS delivery, generalized onboarding, or multiple accounting providers should be introduced until finance-review testing and a live pilot pass.
+---
+
+## Host apps (Hacker Dojo canonical)
+
+Impact Relay is a **library**. Hacker Dojo is the **canonical host** (UX, Supabase auth, campaign ops). Other nonprofits clone the same shape.
+
+```bash
+# Console API for host static pages
+python -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787
+```
+
+```python
+from impact_relay.host import open_hacker_dojo_session
+from impact_relay.host.hacker_dojo import finance_approver_fixture
+
+with open_hacker_dojo_session(".impact-relay/hacker-dojo") as session:
+    session = session.with_principal(finance_approver_fixture())
+    session.seed()
+    waiting = session.list_waiting()
+    if waiting["cases"]:
+        session.approve(workflow_id=waiting["cases"][0]["workflow_id"])
+```
+
+Host screens live in the sibling [Hacker-Dojo](https://github.com/scrimshawlife-ctrl/Hacker-Dojo) repo (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Full wiring: [docs/HACKER-DOJO-INTEGRATION.md](docs/HACKER-DOJO-INTEGRATION.md).
 
 ---
 
@@ -195,7 +232,7 @@ The GitHub Pages surface publishes aggregate campaign progress, public use-of-fu
 | Public impact events | Private CRM or finance notes |
 | Campaign milestones and processor deep links | Service credentials or raw invoices |
 
-Canonical aggregate state is stored in `data/impact-state.json` and validated against `schemas/impact-state.schema.json` in CI.
+Canonical aggregate state is stored in `data/impact-state.json` and validated against `schemas/impact-state.schema.json` in CI. Pilot data directories (`.impact-relay/…`) are local/staging only and must not be committed with PII.
 
 ---
 
@@ -204,37 +241,39 @@ Canonical aggregate state is stored in `data/impact-state.json` and validated ag
 ```text
 Impact-Relay/
 ├── README.md
-├── VISION.md
-├── AGENTS.md
-├── ENGINEERING_PRINCIPLES.md
-├── ROADMAP.md
-├── TODO.md
-├── SECURITY.md
+├── VISION.md · AGENTS.md · ENGINEERING_PRINCIPLES.md
+├── ROADMAP.md · TODO.md · SECURITY.md
 ├── docs/
-│   ├── architecture/
-│   │   └── AGENTIC-SYSTEM.md
-│   ├── HD-IR-003.md
-│   ├── HD-IR-004.md
-│   ├── HD-IR-005-notion-public-evidence.md
-│   ├── HD-IR-006.md
+│   ├── DURABLE-QUICKSTART.md
+│   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
-│   └── pilot-systems-of-record.md
+│   ├── HD-IR-00x.md                     # milestone notes
+│   ├── architecture/
+│   │   ├── AGENTIC-SYSTEM.md
+│   │   ├── DURABLE-WORKFLOWS.md
+│   │   └── STORAGE.md
+│   ├── ops/                             # threat model, runbooks, checklist
+│   └── pilot/                           # HD pilot + FINDINGS template
 ├── src/impact_relay/
-│   ├── domain/
-│   ├── public_export.py
-│   ├── pilot.py
-│   └── cli.py
-├── fixtures/
-├── schemas/
-├── data/
-├── tests/
-├── index.html
-├── app.js
-├── styles.css
+│   ├── domain/                          # ledger, impact, notifications, tenant
+│   ├── agents/                          # L0–L3 contracts + expense slice
+│   ├── workflows/                       # durable runtime, worker, corrections
+│   ├── storage/                         # SQL store, objects, tenants, template
+│   ├── auth/                            # principal, RBAC, OIDC ports, role map
+│   ├── host/                            # session façade, finance/donor console
+│   ├── donor/                           # donor experience API
+│   ├── notifications/                   # delivery adapters
+│   ├── console_server.py                # pilot HTTP API for host UIs
+│   ├── pilot.py · cli.py · public_export.py
+│   └── every_org.py · notion_public.py
+├── policies/tenants/                    # e.g. hacker-dojo.v1.0.yaml
+├── fixtures/ · schemas/ · data/
+├── tests/ · scripts/
+├── index.html · app.js · styles.css     # public Pages tracker
 └── .github/workflows/
 ```
 
-The target agentic repository shape is specified in [docs/architecture/AGENTIC-SYSTEM.md](docs/architecture/AGENTIC-SYSTEM.md).
+Architecture detail: [docs/architecture/AGENTIC-SYSTEM.md](docs/architecture/AGENTIC-SYSTEM.md), [DURABLE-WORKFLOWS.md](docs/architecture/DURABLE-WORKFLOWS.md), [STORAGE.md](docs/architecture/STORAGE.md).
 
 ---
 
@@ -246,8 +285,12 @@ Requires Python 3.11+.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
+# optional: pip install -e ".[db]"   # Postgres (psycopg)
+# optional: pip install -e ".[s3]"   # S3/MinIO object storage
 pytest
 ```
+
+Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up`.
 
 ## Pilot commands
 
@@ -263,6 +306,14 @@ All fixture-backed phases:
 ```bash
 python -m impact_relay --all-phases
 python -m impact_relay --all-phases --fixture fixtures/pilot_all_phases.json
+```
+
+Durable (default SQLite data dir):
+
+```bash
+python -m impact_relay --durable help
+python -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo
+python -m impact_relay --durable worker --once --data-dir .impact-relay/hacker-dojo
 ```
 
 Library API:
@@ -315,14 +366,14 @@ The hard provenance gate rejects fixture or pilot sources when `--require-observ
 
 ## Roadmap
 
-- **v0.5:** agent contracts, authority enforcement, policies, simulation, Privacy Sentinel.
-- **v0.6:** expense ingestion, evidence validation, and human finance review.
-- **v0.7:** canonical donor use-of-funds receipts and correction history.
-- **v0.8:** funded assets, program verification, and impact receipts.
-- **v0.9:** controlled Hacker Dojo pilot.
-- **v1.0:** production Hacker Dojo deployment.
-- **v1.1:** reusable multi-tenant nonprofit platform.
-- **v2.0:** general impact infrastructure.
+- **v0.5:** agent contracts, authority enforcement, policies, simulation, Privacy Sentinel — **done**
+- **v0.6:** expense ingestion, evidence validation, human finance review, durable pilot path — **done (library)**
+- **v0.7:** canonical donor use-of-funds receipts, correction workflows, donor API — **done (library)**
+- **v0.8:** funded assets, program verification, impact receipts — **domain shipped; staff verification UI host-side**
+- **v0.9:** controlled Hacker Dojo pilot (host screens + runbooks shipped; live cohort ops open)
+- **v1.0:** production Hacker Dojo deployment
+- **v1.1:** reusable multi-tenant nonprofit platform
+- **v2.0:** general impact infrastructure
 
 See [ROADMAP.md](ROADMAP.md) and [TODO.md](TODO.md).
 
@@ -330,7 +381,7 @@ See [ROADMAP.md](ROADMAP.md) and [TODO.md](TODO.md).
 
 ## Security and contribution
 
-Review [SECURITY.md](SECURITY.md) before changing donor, evidence, provider, or public-export boundaries. Agent, policy, attribution, evidence, receipt-schema, and notification-gate changes require independent review.
+Review [SECURITY.md](SECURITY.md) and [docs/ops/](docs/ops/) before changing donor, evidence, provider, or public-export boundaries. Agent, policy, attribution, evidence, receipt-schema, and notification-gate changes require independent review.
 
 ## License
 
