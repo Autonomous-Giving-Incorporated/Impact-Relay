@@ -62,6 +62,14 @@ class InMemoryWorkflowStore:
         self._receipts: dict[tuple[str, str], ExecutionReceipt] = {}
         self._receipt_workflow: dict[tuple[str, str], str] = {}
 
+    def __getstate__(self) -> dict[str, Any]:
+        # Locks are not picklable — rebuild on load (operator session files).
+        return {k: v for k, v in self.__dict__.items() if k != "_lock"}
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        self.__dict__.update(state)
+        self._lock = threading.RLock()
+
     # ------------------------------------------------------------------
     # WorkflowStore
     # ------------------------------------------------------------------

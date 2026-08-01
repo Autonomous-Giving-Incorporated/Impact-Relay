@@ -52,6 +52,16 @@ from impact_relay.workflows.ports import (
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
+from impact_relay.workflows.ops import (
+    OperatorCase,
+    approval_from_dict,
+    list_blocked,
+    list_operator_cases,
+    load_ops_session,
+    save_ops_session,
+    seed_session_to_wait,
+    signal_approval_and_pump,
+)
 from impact_relay.workflows.worker import TickResult, WorkerConfig, WorkflowWorker
 from impact_relay.workflows.types import (
     CLAIMABLE_RUN_STATUSES,
@@ -90,6 +100,7 @@ __all__ = [
     "InMemoryLedgerBinding",
     "InMemoryWorkflowStore",
     "LedgerBinding",
+    "OperatorCase",
     "RetryPolicy",
     "SignalConsumeResult",
     "SignalType",
@@ -115,6 +126,7 @@ __all__ = [
     "WorkflowStore",
     "WorkflowType",
     "WorkflowWorker",
+    "approval_from_dict",
     "assert_transition",
     "build_executable_command",
     "can_transition",
@@ -126,8 +138,14 @@ __all__ = [
     "is_human_gate",
     "is_retryable",
     "is_terminal",
+    "list_blocked",
+    "list_operator_cases",
+    "load_ops_session",
     "run_expense_approval_slice",
     "run_expense_approval_slice_via_runtime",
+    "save_ops_session",
+    "seed_session_to_wait",
+    "signal_approval_and_pump",
     "step_classify",
     "step_compose_send",
     "step_evidence",
