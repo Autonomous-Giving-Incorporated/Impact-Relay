@@ -9,6 +9,7 @@ This repository has related surfaces:
 3. **HD-IR-003 Pages bridge** — aggregate reconciliation into `impact-state.json` + public digests export.
 4. **HD-IR-004** — domain ImpactService digests + Every.org aggregate adapter + `--publish-pages`.
 5. **HD-IR-005** — Notion Public EvidencePack aggregates (Form 990 + 2012 campaign) on Pages.
+6. **HD-IR-006** — public IMPACT outcomes (no donor ids) + raised provenance + Every.org runbook.
 
 Live public site:
 
@@ -237,6 +238,15 @@ python -m impact_relay \
   --notion-public-evidence fixtures/notion_public_evidence_v1.json \
   --write-public-evidence data/public-evidence.json
 ```
+
+### Public IMPACT outcomes + Every.org runbook
+
+```bash
+python -m impact_relay --publish-pages
+# writes data/public-impact.json (event-level outcomes, no donor ids)
+```
+
+Operator guide for live aggregates: [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md) · [docs/HD-IR-006.md](docs/HD-IR-006.md)
 
 ---
 

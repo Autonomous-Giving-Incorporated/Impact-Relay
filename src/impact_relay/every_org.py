@@ -92,8 +92,10 @@ def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
         if raised is None or donors is None:
             raise ReconcileError("Every.org summary missing totals.raised and totals.donorCount")
         slug = summary.get("nonprofitSlug") or summary.get("slug") or "unknown"
+        default_source = f"every.org/aggregate:{slug}"
+        # Prefer explicit source (fixtures should use fixture://… so raised provenance stays PILOT)
         aggregate = {
-            "source": f"every.org/aggregate:{slug}",
+            "source": summary.get("source") or default_source,
             "reconciledAt": summary.get("exportedAt") or summary.get("reconciledAt"),
             "status": summary.get("campaignStatus") or summary.get("status") or "active",
             "raisedPublic": float(raised),

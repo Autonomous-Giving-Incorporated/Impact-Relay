@@ -30,6 +30,7 @@ from impact_relay.notion_public import (
 )
 from impact_relay.pilot import receipts_to_jsonable, run_all_phases_pilot, run_pilot
 from impact_relay.public_export import build_public_export
+from impact_relay.public_impact import build_public_impact_export, write_public_impact
 from impact_relay.reconcile import (
     apply_aggregate_reconciliation,
     load_impact_state,
@@ -117,11 +118,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Write Pages public-evidence.json from Notion aggregates",
     )
     parser.add_argument(
+        "--write-public-impact",
+        type=Path,
+        default=None,
+        help="Write Pages public-impact.json from domain IMPACT receipts (no donor ids)",
+    )
+    parser.add_argument(
         "--publish-pages",
         action="store_true",
         help=(
             "One-shot Pages publish: Every.org aggregate → impact-state, Notion public evidence, "
-            "domain digests (+ fixture merge), and use-of-funds export"
+            "domain digests, public IMPACT outcomes, and use-of-funds export"
         ),
     )
     parser.add_argument(
@@ -148,6 +155,9 @@ def main(argv: list[str] | None = None) -> int:
         args.write_digests = args.write_digests or Path("data/impact-digests-public.json")
         args.write_public_evidence = args.write_public_evidence or Path(
             "data/public-evidence.json"
+        )
+        args.write_public_impact = args.write_public_impact or Path(
+            "data/public-impact.json"
         )
         args.digests_from_domain = True
         args.merge_fixture_digests = True
@@ -253,11 +263,17 @@ def main(argv: list[str] | None = None) -> int:
         public_payload = build_public_export(
             receipts, source="hd_ir_all_phases_pilot_fixture"
         )
+        impact_public = build_public_impact_export(
+            list(ws.impact_receipts.values()),
+            source="domain_impact_receipts",
+        )
         if args.write_public:
             args.write_public.parent.mkdir(parents=True, exist_ok=True)
             args.write_public.write_text(
                 json.dumps(public_payload, indent=2) + "\n", encoding="utf-8"
             )
+        if args.write_public_impact:
+            write_public_impact(args.write_public_impact, impact_public)
         if args.public_only:
             json.dump(public_payload, sys.stdout, indent=2)
             sys.stdout.write("\n")
@@ -265,6 +281,10 @@ def main(argv: list[str] | None = None) -> int:
         all_phases_payload["public_export"] = {
             "written": str(args.write_public) if args.write_public else None,
             "summary": public_payload.get("summary"),
+        }
+        all_phases_payload["public_impact"] = {
+            "written": str(args.write_public_impact) if args.write_public_impact else None,
+            "summary": impact_public.get("summary"),
         }
         all_phases_payload["digests"] = {
             "written": str(args.write_digests) if args.write_digests else None,
@@ -276,6 +296,9 @@ def main(argv: list[str] | None = None) -> int:
             "raisedPublic": None
             if impact_state is None
             else impact_state.get("campaign", {}).get("raisedPublic"),
+            "raisedSource": None
+            if impact_state is None
+            else impact_state.get("campaign", {}).get("raisedSource"),
         }
         all_phases_payload["public_evidence"] = {
             "written": str(args.write_public_evidence)

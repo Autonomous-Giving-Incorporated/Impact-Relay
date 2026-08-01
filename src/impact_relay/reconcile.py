@@ -105,6 +105,14 @@ def apply_aggregate_reconciliation(
     campaign["donorCountPublic"] = donors
     campaign["lastReconciledAt"] = reconciled_at
     campaign["status"] = status
+    # Provenance: processor aggregates are OBSERVED only when source is not a pilot fixture.
+    source = str(aggregate.get("source") or "")
+    if "fixture" in source or "synthetic" in source.lower() or "pilot" in source.lower():
+        campaign["raisedSource"] = "pilot_synthetic"
+        campaign["raisedClaimLabel"] = "PILOT"
+    else:
+        campaign["raisedSource"] = "processor_aggregate"
+        campaign["raisedClaimLabel"] = "OBSERVED"
 
     for milestone in state.get("milestones", []):
         threshold = float(milestone.get("threshold") or 0)

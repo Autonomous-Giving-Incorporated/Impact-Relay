@@ -56,6 +56,14 @@
             "paused",
             "completed"
           ]
+        },
+        "raisedSource": {
+          "type": "string",
+          "enum": ["pilot_synthetic", "processor_aggregate", "not_available"]
+        },
+        "raisedClaimLabel": {
+          "type": "string",
+          "enum": ["PILOT", "OBSERVED", "NOT_COMPUTABLE"]
         }
       }
     },

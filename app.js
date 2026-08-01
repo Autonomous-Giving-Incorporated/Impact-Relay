@@ -43,18 +43,21 @@ function render(state) {
   text('orgName', organization.name);
   text('orgTagline', organization.tagline);
   text('campaignName', campaign.name);
+  const raisedLabel = campaign.raisedClaimLabel || 'PILOT';
+  const raisedSource = campaign.raisedSource || 'pilot_synthetic';
   text('campaignMeta', [
     campaign.eventDate ? `Event ${campaign.eventDate}` : null,
     `Processor ${organization.processor}`,
     campaign.lastReconciledAt
       ? `Reconciled ${formatWhen(campaign.lastReconciledAt)}`
-      : 'Not yet reconciled'
+      : 'Not yet reconciled',
+    `Raised source: ${raisedSource} (${raisedLabel})`
   ].filter(Boolean).join(' · '));
 
   const status = document.getElementById('campaignStatus');
   status.textContent = campaign.status.replaceAll('_', ' ');
-  status.classList.toggle('is-active', campaign.status === 'active');
-  status.classList.toggle('is-waiting', campaign.status === 'awaiting_live_reconciliation');
+  status.classList.toggle('is-active', campaign.status === 'active' && raisedSource === 'processor_aggregate');
+  status.classList.toggle('is-waiting', campaign.status === 'awaiting_live_reconciliation' || raisedSource === 'pilot_synthetic');
 
   text('raisedValue', money.format(campaign.raisedPublic || 0));
   text('committedValue', money.format(campaign.committedPublic || 0));
@@ -66,7 +69,12 @@ function render(state) {
   document.getElementById('progressFill').style.width = `${pct}%`;
   text(
     'progressCaption',
-    `Public raised toward ${money.format(campaign.minimumTarget)} minimum · stretch ${money.format(campaign.stretchTarget)}`
+    `Public raised toward ${money.format(campaign.minimumTarget)} minimum · stretch ${money.format(campaign.stretchTarget)}` +
+      (raisedSource === 'pilot_synthetic'
+        ? ' · demo pilot totals (not live processor cash)'
+        : raisedSource === 'not_available'
+          ? ' · live raised not yet available'
+          : ' · processor aggregate')
   );
 
   const donate = document.getElementById('donateLink');
@@ -138,6 +146,35 @@ function renderUseOfFunds(exportDoc) {
       </div>
       <p class="note">Vendor: ${escapeHtml(r.vendor)} · Receipt ${escapeHtml(r.receiptId)}</p>
     </article>`).join('') || '<p class="note">No public use-of-funds receipts published yet.</p>';
+}
+
+function renderImpactOutcomes(doc) {
+  if (!doc) {
+    text('impactParticipants', '—');
+    document.getElementById('impactOutcomeList').innerHTML =
+      '<p class="note">No public impact outcomes published yet.</p>';
+    return;
+  }
+  if (doc.privacy?.piiAllowed || doc.privacy?.donorNamesAllowed) {
+    throw new Error('Impact outcomes privacy contract violation.');
+  }
+  text('impactParticipants', String(doc.summary?.totalParticipantsPublic ?? 0));
+  const rows = doc.outcomes || [];
+  document.getElementById('impactOutcomeList').innerHTML = rows.map(o => `
+    <article class="digest-card">
+      <div class="meta">
+        <span>${escapeHtml(o.evidenceState)}</span>
+        <span>${escapeHtml(o.eventDate)}</span>
+      </div>
+      <h3>${escapeHtml(o.programName)} — ${escapeHtml(o.eventType)}</h3>
+      <p>${escapeHtml(o.description || '')}</p>
+      <div class="uof-facts">
+        <div><span class="metric-label">Participants</span><strong>${escapeHtml(o.participantsPublic)}</strong></div>
+        <div><span class="metric-label">Fund</span><strong>${escapeHtml(o.allocationName)}</strong></div>
+        <div><span class="metric-label">Method</span><strong>${escapeHtml(o.attributionMethod)}</strong></div>
+      </div>
+      <p class="note">Outcome ${escapeHtml(o.publicId)}</p>
+    </article>`).join('') || '<p class="note">No public impact outcomes published yet.</p>';
 }
 
 function renderPublicEvidence(doc) {
@@ -262,6 +299,9 @@ async function boot() {
 
     const evidence = await loadJson('data/public-evidence.json');
     renderPublicEvidence(evidence);
+
+    const impactOutcomes = await loadJson('data/public-impact.json');
+    renderImpactOutcomes(impactOutcomes);
   } catch (error) {
     console.error(error);
     text('campaignName', 'Unable to load impact state');
