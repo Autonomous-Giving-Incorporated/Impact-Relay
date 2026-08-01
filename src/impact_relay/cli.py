@@ -97,7 +97,18 @@ def main(argv: list[str] | None = None) -> int:
         "--every-org-aggregate",
         type=Path,
         default=None,
-        help="Every.org-style aggregate_summary JSON (normalized then reconciled)",
+        help=(
+            "Every.org-style aggregate_summary JSON (normalized then reconciled). "
+            "Also reads IMPACT_RELAY_EVERY_ORG_AGGREGATE if flag omitted."
+        ),
+    )
+    parser.add_argument(
+        "--require-observed",
+        action="store_true",
+        help=(
+            "Fail unless raisedSource becomes processor_aggregate / OBSERVED "
+            "(rejects pilot/fixture sources)"
+        ),
     )
     parser.add_argument(
         "--write-impact-state",
@@ -143,7 +154,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    import os
+
+    if args.every_org_aggregate is None:
+        env_agg = os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE", "").strip()
+        if env_agg:
+            args.every_org_aggregate = Path(env_agg)
+
     if args.publish_pages:
+        # Prefer live operator path via env; fall back to pilot fixture for demos.
         args.every_org_aggregate = args.every_org_aggregate or Path(
             "fixtures/every_org_aggregate_v1.json"
         )
@@ -173,9 +192,50 @@ def main(argv: list[str] | None = None) -> int:
         aggregate = load_every_org_as_reconcile_aggregate(args.every_org_aggregate)
         current = load_impact_state(target_state)
         impact_state = apply_aggregate_reconciliation(current, aggregate)
+        if args.require_observed:
+            src = impact_state.get("campaign", {}).get("raisedSource")
+            if src != "processor_aggregate":
+                print(
+                    json.dumps(
+                        {
+                            "error": "require_observed_failed",
+                            "raisedSource": src,
+                            "raisedClaimLabel": impact_state.get("campaign", {}).get(
+                                "raisedClaimLabel"
+                            ),
+                            "aggregateSource": impact_state.get("campaign", {}).get(
+                                "aggregateSource"
+                            ),
+                            "hint": (
+                                "Provide an authorized Every.org aggregate with source like "
+                                "every.org/aggregate:hacker-dojo and claimLevel OBSERVED. "
+                                "Do not use fixture:// or pilot sources."
+                            ),
+                        },
+                        indent=2,
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
         write_impact_state(target_state, impact_state)
     elif args.reconcile_from is not None:
         impact_state = reconcile_file(args.reconcile_from, target_state, write=True)
+        if args.require_observed and impact_state.get("campaign", {}).get(
+            "raisedSource"
+        ) != "processor_aggregate":
+            print(
+                json.dumps(
+                    {
+                        "error": "require_observed_failed",
+                        "raisedSource": impact_state.get("campaign", {}).get(
+                            "raisedSource"
+                        ),
+                    },
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+            return 2
     elif args.write_impact_state is not None and not args.publish_pages:
         impact_state = reconcile_file(None, args.write_impact_state, write=True)
 

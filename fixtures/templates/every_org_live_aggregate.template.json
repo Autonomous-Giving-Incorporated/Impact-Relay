@@ -1,0 +1,16 @@
+{
+  "processor": "every.org",
+  "exportKind": "aggregate_summary",
+  "nonprofitSlug": "hacker-dojo",
+  "exportedAt": "YYYY-MM-DDTHH:MM:SSZ",
+  "currency": "USD",
+  "campaignStatus": "active",
+  "claimLevel": "OBSERVED",
+  "source": "every.org/aggregate:hacker-dojo",
+  "totals": {
+    "raised": 0,
+    "committed": 0,
+    "donorCount": 0
+  },
+  "note": "Operator-reduced aggregate for SupperHappyFundHouse campaign window. Replace zeros with authorized totals. Never include donor names, emails, or itemized gifts."
+}

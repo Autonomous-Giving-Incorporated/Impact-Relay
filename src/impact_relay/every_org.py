@@ -105,6 +105,9 @@ def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
             or f"Aggregate-only Every.org summary for nonprofit slug {slug}.",
         }
 
+    if summary.get("claimLevel") or summary.get("claimLabel"):
+        aggregate["claimLevel"] = summary.get("claimLevel") or summary.get("claimLabel")
+
     _assert_aggregate_safe(aggregate)
     return aggregate
 

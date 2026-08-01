@@ -22,7 +22,8 @@
     "lastReconciledAt": "2026-08-01T15:00:00Z",
     "status": "active",
     "raisedSource": "pilot_synthetic",
-    "raisedClaimLabel": "PILOT"
+    "raisedClaimLabel": "PILOT",
+    "aggregateSource": "fixture://every.org/aggregate:hacker-dojo"
   },
   "milestones": [
     {
@@ -63,13 +64,6 @@
       "publishedAt": "2026-08-01T14:00:00Z"
     },
     {
-      "id": "reconciliation-pending",
-      "severity": "warning",
-      "title": "Live totals await reconciliation",
-      "body": "Raised and committed amounts remain zero until an authorized Every.org export is reconciled into the public aggregate feed.",
-      "publishedAt": "2026-08-01T14:05:00Z"
-    },
-    {
       "id": "uof-pilot-published",
       "severity": "success",
       "title": "Use-of-funds pilot receipts published",
@@ -77,18 +71,18 @@
       "publishedAt": "2026-08-01T14:30:00Z"
     },
     {
-      "id": "reconcile-2026-08-01",
-      "severity": "success",
-      "title": "Public donation aggregates updated",
-      "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: fixture://every.org/aggregate:hacker-dojo. Raised $12,840; committed $2,500; public donor count 37.",
-      "publishedAt": "2026-08-01T15:00:00Z"
-    },
-    {
       "id": "notion-public-evidence",
       "severity": "info",
       "title": "Notion public evidence baseline loaded",
       "body": "Notion Public EvidencePack loaded: Form 990 contribution history and 2012 campaign aggregate are OBSERVED; live SupperHappyFundHouse raised remains NOT_COMPUTABLE until authorized processor aggregates arrive.",
       "publishedAt": "2026-08-01T16:00:00Z"
+    },
+    {
+      "id": "reconcile-2026-08-01",
+      "severity": "warning",
+      "title": "Pilot aggregates updated (not live processor cash)",
+      "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: fixture://every.org/aggregate:hacker-dojo. Claim: PILOT (pilot_synthetic). Raised $12,840; committed $2,500; public donor count 37.",
+      "publishedAt": "2026-08-01T15:00:00Z"
     }
   ],
   "privacy": {

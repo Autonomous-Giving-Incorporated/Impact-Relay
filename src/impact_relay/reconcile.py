@@ -43,6 +43,57 @@ class ReconcileError(ValueError):
     """Invalid aggregate reconciliation input."""
 
 
+def is_pilot_or_synthetic_source(source: str | None) -> bool:
+    """True when the aggregate source must not be labeled OBSERVED / processor_aggregate."""
+    s = (source or "").strip().lower()
+    if not s:
+        return True
+    markers = (
+        "fixture://",
+        "fixture/",
+        "synthetic",
+        "pilot",
+        "demo",
+        "example",
+        "template",
+        "not live",
+        "not_live",
+    )
+    return any(m in s for m in markers)
+
+
+def resolve_raised_provenance(
+    aggregate: dict[str, Any],
+) -> tuple[str, str]:
+    """Return (raisedSource, raisedClaimLabel) for an aggregate payload.
+
+    OBSERVED / processor_aggregate only when source is operator-authorized and
+    does not look like a pilot/fixture. Optional aggregate.claimLevel may be
+    OBSERVED | PILOT | NOT_COMPUTABLE; OBSERVED is rejected for fixture sources.
+    """
+    source = str(aggregate.get("source") or "")
+    claim = str(aggregate.get("claimLevel") or aggregate.get("claimLabel") or "").upper()
+    pilot = is_pilot_or_synthetic_source(source)
+
+    if claim in ("OBSERVED", "PROCESSOR", "PROCESSOR_AGGREGATE"):
+        if pilot:
+            raise ReconcileError(
+                "cannot claim OBSERVED/processor_aggregate for pilot/fixture/synthetic source: "
+                f"{source!r}"
+            )
+        return "processor_aggregate", "OBSERVED"
+
+    if claim in ("PILOT", "SYNTHETIC"):
+        return "pilot_synthetic", "PILOT"
+
+    if claim in ("NOT_COMPUTABLE", "UNAVAILABLE", "NOT_AVAILABLE"):
+        return "not_available", "NOT_COMPUTABLE"
+
+    if pilot:
+        return "pilot_synthetic", "PILOT"
+    return "processor_aggregate", "OBSERVED"
+
+
 def _assert_aggregate_safe(payload: Any, path: str = "$") -> None:
     if isinstance(payload, dict):
         for key, value in payload.items():
@@ -105,14 +156,10 @@ def apply_aggregate_reconciliation(
     campaign["donorCountPublic"] = donors
     campaign["lastReconciledAt"] = reconciled_at
     campaign["status"] = status
-    # Provenance: processor aggregates are OBSERVED only when source is not a pilot fixture.
-    source = str(aggregate.get("source") or "")
-    if "fixture" in source or "synthetic" in source.lower() or "pilot" in source.lower():
-        campaign["raisedSource"] = "pilot_synthetic"
-        campaign["raisedClaimLabel"] = "PILOT"
-    else:
-        campaign["raisedSource"] = "processor_aggregate"
-        campaign["raisedClaimLabel"] = "OBSERVED"
+    raised_source, raised_label = resolve_raised_provenance(aggregate)
+    campaign["raisedSource"] = raised_source
+    campaign["raisedClaimLabel"] = raised_label
+    campaign["aggregateSource"] = str(aggregate.get("source") or "")
 
     for milestone in state.get("milestones", []):
         threshold = float(milestone.get("threshold") or 0)
@@ -127,12 +174,20 @@ def apply_aggregate_reconciliation(
     notifications = state.setdefault("notifications", [])
     note = aggregate.get("note") or "Public aggregate totals reconciled from authorized summary."
     source = aggregate.get("source") or "aggregate_reconciliation"
+    severity = "success" if raised_source == "processor_aggregate" else "warning"
+    title = (
+        "Live processor aggregates published"
+        if raised_source == "processor_aggregate"
+        else "Pilot aggregates updated (not live processor cash)"
+        if raised_source == "pilot_synthetic"
+        else "Campaign raised not available"
+    )
     notification = {
         "id": f"reconcile-{reconciled_at[:10]}",
-        "severity": "success",
-        "title": "Public donation aggregates updated",
+        "severity": severity,
+        "title": title,
         "body": (
-            f"{note} Source: {source}. "
+            f"{note} Source: {source}. Claim: {raised_label} ({raised_source}). "
             f"Raised ${raised:,.0f}; committed ${committed:,.0f}; "
             f"public donor count {donors}."
         ),
@@ -140,6 +195,10 @@ def apply_aggregate_reconciliation(
     }
     # Replace same-day reconcile notification if re-run.
     notifications[:] = [n for n in notifications if n.get("id") != notification["id"]]
+    # Drop stale "awaiting live reconciliation" once any aggregate reconcile ran.
+    notifications[:] = [
+        n for n in notifications if n.get("id") != "reconciliation-pending"
+    ]
     notifications.append(notification)
 
     state["updatedAt"] = date.today().isoformat()
