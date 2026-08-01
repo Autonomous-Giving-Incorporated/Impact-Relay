@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from impact_relay.auth.principal import Principal
+from impact_relay.auth.rbac import (
+    AuthorizationError,
+    Permission,
+    assert_permission,
+    assert_separation_of_duties,
+)
 from impact_relay.policy import load_tenant_policy
 from impact_relay.storage import open_storage
 from impact_relay.storage.template import (
@@ -31,11 +38,18 @@ class HostSession:
 
     Does not own money mutation logic — delegates to durable workflows and
     storage. Safe defaults for local SQLite pilot data-dirs.
+
+    Bind a ``Principal`` (from OIDC or fixture) with ``with_principal`` so
+    approve/list honor RBAC.
     """
 
     data_dir: Path
     tenant_id: str
     display_name: str = ""
+    principal: Principal | None = None
+    # When True, approve requires a bound principal (production host mode).
+    require_principal_for_approve: bool = False
+    _last_proposer_id: str | None = field(default=None, repr=False)
 
     def __enter__(self) -> HostSession:
         return self
@@ -46,6 +60,28 @@ class HostSession:
     # ------------------------------------------------------------------
     # Policy / identity
     # ------------------------------------------------------------------
+
+    def with_principal(self, principal: Principal) -> HostSession:
+        """Return a session copy bound to an authenticated principal (OIDC or fixture)."""
+        if principal.tenant_id != self.tenant_id:
+            raise AuthorizationError(
+                f"principal tenant {principal.tenant_id!r} != session {self.tenant_id!r}"
+            )
+        return HostSession(
+            data_dir=self.data_dir,
+            tenant_id=self.tenant_id,
+            display_name=self.display_name,
+            principal=principal,
+            require_principal_for_approve=self.require_principal_for_approve,
+            _last_proposer_id=self._last_proposer_id,
+        )
+
+    def require_principal(self) -> Principal:
+        if self.principal is None:
+            raise AuthorizationError(
+                "no principal bound — host must call with_principal() after OIDC login"
+            )
+        return self.principal
 
     def policy(self, version: str = "v1.0") -> Any:
         """Load versioned tenant policy pack."""
@@ -64,6 +100,16 @@ class HostSession:
             )
         return rec.to_dict()
 
+    def _gate(self, permission: Permission) -> dict[str, Any] | None:
+        """If a principal is bound, enforce permission; otherwise skip (CLI pilot)."""
+        if self.principal is None:
+            return None
+        try:
+            assert_permission(self.principal, permission, tenant_id=self.tenant_id)
+        except AuthorizationError as exc:
+            return {"ok": False, "error": "forbidden", "message": str(exc)}
+        return None
+
     # ------------------------------------------------------------------
     # Durable pilot ops (seed → list → approve → worker)
     # ------------------------------------------------------------------
@@ -74,6 +120,21 @@ class HostSession:
         expense_batch: Path | str | None = None,
         fixture_path: Path | str | None = None,
     ) -> dict[str, Any]:
+        # When principal bound: tenant_admin or finance_approver may seed pilot data
+        if self.principal is not None:
+            from impact_relay.auth.roles import permissions_for_roles
+
+            perms = permissions_for_roles(self.principal.roles)
+            if (
+                Permission.WORKFLOW_SEED not in perms
+                and Permission.TENANT_ADMIN not in perms
+                and Permission.WORKFLOW_APPROVE_EXPENSE not in perms
+            ):
+                return {
+                    "ok": False,
+                    "error": "forbidden",
+                    "message": f"{self.principal.email!r} cannot seed workflows",
+                }
         return durable_seed(
             self.data_dir,
             expense_batch=expense_batch,
@@ -85,18 +146,49 @@ class HostSession:
         *,
         filters: str = "waiting,blocked,dead_letter,needs_information,failed",
     ) -> dict[str, Any]:
+        err = self._gate(Permission.WORKFLOW_LIST)
+        if err:
+            return err
         return durable_list(self.data_dir, filters=filters)
 
     def approve(
         self,
         *,
         workflow_id: str | None = None,
-        approver_id: str = "finance.approver@hackersdojo.example",
+        approver_id: str | None = None,
+        proposer_id: str | None = None,
     ) -> dict[str, Any]:
-        if approver_id.startswith("agent:"):
+        """Approve waiting expense. Uses principal.approver_id when bound."""
+        if self.require_principal_for_approve and self.principal is None:
+            return {
+                "ok": False,
+                "error": "principal_required",
+                "message": "bind Principal via with_principal() before approve",
+            }
+        if self.principal is not None:
+            err = self._gate(Permission.WORKFLOW_APPROVE_EXPENSE)
+            if err:
+                return err
+            try:
+                assert_separation_of_duties(
+                    self.principal,
+                    action="approve_expense",
+                    proposer_id=proposer_id or self._last_proposer_id,
+                )
+            except AuthorizationError as exc:
+                return {
+                    "ok": False,
+                    "error": "separation_of_duties",
+                    "message": str(exc),
+                }
+            actor = self.principal.approver_id
+        else:
+            actor = approver_id or "finance.approver@hackersdojo.example"
+
+        if actor.startswith("agent:"):
             return {"ok": False, "error": "approver_must_be_human"}
         return durable_approve(
-            self.data_dir, workflow_id=workflow_id, approver_id=approver_id
+            self.data_dir, workflow_id=workflow_id, approver_id=actor
         )
 
     def worker_once(self, *, max_ticks: int = 50) -> dict[str, Any]:
@@ -115,20 +207,32 @@ class HostSession:
     def list_expenses(
         self, *, state: str | None = None, limit: int = 200
     ) -> list[dict[str, Any]]:
+        err = self._gate(Permission.EXPENSE_READ)
+        if err:
+            raise AuthorizationError(err["message"])
         store = open_storage(self.data_dir)
         return store.ledger.list_expenses(
             self.tenant_id, state=state, limit=limit
         )
 
     def get_expense(self, expense_id: str) -> dict[str, Any] | None:
+        err = self._gate(Permission.EXPENSE_READ)
+        if err:
+            raise AuthorizationError(err["message"])
         store = open_storage(self.data_dir)
         return store.ledger.get_expense(self.tenant_id, expense_id)
 
     def list_receipts(self, *, limit: int = 200) -> list[dict[str, Any]]:
+        err = self._gate(Permission.RECEIPT_READ)
+        if err:
+            raise AuthorizationError(err["message"])
         store = open_storage(self.data_dir)
         return store.ledger.list_receipts(self.tenant_id, limit=limit)
 
     def get_receipt(self, receipt_id: str) -> dict[str, Any] | None:
+        err = self._gate(Permission.RECEIPT_READ)
+        if err:
+            raise AuthorizationError(err["message"])
         store = open_storage(self.data_dir)
         return store.ledger.get_receipt(self.tenant_id, receipt_id)
 
@@ -142,6 +246,8 @@ class HostSession:
             "tenant_id": self.tenant_id,
             "display_name": self.display_name,
             "canonical_pilot": self.tenant_id == CANONICAL_PILOT_TENANT_ID,
+            "principal": self.principal.to_dict() if self.principal else None,
+            "require_principal_for_approve": self.require_principal_for_approve,
         }
 
 
@@ -151,6 +257,8 @@ def open_host_session(
     tenant_id: str = CANONICAL_PILOT_TENANT_ID,
     display_name: str = "",
     ensure_registered: bool = True,
+    require_principal_for_approve: bool = False,
+    principal: Principal | None = None,
 ) -> HostSession:
     """Open a host session for any tenant (defaults to Hacker Dojo pilot)."""
     path = Path(data_dir or DEFAULT_DATA_DIR)
@@ -159,6 +267,8 @@ def open_host_session(
         tenant_id=tenant_id,
         display_name=display_name
         or ("Hacker Dojo" if tenant_id == CANONICAL_PILOT_TENANT_ID else tenant_id),
+        principal=principal,
+        require_principal_for_approve=require_principal_for_approve,
     )
     if ensure_registered:
         path.mkdir(parents=True, exist_ok=True)

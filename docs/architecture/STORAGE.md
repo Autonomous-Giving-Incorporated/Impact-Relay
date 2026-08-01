@@ -78,4 +78,4 @@ The Hacker-Dojo application repo should depend on Impact Relay as a library and 
 
 - Alembic multi-file history (single `migrate()` bootstrap is enough for pilot)
 - S3 encryption (interface only; local FS is the pilot backend)
-- OIDC / RBAC enforcement (ports reserved; not wired)
+- Live IdP JWT validation (host implements `OidcIdentityProvider`; see `impact_relay.auth`)
