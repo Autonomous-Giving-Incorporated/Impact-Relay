@@ -82,30 +82,31 @@ Do not split into microservices until independently scaling or isolating a bound
 ```text
 RECEIVED
 → NORMALIZED
+→ EVIDENCE_PENDING          # evidence before classify (runtime machine)
 → CLASSIFICATION_PENDING
-→ EVIDENCE_PENDING
-→ REVIEW_PENDING
-→ APPROVED
-→ LEDGER_COMMITTED
+→ REVIEW_PENDING            # human L3 gate
+→ LEDGER_COMMITTED          # APPROVED is audit-only, not a parked cursor
 → RECEIPT_DRAFTED
-→ PUBLICATION_PENDING
+→ PUBLICATION_PENDING       # optional human publish gate
 → PUBLISHED
-→ NOTIFICATION_PENDING
+→ NOTIFICATION_PENDING      # optional human send gate
 → DELIVERED
 ```
 
 1. Expense Intake normalizes a provider record.
 2. Duplicate detection prevents replay.
-3. Allocation Classifier proposes one or more fund splits.
-4. Evidence Validator determines whether evidence is sufficient and safe to expose.
+3. **Evidence Validator** determines whether evidence is sufficient and safe to expose (**before** classification).
+4. Allocation Classifier proposes one or more fund splits (only when evidence allows).
 5. Finance Review prepares a decision packet.
-6. An authorized human approves, rejects, edits, or requests information.
-7. The deterministic ledger validates money invariants and commits the approved action.
+6. An authorized human approves, rejects, edits, or requests information (`ApprovalReceipt`).
+7. The deterministic ledger validates money invariants and commits the approved action (sole gateway: `LedgerCommandExecutor`).
 8. Attribution proposes a reproducible donor relationship.
 9. The receipt service creates a canonical use-of-funds receipt.
-10. A communications approver authorizes publication and delivery.
+10. A communications approver authorizes publication and delivery when enabled.
 11. Consent policy selects allowed channels and cadence.
 12. Delivery adapters send and record delivery receipts.
+
+**Runtime:** `src/impact_relay/workflows/` (expense_to_receipt, correction, scheduled_digest). Durable pilot: `docs/DURABLE-QUICKSTART.md`.
 
 ### Program event to impact receipt
 
@@ -126,13 +127,14 @@ A scheduled event is never sufficient. Completion and evidence must be verified 
 
 ```text
 Discrepancy detected
-→ correction proposal
-→ human review
-→ reversal or supersession ledger event
-→ corrected canonical receipt
-→ affected donor notification
-→ regenerated public projections
+→ correction workflow (workflow_type=correction)
+→ frozen reverse_expense | supersede_expense (L3)
+→ human ApprovalReceipt
+→ ledger reverse/supersede (append-only correction receipts)
+→ complete (prior UOF receipts never rewritten)
 ```
+
+K15: `reverse_expense` / `supersede_expense` are explicit L3 command types — not L1 aliases.
 
 Original receipts remain immutable and visible in lineage.
 
@@ -329,9 +331,9 @@ Implement exactly one full path before broadening scope:
 
 ```text
 fixture/accounting expense
-→ allocation proposal
 → evidence validation
-→ finance approval
+→ allocation proposal
+→ finance approval (L3)
 → ledger commit
 → donor attribution
 → use-of-funds receipt
@@ -340,4 +342,4 @@ fixture/accounting expense
 → fixture delivery receipt
 ```
 
-This slice must pass money-invariant, replay, cross-tenant, correction, low-confidence, contradictory-evidence, and PII-leakage tests before live providers are introduced.
+This slice must pass money-invariant, replay, cross-tenant, correction, low-confidence, contradictory-evidence, and PII-leakage tests before live providers are introduced. Shipped paths: façade `run_expense_approval_slice` (default runtime), durable CLI (`--durable seed|list|approve|worker`), correction + scheduled digest workflows.

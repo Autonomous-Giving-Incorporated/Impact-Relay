@@ -1424,20 +1424,20 @@ Split into **MVP (v0.6)**, **Pilot**, and **Later**. Each PR independently revie
 
 ### Later track
 
-#### PR-L1 — Correction workflow + L3 command types
+#### PR-L1 — Correction workflow + L3 command types — **done**
 
 - **Title:** `workflows: correction workflow; L3 reverse_expense/supersede_expense`
 - **Files:** `types.py` L3 set, `executor.py` dispatch, `corrections.py`, tests vs `test_receipts_and_corrections.py`
 - **Dependencies:** PR-M3 minimum; ideally PR-M5 for operator signal
-- **Description:** K15 security fix for corrections; not in v0.6 exit gate.
+- **Description:** K15 security fix for corrections; not in v0.6 exit gate. **Landed** (PR #19).
 
-#### PR-L2 — Scheduled digest skeleton
+#### PR-L2 — Scheduled digest skeleton — **done**
 
 - **Title:** `workflows: scheduled digest run skeleton`
 - **Dependencies:** Pilot worker useful for timers
-- **Description:** Minimal assemble → privacy → complete.
+- **Description:** Minimal assemble → privacy → optional ack → complete. **Landed** (PR #20).
 
-#### PR-L3 — Docs alignment
+#### PR-L3 — Docs alignment — **this rev**
 
 - **Title:** `docs: align AGENTIC-SYSTEM step order; mark ROADMAP/TODO items`
 - **Files:** `AGENTIC-SYSTEM.md` evidence-before-classify; `TODO.md` / `ROADMAP.md` checkboxes; this doc status

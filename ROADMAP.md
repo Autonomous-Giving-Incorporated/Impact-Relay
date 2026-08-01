@@ -54,8 +54,11 @@ Deferred:
 - [x] Add approval / rejection gates via `ApprovalReceipt` (authN UI still deferred).
 - [x] Record approval receipts on the run.
 - [x] Add durable retry and blocked-case handling (MVP M1–M6 memory runtime, worker, ops CLI, façade default runtime).
+- [x] Pilot durable path: ledger command log (K17), SQL WorkflowStore (SQLite / Postgres), worker entrypoint + restart runbook.
+- [x] Correction workflow + L3 `reverse_expense` / `supersede_expense` (K15).
+- [x] Scheduled digest workflow skeleton (assemble → privacy → optional ack).
 
-**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture + memory workflow path met; live OIDC and PG pilot still deferred.**
+**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture + durable pilot path met; live OIDC and production multi-tenant DR still deferred.**
 
 ## v0.7 — Donor Receipt Engine
 
@@ -66,7 +69,7 @@ Deferred:
 - [ ] Add donor-readable attribution explanations.
 - [ ] Add receipt preview and publication approval.
 - [ ] Add remaining designated-balance projection.
-- [ ] Add correction, reversal, and supersession communication.
+- [x] Add correction, reversal, and supersession **ledger + workflow** path (communication/UI still deferred).
 - [ ] Add evidence-safe donor attachments.
 - [ ] Add authenticated donor receipt API.
 
@@ -107,7 +110,7 @@ Deferred:
 
 **Goal:** production-grade Hacker Dojo deployment.
 
-- [ ] Durable workflow runtime and disaster recovery.
+- [ ] Production durable workflow DR / multi-region (pilot local+SQL path already on main).
 - [ ] Production observability, alerting, and audit explorer.
 - [ ] OIDC, RBAC, and separation of duties.
 - [ ] Encrypted evidence storage and retention controls.
