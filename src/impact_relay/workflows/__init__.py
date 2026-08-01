@@ -4,6 +4,7 @@ PR-M1: types, ports, exception taxonomy.
 Later PRs: memory store, runtime, worker, postgres.
 """
 
+from impact_relay.workflows.commands import build_executable_command
 from impact_relay.workflows.expense_to_receipt import (
     HandlerBundle,
     StepOutcome,
@@ -25,6 +26,12 @@ from impact_relay.workflows.exceptions import (
     is_retryable,
     is_terminal,
 )
+from impact_relay.workflows.facade import (
+    facade_mode,
+    run_expense_approval_slice,
+    run_expense_approval_slice_via_runtime,
+)
+from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.workflows.machine import (
     DEFAULT_RUN_STATUS,
     EXPENSE_TO_RECEIPT_TRANSITIONS,
@@ -43,6 +50,8 @@ from impact_relay.workflows.ports import (
     UuidIdGenerator,
     WorkflowStore,
 )
+from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
+from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import (
     CLAIMABLE_RUN_STATUSES,
     TERMINAL_RUN_STATUSES,
@@ -77,6 +86,8 @@ __all__ = [
     "HUMAN_GATE_STATES",
     "HandlerBundle",
     "IdGenerator",
+    "InMemoryLedgerBinding",
+    "InMemoryWorkflowStore",
     "LedgerBinding",
     "RetryPolicy",
     "SignalConsumeResult",
@@ -94,19 +105,25 @@ __all__ = [
     "WorkflowInstance",
     "WorkflowNotFoundError",
     "WorkflowRunStatus",
+    "WorkflowRuntime",
     "WorkflowSignal",
     "WorkflowState",
     "WorkflowStateError",
     "WorkflowStore",
     "WorkflowType",
     "assert_transition",
+    "build_executable_command",
     "can_transition",
     "classify_error",
+    "default_executor_factory",
     "default_run_status",
+    "facade_mode",
     "freeze_command",
     "is_human_gate",
     "is_retryable",
     "is_terminal",
+    "run_expense_approval_slice",
+    "run_expense_approval_slice_via_runtime",
     "step_classify",
     "step_compose_send",
     "step_evidence",

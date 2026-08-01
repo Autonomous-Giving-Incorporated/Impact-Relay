@@ -68,6 +68,10 @@ class CommandExecutor:
         self.simulation = simulation
         self._seen_keys: set[str] = set()
         self.receipts: list[ExecutionReceipt] = []
+        # Optional durable/in-process receipt index (PR-M3). Must implement
+        # get_execution_receipt(tenant_id, key) and put_execution_receipt(receipt, workflow_id=).
+        self.receipt_store: Any | None = None
+        self.workflow_id: str | None = None
 
     def execute(
         self,
@@ -85,6 +89,15 @@ class CommandExecutor:
             assert_proposal_executable(proposal, block_below=block_below)
         assert_execution_authorized(command, approval, agent_name=agent_name)
 
+        # Durable receipt index (success/sim/skip only)
+        if self.receipt_store is not None:
+            stored = self.receipt_store.get_execution_receipt(
+                command.tenant_id, command.idempotency_key
+            )
+            if stored is not None:
+                self.receipts.append(stored)
+                return stored
+
         if command.idempotency_key in self._seen_keys:
             receipt = ExecutionReceipt(
                 execution_id=f"exec_dup_{command.idempotency_key[:12]}",
@@ -100,6 +113,7 @@ class CommandExecutor:
                 approval_id=approval.approval_id if approval else None,
             )
             self.receipts.append(receipt)
+            self._store_receipt(receipt)
             return receipt
 
         if self.simulation:
@@ -117,6 +131,7 @@ class CommandExecutor:
             )
             self._seen_keys.add(command.idempotency_key)
             self.receipts.append(receipt)
+            self._store_receipt(receipt)
             return receipt
 
         try:
@@ -134,6 +149,7 @@ class CommandExecutor:
                 approval_id=approval.approval_id if approval else None,
             )
             self._seen_keys.add(command.idempotency_key)
+            self._store_receipt(receipt)
         except Exception as exc:  # noqa: BLE001 — surface domain failures as receipts
             receipt = ExecutionReceipt(
                 execution_id=f"exec_fail_{command.idempotency_key[:12]}",
@@ -148,8 +164,17 @@ class CommandExecutor:
                 error=str(exc),
                 approval_id=approval.approval_id if approval else None,
             )
+            # NEVER store FAILED in receipt_store (K6)
         self.receipts.append(receipt)
         return receipt
+
+    def _store_receipt(self, receipt: ExecutionReceipt) -> None:
+        if self.receipt_store is None:
+            return
+        if receipt.status not in ("SUCCEEDED", "SIMULATED", "SKIPPED"):
+            return
+        wid = self.workflow_id or "unknown"
+        self.receipt_store.put_execution_receipt(receipt, workflow_id=wid)
 
     def _dispatch(self, command: AgentCommand) -> tuple[list[str], dict[str, Any]]:
         raise NotImplementedError(
