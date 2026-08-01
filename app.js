@@ -140,6 +140,35 @@ function renderUseOfFunds(exportDoc) {
     </article>`).join('') || '<p class="note">No public use-of-funds receipts published yet.</p>';
 }
 
+function renderDigests(doc) {
+  if (!doc) {
+    text('digestAttendance', '—');
+    document.getElementById('digestList').innerHTML =
+      '<p class="note">No public impact digests published yet.</p>';
+    return;
+  }
+  if (doc.privacy?.piiAllowed || doc.privacy?.attendeeNamesAllowed) {
+    throw new Error('Digest privacy contract violation.');
+  }
+
+  text('digestAttendance', String(doc.summary?.totalAttendancePublic ?? 0));
+  const events = doc.events || [];
+  document.getElementById('digestList').innerHTML = events.map(e => `
+    <article class="digest-card">
+      <div class="meta">
+        <span>${escapeHtml(e.class)}</span>
+        <span>${escapeHtml(e.occurredOn)}</span>
+      </div>
+      <h3>${escapeHtml(e.title)}</h3>
+      <p>${escapeHtml(e.impactSummary)}</p>
+      <div class="uof-facts">
+        <div><span class="metric-label">Attendance</span><strong>${escapeHtml(e.attendeeCountPublic)}</strong></div>
+        <div><span class="metric-label">Location</span><strong>${escapeHtml(e.locationLabel || '—')}</strong></div>
+        <div><span class="metric-label">Linked fund</span><strong>${escapeHtml(e.linkedAllocationName || '—')}</strong></div>
+      </div>
+    </article>`).join('') || '<p class="note">No public impact digests published yet.</p>';
+}
+
 async function loadJson(path) {
   const response = await fetch(path, { cache: 'no-store' });
   if (!response.ok) {
@@ -160,6 +189,9 @@ async function boot() {
 
     const uof = await loadJson('data/use-of-funds-public.json');
     renderUseOfFunds(uof);
+
+    const digests = await loadJson('data/impact-digests-public.json');
+    renderDigests(digests);
   } catch (error) {
     console.error(error);
     text('campaignName', 'Unable to load impact state');

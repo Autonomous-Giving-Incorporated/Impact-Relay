@@ -4,8 +4,10 @@ HD-IR-001 ships the ledger pilot: donation → allocation → expense approval �
 use-of-funds receipt (preview/publish artifact only).
 
 HD-IR-002 ships privacy-safe public export for GitHub Pages.
+HD-IR-003 ships impact digests and aggregate reconciliation.
 """
 
+from impact_relay.digest import build_public_digests
 from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.types import (
     Allocation,
@@ -17,6 +19,7 @@ from impact_relay.domain.types import (
     UseOfFundsReceipt,
 )
 from impact_relay.public_export import build_public_export, receipt_to_public
+from impact_relay.reconcile import apply_aggregate_reconciliation
 
 __all__ = [
     "Ledger",
@@ -29,6 +32,8 @@ __all__ = [
     "UseOfFundsReceipt",
     "build_public_export",
     "receipt_to_public",
+    "build_public_digests",
+    "apply_aggregate_reconciliation",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

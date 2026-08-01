@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrimshawlife-ctrl.github.io/Impact-Relay/schemas/impact-digests-public.schema.json",
+  "title": "Impact Relay public event digests",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "source", "authority", "privacy", "summary", "events"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "updatedAt": { "type": "string", "format": "date" },
+    "source": { "type": "string", "minLength": 1 },
+    "authority": { "type": "string", "const": "public_aggregate_only" },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "piiAllowed", "attendeeNamesAllowed", "contactDataAllowed"],
+      "properties": {
+        "classification": { "type": "string", "const": "public_aggregate_only" },
+        "piiAllowed": { "type": "boolean", "const": false },
+        "attendeeNamesAllowed": { "type": "boolean", "const": false },
+        "contactDataAllowed": { "type": "boolean", "const": false }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventCount", "totalAttendancePublic", "classCounts"],
+      "properties": {
+        "eventCount": { "type": "integer", "minimum": 0 },
+        "totalAttendancePublic": { "type": "integer", "minimum": 0 },
+        "classCounts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventId",
+          "title",
+          "class",
+          "occurredOn",
+          "attendeeCountPublic",
+          "impactSummary"
+        ],
+        "properties": {
+          "eventId": { "type": "string" },
+          "title": { "type": "string" },
+          "class": {
+            "type": "string",
+            "enum": [
+              "community_event",
+              "workshop",
+              "class_session",
+              "open_lab",
+              "fundraiser",
+              "stewardship",
+              "other"
+            ]
+          },
+          "occurredOn": { "type": "string", "format": "date" },
+          "attendeeCountPublic": { "type": "integer", "minimum": 0 },
+          "impactSummary": { "type": "string" },
+          "linkedAllocationName": { "type": ["string", "null"] },
+          "locationLabel": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

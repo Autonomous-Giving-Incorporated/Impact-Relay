@@ -193,6 +193,33 @@ CI runs the domain suite, regenerates the public export, and fails if the commit
 
 ---
 
+## HD-IR-003 digests + aggregate reconciliation
+
+**Status:** public event digests and aggregate-only donation reconciliation pipeline.
+
+### Event digests
+
+```bash
+python -m impact_relay --write-digests data/impact-digests-public.json
+python -m impact_relay --digests-only
+```
+
+Digests publish class/workshop/open-lab outcomes with **attendance counts only**.
+
+### Aggregate reconciliation
+
+```bash
+python -m impact_relay \
+  --reconcile-from fixtures/reconcile_aggregate_v1.json \
+  --write-impact-state data/impact-state.json
+```
+
+Updates public raised/committed/donor-count fields, milestone reach state, and a reconcile notification. Rejects any payload containing donor lists or itemized gifts.
+
+See [docs/HD-IR-003.md](docs/HD-IR-003.md).
+
+---
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
