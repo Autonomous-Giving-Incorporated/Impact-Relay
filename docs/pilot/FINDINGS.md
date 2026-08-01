@@ -19,6 +19,9 @@ Related: [HACKER-DOJO-PILOT.md](./HACKER-DOJO-PILOT.md) · host [IMPACT-RELAY-SH
 - [ ] Role denial (data_steward)
 - [ ] Rehydrate / durable check
 - [ ] No Pages publish from shadow dir
+- [ ] Automated synthetic rehearsal (`python -m impact_relay --shadow-rehearsal`)
+
+Automated runs append a **Shadow rehearsal (synthetic)** section below when using `--write-findings`.
 
 ---
 

@@ -467,6 +467,20 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--shadow-rehearsal",
+        action="store_true",
+        help=(
+            "Automated synthetic shadow checklist (seed, role denial, approve, "
+            "rehydrate, donor API). Does not claim live-cohort sign-off."
+        ),
+    )
+    parser.add_argument(
+        "--write-findings",
+        type=Path,
+        default=None,
+        help="With --shadow-rehearsal: append markdown findings to this path",
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         default=None,
@@ -579,6 +593,21 @@ def main(argv: list[str] | None = None) -> int:
     # --- Easy durable workspace (pilot P1) ---
     if args.durable is not None:
         return _run_durable(args)
+
+    # --- Synthetic shadow rehearsal (pilot readiness) ---
+    if args.shadow_rehearsal:
+        from impact_relay.host.rehearsal import append_findings, run_shadow_rehearsal
+
+        data_dir = args.data_dir or Path(".impact-relay/shadow-rehearsal")
+        report = run_shadow_rehearsal(
+            data_dir,
+            expense_batch=args.expense_batch,
+        )
+        if args.write_findings is not None:
+            written = append_findings(args.write_findings, report)
+            report = {**report, "findings_path": str(written.resolve())}
+        print(json.dumps(report, indent=2, default=str))
+        return 0 if report.get("ok") else 1
 
     # --- Operator workflow ops (PR-M5) ---
     if args.workflow_ops is not None:

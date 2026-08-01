@@ -63,6 +63,18 @@ python -m impact_relay --all-phases  # multi-stage pilot with donor dashboard
 - [ ] Donor dashboard for fixture donor without CRM in git
 - [ ] Rehydrate check green; no Pages publish from shadow dir
 
+### Automated library rehearsal (synthetic)
+
+Proves seed → role denial → approve → rehydrate on the host path **without** claiming human UI or live-cohort sign-off:
+
+```bash
+python -m impact_relay --shadow-rehearsal \
+  --data-dir .impact-relay/shadow-rehearsal \
+  --write-findings docs/pilot/FINDINGS.md
+```
+
+Still run the human UI checklist above before live cohort.
+
 ## Findings
 
 Structured log: **[FINDINGS.md](./FINDINGS.md)**  
