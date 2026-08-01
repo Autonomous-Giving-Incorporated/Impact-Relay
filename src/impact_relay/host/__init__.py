@@ -13,6 +13,12 @@ Canonical pilot::
         expenses = session.list_expenses()
 """
 
+from impact_relay.host.console import (
+    DonorConsole,
+    FinanceConsole,
+    open_donor_console,
+    open_finance_console,
+)
 from impact_relay.host.hacker_dojo import (
     DEFAULT_HACKER_DOJO_DATA_DIR,
     open_hacker_dojo_session,
@@ -31,7 +37,11 @@ __all__ = [
     "CANONICAL_POLICY_SLUG",
     "CANONICAL_POLICY_VERSION",
     "DEFAULT_HACKER_DOJO_DATA_DIR",
+    "DonorConsole",
+    "FinanceConsole",
     "HostSession",
+    "open_donor_console",
+    "open_finance_console",
     "open_hacker_dojo_session",
     "open_host_session",
 ]

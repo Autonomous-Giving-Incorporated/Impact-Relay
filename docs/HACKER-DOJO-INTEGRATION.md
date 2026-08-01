@@ -169,6 +169,34 @@ Prefer **library integration tests** that:
 
 Host-only UI tests can mock Impact Relay; money truth tests should call the real package.
 
+## Console HTTP API (pilot UI backend)
+
+```bash
+# terminal 1 — from Impact-Relay checkout
+python -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787
+
+# seed queue
+curl -X POST http://127.0.0.1:8787/api/pilot/seed \
+  -H 'Authorization: Bearer finance.approver@hackersdojo.example'
+curl http://127.0.0.1:8787/api/finance/queue \
+  -H 'Authorization: Bearer finance.approver@hackersdojo.example'
+```
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/health` | Liveness |
+| GET | `/api/finance/metrics` | Queue counts |
+| GET | `/api/finance/queue` | Waiting / blocked cases |
+| GET | `/api/finance/cases/{id}` | Case + packet + events |
+| POST | `/api/finance/cases/{id}/approve` | L3 approve |
+| POST | `/api/pilot/seed` | Fixture seed |
+| GET | `/api/donors/{id}/dashboard` | Donor screen |
+| GET | `/api/donors/{id}/timeline` | Fund timeline |
+| GET | `/api/donors/{id}/receipts` | Receipt list |
+| GET | `/api/donors/{id}/receipts/{rid}` | Receipt detail |
+
+Hacker-Dojo static pages: `finance-impact.html`, `donor-impact.html` (point `IMPACT_RELAY_API` at the server).
+
 ## Donor experience API (v0.7)
 
 ```python
