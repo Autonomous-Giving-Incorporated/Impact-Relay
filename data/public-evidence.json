@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-01",
+  "source": "notion:HackerDojoPublicEvidencePack",
+  "sourcePage": "Hacker Dojo \u2014 Public EvidencePack v1.0",
+  "researchCutoff": "2026-07-31",
+  "authority": "public_aggregate_only",
+  "claimLabels": [
+    "OBSERVED",
+    "NOT_COMPUTABLE"
+  ],
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualAmountsAllowed": false,
+    "contactDataAllowed": false
+  },
+  "organization": {
+    "name": "Hacker Dojo",
+    "ein": "26-4812213",
+    "taxStatus": "501(c)(3)",
+    "publicAddress": "855 Maude Ave, Mountain View, CA 94043"
+  },
+  "campaignTargets": {
+    "minimumTarget": 420000,
+    "stretchTarget": 2000000,
+    "currency": "USD",
+    "eventDate": "2026-08-21",
+    "eventName": "SupperHappyFundHouse",
+    "liveRaisedState": "NOT_COMPUTABLE",
+    "liveRaisedNote": "Notion campaign materials state current campaign cash/commitments are not computable without internal records."
+  },
+  "summary": {
+    "form990ContributionYears": 6,
+    "form990ContributionsTotal": 432861,
+    "latestFiscalYear": 2024,
+    "latestFiscalYearContributions": 66232,
+    "historicalCampaignCount": 1,
+    "meetupMembers": 19641
+  },
+  "form990Contributions": [
+    {
+      "fiscalYear": 2019,
+      "contributions": 99776,
+      "totalRevenue": 549276,
+      "netAssets": 493110,
+      "claimLabel": "OBSERVED"
+    },
+    {
+      "fiscalYear": 2020,
+      "contributions": 52128,
+      "totalRevenue": 152294,
+      "netAssets": 252059,
+      "claimLabel": "OBSERVED"
+    },
+    {
+      "fiscalYear": 2021,
+      "contributions": 95668,
+      "totalRevenue": 109673,
+      "netAssets": 202474,
+      "claimLabel": "OBSERVED"
+    },
+    {
+      "fiscalYear": 2022,
+      "contributions": 34333,
+      "totalRevenue": 182671,
+      "netAssets": 6471,
+      "claimLabel": "OBSERVED"
+    },
+    {
+      "fiscalYear": 2023,
+      "contributions": 84724,
+      "totalRevenue": 351335,
+      "netAssets": -71292,
+      "claimLabel": "OBSERVED"
+    },
+    {
+      "fiscalYear": 2024,
+      "contributions": 66232,
+      "totalRevenue": 466493,
+      "netAssets": -37480,
+      "claimLabel": "OBSERVED"
+    }
+  ],
+  "historicalCampaigns": [
+    {
+      "id": "code-compliance-2012",
+      "label": "2012 code-compliance campaign",
+      "raisedApproximate": 250000,
+      "backerCountApproximate": 640,
+      "currency": "USD",
+      "claimLabel": "OBSERVED",
+      "sources": [
+        "https://www.wired.com/2012/08/hacker-dojo",
+        "https://www.wired.com/2012/09/hacker-dojo-saved/"
+      ],
+      "useOfFundsSummary": "Sprinklers, fire exits, accessibility improvements, and related code-compliance construction."
+    }
+  ],
+  "communitySurface": {
+    "meetupMembers": 19641,
+    "upcomingEvents": 165,
+    "claimLabel": "OBSERVED",
+    "limitation": "Meetup membership is not paid membership, unique attendance, or donor count.",
+    "source": "https://www.meetup.com/hackerdojo/"
+  },
+  "note": "Exported aggregates from Notion public evidence. Not a live donation processor export. No donor-level records."
+}

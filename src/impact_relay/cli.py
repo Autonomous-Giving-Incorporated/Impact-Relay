@@ -22,9 +22,20 @@ from impact_relay.digest import (
     write_public_digests,
 )
 from impact_relay.every_org import load_every_org_as_reconcile_aggregate
+from impact_relay.notion_public import (
+    build_public_evidence_document,
+    load_notion_public_evidence,
+    notion_campaign_targets_patch,
+    write_public_evidence,
+)
 from impact_relay.pilot import receipts_to_jsonable, run_all_phases_pilot, run_pilot
 from impact_relay.public_export import build_public_export
-from impact_relay.reconcile import reconcile_file, write_impact_state, load_impact_state, apply_aggregate_reconciliation
+from impact_relay.reconcile import (
+    apply_aggregate_reconciliation,
+    load_impact_state,
+    reconcile_file,
+    write_impact_state,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -94,10 +105,22 @@ def main(argv: list[str] | None = None) -> int:
         help="Impact-state path for aggregate reconciliation write",
     )
     parser.add_argument(
+        "--notion-public-evidence",
+        type=Path,
+        default=None,
+        help="Notion-exported public evidence JSON (Form 990 / historical aggregates only)",
+    )
+    parser.add_argument(
+        "--write-public-evidence",
+        type=Path,
+        default=None,
+        help="Write Pages public-evidence.json from Notion aggregates",
+    )
+    parser.add_argument(
         "--publish-pages",
         action="store_true",
         help=(
-            "One-shot Pages publish: Every.org aggregate (default fixture) → impact-state, "
+            "One-shot Pages publish: Every.org aggregate → impact-state, Notion public evidence, "
             "domain digests (+ fixture merge), and use-of-funds export"
         ),
     )
@@ -117,9 +140,15 @@ def main(argv: list[str] | None = None) -> int:
         args.every_org_aggregate = args.every_org_aggregate or Path(
             "fixtures/every_org_aggregate_v1.json"
         )
+        args.notion_public_evidence = args.notion_public_evidence or Path(
+            "fixtures/notion_public_evidence_v1.json"
+        )
         args.write_impact_state = args.write_impact_state or Path("data/impact-state.json")
         args.write_public = args.write_public or Path("data/use-of-funds-public.json")
         args.write_digests = args.write_digests or Path("data/impact-digests-public.json")
+        args.write_public_evidence = args.write_public_evidence or Path(
+            "data/public-evidence.json"
+        )
         args.digests_from_domain = True
         args.merge_fixture_digests = True
         args.all_phases = True
@@ -139,6 +168,42 @@ def main(argv: list[str] | None = None) -> int:
         impact_state = reconcile_file(args.reconcile_from, target_state, write=True)
     elif args.write_impact_state is not None and not args.publish_pages:
         impact_state = reconcile_file(None, args.write_impact_state, write=True)
+
+    # --- Notion public evidence (does not invent live raised totals) ---
+    public_evidence = None
+    if args.notion_public_evidence is not None or args.write_public_evidence is not None:
+        notion_src = (
+            load_notion_public_evidence(args.notion_public_evidence)
+            if args.notion_public_evidence is not None
+            else load_notion_public_evidence()
+        )
+        public_evidence = build_public_evidence_document(notion_src)
+        if args.write_public_evidence:
+            write_public_evidence(args.write_public_evidence, public_evidence)
+        # Align campaign targets from Notion without inventing live raised.
+        if impact_state is None and target_state.exists():
+            impact_state = load_impact_state(target_state)
+        if impact_state is not None:
+            patch = notion_campaign_targets_patch(public_evidence)
+            impact_state.setdefault("campaign", {}).update(patch)
+            note = (
+                "Notion Public EvidencePack loaded: Form 990 contribution history and "
+                "2012 campaign aggregate are OBSERVED; live SupperHappyFundHouse raised "
+                "remains NOT_COMPUTABLE until authorized processor aggregates arrive."
+            )
+            notifications = impact_state.setdefault("notifications", [])
+            notifications[:] = [n for n in notifications if n.get("id") != "notion-public-evidence"]
+            notifications.append(
+                {
+                    "id": "notion-public-evidence",
+                    "severity": "info",
+                    "title": "Notion public evidence baseline loaded",
+                    "body": note,
+                    "publishedAt": "2026-08-01T16:00:00Z",
+                }
+            )
+            if args.write_impact_state or args.publish_pages:
+                write_impact_state(target_state, impact_state)
 
     digests = None
     platform = None
@@ -211,6 +276,15 @@ def main(argv: list[str] | None = None) -> int:
             "raisedPublic": None
             if impact_state is None
             else impact_state.get("campaign", {}).get("raisedPublic"),
+        }
+        all_phases_payload["public_evidence"] = {
+            "written": str(args.write_public_evidence)
+            if args.write_public_evidence
+            else None,
+            "summary": None if public_evidence is None else public_evidence.get("summary"),
+            "liveRaisedState": None
+            if public_evidence is None
+            else public_evidence.get("campaignTargets", {}).get("liveRaisedState"),
         }
         json.dump(all_phases_payload, sys.stdout, indent=2)
         sys.stdout.write("\n")

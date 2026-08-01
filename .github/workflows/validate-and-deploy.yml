@@ -38,7 +38,8 @@ jobs:
           git diff --exit-code -- \
             data/use-of-funds-public.json \
             data/impact-digests-public.json \
-            data/impact-state.json
+            data/impact-state.json \
+            data/public-evidence.json
       - name: Assert public artifacts have no personal residue
         shell: bash
         run: |
@@ -49,6 +50,7 @@ jobs:
               'data/use-of-funds-public.json',
               'data/impact-digests-public.json',
               'data/impact-state.json',
+              'data/public-evidence.json',
           ]
           banned = (
               'donor_alice',
@@ -99,6 +101,14 @@ jobs:
           -c ajv-formats
           -s schemas/impact-digests-public.schema.json
           -d data/impact-digests-public.json
+      - name: Validate public evidence schema
+        run: >-
+          npx --yes --package=ajv-cli@5 --package=ajv-formats@3
+          ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s schemas/public-evidence.schema.json
+          -d data/public-evidence.json
       - name: Enforce privacy contract flags
         shell: bash
         run: |
@@ -110,6 +120,7 @@ jobs:
               ('data/impact-state.json', ['piiAllowed', 'donorNamesAllowed']),
               ('data/use-of-funds-public.json', ['piiAllowed', 'donorNamesAllowed']),
               ('data/impact-digests-public.json', ['piiAllowed', 'attendeeNamesAllowed']),
+              ('data/public-evidence.json', ['piiAllowed', 'donorNamesAllowed']),
           ]
           for path, keys in checks:
               privacy = json.loads(Path(path).read_text()).get('privacy') or {}
@@ -140,6 +151,7 @@ jobs:
           test -f data/impact-state.json
           test -f data/use-of-funds-public.json
           test -f data/impact-digests-public.json
+          test -f data/public-evidence.json
 
   deploy:
     if: github.event_name != 'pull_request'

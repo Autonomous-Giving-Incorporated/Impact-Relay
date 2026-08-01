@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrimshawlife-ctrl.github.io/Impact-Relay/schemas/public-evidence.schema.json",
+  "title": "Impact Relay public financial evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "updatedAt",
+    "source",
+    "authority",
+    "privacy",
+    "summary",
+    "form990Contributions",
+    "historicalCampaigns"
+  ],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "updatedAt": { "type": "string", "format": "date" },
+    "source": { "type": "string" },
+    "sourcePage": { "type": ["string", "null"] },
+    "researchCutoff": { "type": ["string", "null"] },
+    "authority": { "type": "string", "const": "public_aggregate_only" },
+    "claimLabels": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "piiAllowed",
+        "donorNamesAllowed",
+        "individualAmountsAllowed",
+        "contactDataAllowed"
+      ],
+      "properties": {
+        "classification": { "type": "string", "const": "public_aggregate_only" },
+        "piiAllowed": { "type": "boolean", "const": false },
+        "donorNamesAllowed": { "type": "boolean", "const": false },
+        "individualAmountsAllowed": { "type": "boolean", "const": false },
+        "contactDataAllowed": { "type": "boolean", "const": false }
+      }
+    },
+    "organization": { "type": "object" },
+    "campaignTargets": { "type": "object" },
+    "summary": {
+      "type": "object",
+      "required": [
+        "form990ContributionYears",
+        "form990ContributionsTotal",
+        "historicalCampaignCount"
+      ],
+      "properties": {
+        "form990ContributionYears": { "type": "integer", "minimum": 0 },
+        "form990ContributionsTotal": { "type": "number" },
+        "latestFiscalYear": { "type": ["integer", "null"] },
+        "latestFiscalYearContributions": { "type": ["number", "null"] },
+        "historicalCampaignCount": { "type": "integer", "minimum": 0 },
+        "meetupMembers": { "type": ["integer", "null"] }
+      }
+    },
+    "form990Contributions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fiscalYear", "contributions", "claimLabel"],
+        "properties": {
+          "fiscalYear": { "type": "integer" },
+          "contributions": { "type": "number" },
+          "totalRevenue": { "type": "number" },
+          "netAssets": { "type": "number" },
+          "claimLabel": { "type": "string" }
+        }
+      }
+    },
+    "historicalCampaigns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "raisedApproximate", "claimLabel"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "raisedApproximate": { "type": "number" },
+          "backerCountApproximate": { "type": ["integer", "null"] },
+          "currency": { "type": "string" },
+          "claimLabel": { "type": "string" },
+          "sources": { "type": "array", "items": { "type": "string" } },
+          "useOfFundsSummary": { "type": "string" }
+        }
+      }
+    },
+    "communitySurface": { "type": "object" },
+    "note": { "type": ["string", "null"] }
+  }
+}
