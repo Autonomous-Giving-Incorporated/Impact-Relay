@@ -130,8 +130,34 @@ Do **not** special-case Hacker Dojo money invariants in product code. Special-ca
 
 - No cross-tenant ledger, workflow, object, or outbox reads.
 - `LedgerCommandExecutor` rejects `command.tenant_id != ledger.organization.id`.
-- Object keys are always `{tenant_id}/…`.
+- Object keys are always `{tenant_id}/…` (local FS or S3 prefix).
 - Public exports use Privacy Sentinel (no donor/attendee PII).
+
+## Evidence objects (local or S3)
+
+Default (easy local): files under `{data_dir}/objects/{tenant_id}/…`.
+
+Production / shared pilot bucket:
+
+```bash
+pip install 'impact-relay[s3]'
+export IMPACT_RELAY_OBJECT_STORE=s3
+export IMPACT_RELAY_S3_BUCKET=hd-impact-relay
+export IMPACT_RELAY_S3_PREFIX=prod/
+# AWS credentials via standard env / instance role
+```
+
+```python
+from impact_relay.storage import open_storage
+
+store = open_storage("./data/hd-pilot")  # uses S3 when env set
+store.objects.put(
+    "org_hacker_dojo",
+    "evidence/inv-9101.pdf",
+    pdf_bytes,
+    content_type="application/pdf",
+)
+```
 
 ## What the Hacker-Dojo repo should test
 

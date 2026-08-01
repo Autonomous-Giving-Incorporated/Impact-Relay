@@ -11,7 +11,7 @@ from typing import Any, Iterator
 
 from impact_relay.storage.command_log import SqlLedgerCommandLog
 from impact_relay.storage.ledger_repo import LedgerEntityRepository
-from impact_relay.storage.objects import LocalObjectStorage
+from impact_relay.storage.objects import LocalObjectStorage, open_object_storage
 from impact_relay.storage.outbox import SqlOutboxStore
 from impact_relay.storage.tenants import SqlTenantRepository
 
@@ -25,6 +25,7 @@ class StorageBundle:
         *,
         dsn: str | None = None,
         objects_dir: Path | None = None,
+        object_store: Any | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -35,7 +36,13 @@ class StorageBundle:
         self.outbox = SqlOutboxStore(self._engine)
         self.command_log = SqlLedgerCommandLog(self._engine)
         self.ledger = LedgerEntityRepository(self._engine)
-        self.objects = LocalObjectStorage(objects_dir or (self.data_dir / "objects"))
+        if object_store is not None:
+            self.objects = object_store
+        elif objects_dir is not None:
+            self.objects = LocalObjectStorage(objects_dir)
+        else:
+            # Respect IMPACT_RELAY_OBJECT_STORE=s3 when set
+            self.objects = open_object_storage(self.data_dir)
 
     @property
     def is_postgres(self) -> bool:

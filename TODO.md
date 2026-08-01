@@ -54,7 +54,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Hacker-Dojo integration + template guide — `docs/HACKER-DOJO-INTEGRATION.md`.
 - [x] Ledger entity SQL repo (`ledger_entity` / `ledger_meta`) — save/load + list expenses/receipts for host apps.
 - [x] Auto-save entity snapshot after durable seed / approve / worker (host-app query path).
-- [ ] Encrypted / S3-compatible object backend.
+- [x] S3-compatible object backend (`S3ObjectStorage` + SSE; MinIO endpoint supported).
 - [x] OIDC identity boundary (ports + fixture mapper; host validates real JWTs).
 - [x] Add RBAC roles: donor, finance reviewer, finance approver, program verifier, communications approver, auditor, tenant admin.
 - [x] Enforce separation of duties (hard: no self-approve; agent principals rejected).
