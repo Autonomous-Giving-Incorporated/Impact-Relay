@@ -248,6 +248,24 @@ python -m impact_relay --publish-pages
 
 Operator guide for live aggregates: [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md) · [docs/HD-IR-006.md](docs/HD-IR-006.md)
 
+### Live raised (OBSERVED) — operator required
+
+Published Pages numbers stay **`raisedSource: pilot_synthetic` / `PILOT`** until finance supplies an authorized aggregate file. Fixtures cannot be labeled OBSERVED.
+
+```bash
+# 1. Copy template, fill authorized totals only (no donor lists)
+cp fixtures/templates/every_org_live_aggregate.template.json ~/private/every_org_live.json
+# edit ~/private/every_org_live.json
+
+# 2. Apply with hard provenance gate
+./scripts/apply_live_every_org_aggregate.sh ~/private/every_org_live.json
+# sets raisedSource=processor_aggregate, raisedClaimLabel=OBSERVED
+
+# 3. PR data/impact-state.json after review
+```
+
+`python -m impact_relay --every-org-aggregate … --require-observed` fails on `fixture://` / pilot sources.
+
 ---
 
 ## License
