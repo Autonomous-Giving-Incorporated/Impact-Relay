@@ -445,7 +445,8 @@ def main(argv: list[str] | None = None) -> int:
         choices=["seed", "list", "approve", "status", "check", "help"],
         default=None,
         help=(
-            "Easy durable pilot workspace (file-backed ledger log + workflows). "
+            "Easy durable pilot (SQLite workflows.db + ledger_commands.jsonl; "
+            "optional Postgres via IMPACT_RELAY_DATABASE_URL). "
             "seed → list → approve. Survives restart in --data-dir."
         ),
     )

@@ -1,9 +1,9 @@
 """Workflow store and binding ports (PR-M1).
 
-Implementations land in later PRs:
-- store_memory.py (M3)
-- store_postgres.py (P2)
-- LedgerBinding T1/T2 (P1)
+Implementations:
+- store_memory.py (M3) — process-local
+- store_sql.py (P2) — SQLite default, Postgres via DSN + SKIP LOCKED claim
+- LedgerBinding T1/T2 (P1 ledger_log + durable CLI)
 
 This module defines Protocol interfaces only.
 """

@@ -33,7 +33,6 @@ from impact_relay.workflows.expense_to_receipt import (
 )
 from impact_relay.workflows.machine import HUMAN_GATE_STATES, default_run_status
 from impact_relay.workflows.ports import Clock, ExecutorFactory, LedgerBinding, SystemClock
-from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import (
     AdvanceCommitBundle,
     FrozenProposedCommand,
@@ -54,8 +53,14 @@ def _new_id(prefix: str) -> str:
 
 def default_executor_factory(
     ledger_binding: LedgerBinding,
-    store: InMemoryWorkflowStore | None = None,
+    store: Any = None,
 ) -> ExecutorFactory:
+    """Build executors bound to tenant ledger + optional receipt store.
+
+    ``store`` may be any WorkflowStore (memory or SQL) that implements
+    put_execution_receipt / get_execution_receipt.
+    """
+
     def factory(instance: WorkflowInstance) -> CommandExecutor:
         ledger = ledger_binding.for_tenant(instance.tenant_id)
         ws = ledger_binding.workspace(instance.tenant_id)
@@ -73,7 +78,7 @@ def default_executor_factory(
 class WorkflowRuntime:
     def __init__(
         self,
-        store: InMemoryWorkflowStore,
+        store: Any,
         ledger_binding: LedgerBinding,
         executor_factory: ExecutorFactory | None = None,
         clock: Clock | None = None,

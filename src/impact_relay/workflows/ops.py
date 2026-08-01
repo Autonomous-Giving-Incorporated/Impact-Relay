@@ -124,7 +124,7 @@ def instance_to_case(inst: WorkflowInstance) -> OperatorCase:
 
 
 def list_operator_cases(
-    store: InMemoryWorkflowStore,
+    store: Any,
     tenant_id: str,
     *,
     filters: Iterable[str] | None = None,
@@ -133,7 +133,8 @@ def list_operator_cases(
     """List operator-visible cases. Default filters: waiting+blocked+dead_letter+needs_information+failed."""
     raw = [f.strip().lower() for f in (filters or ("waiting", "blocked", "dead_letter", "needs_information", "failed"))]
     if "all" in raw:
-        want = CASE_FILTERS - {"all"}
+        # Include completed / cancelled ("other") so status overviews are complete.
+        want = (CASE_FILTERS - {"all"}) | {"other"}
     else:
         want = set(raw) & CASE_FILTERS
         if not want:
@@ -160,7 +161,7 @@ def list_operator_cases(
     return cases
 
 
-def list_blocked(store: InMemoryWorkflowStore, tenant_id: str) -> list[OperatorCase]:
+def list_blocked(store: Any, tenant_id: str) -> list[OperatorCase]:
     return list_operator_cases(
         store, tenant_id, filters=("blocked", "dead_letter", "needs_information", "failed")
     )

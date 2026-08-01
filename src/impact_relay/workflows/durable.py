@@ -1,19 +1,20 @@
-"""Easy local durable workspace (pilot P1).
+"""Easy local durable workspace (pilot P1 + P2).
 
-One directory holds workflow session + ledger command log so you can:
+One directory holds SQLite workflows + ledger command log so you can:
 
   impact-relay durable seed
   impact-relay durable list
   impact-relay durable approve
   impact-relay durable status
 
+Default is SQLite (no install, no Docker). Set IMPACT_RELAY_DATABASE_URL for Postgres.
 After kill/restart, the same data-dir resumes with the same expense_ids (K17).
 """
 
 from __future__ import annotations
 
 import json
-import pickle
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,50 +22,56 @@ from typing import Any
 from impact_relay.agents.executor import LedgerCommandExecutor
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import ApprovalReceipt, utc_now_iso
-from impact_relay.domain.tenant import TenantWorkspace
-from impact_relay.domain.types import Organization
-from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 from impact_relay.domain.ledger_log import (
     FileLedgerCommandLog,
     build_result_json,
 )
+from impact_relay.domain.tenant import TenantWorkspace
+from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 from impact_relay.workflows.ops import (
     list_operator_cases,
     signal_approval_and_pump,
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
-from impact_relay.workflows.store_memory import InMemoryWorkflowStore
+from impact_relay.workflows.store_sql import SqlWorkflowStore, open_sql_store
 from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
 
 HOWTO = """# Impact Relay durable local data
 
-This directory stores a pilot durable workspace (file-backed):
+Easy file-backed pilot workspace (**no Docker required**):
 
-- `ledger_commands.jsonl` — successful money commands (K17 rehydrate source)
-- `workflow_session.pkl` — in-process workflow instances + signals
-- `meta.json` — tenant + fixture pointer
+| File | Purpose |
+|------|---------|
+| `workflows.db` | SQLite workflow store (waits, signals, receipts) |
+| `ledger_commands.jsonl` | Money command log (K17 rehydrate — stable expense ids) |
+| `meta.json` | Tenant + paths |
+| `HOWTO.md` | This guide |
 
 ## Quick start
 
 ```bash
-# 1) Start (seed expenses to human approval wait)
-python -m impact_relay durable seed
-
-# 2) See what needs you
-python -m impact_relay durable list
-
-# 3) Approve (uses wait key automatically)
-python -m impact_relay durable approve
-
-# 4) After restart / new shell — same data-dir resumes
-python -m impact_relay durable status
-python -m impact_relay durable list
-python -m impact_relay durable approve
+python -m impact_relay --durable seed
+python -m impact_relay --durable list
+python -m impact_relay --durable approve
+python -m impact_relay --durable check    # prove ids survive restart
+python -m impact_relay --durable status
 ```
 
-Default data dir: `.impact-relay/durable` (override with --data-dir).
+Custom directory:
 
-Rollback to non-durable linear path: WORKFLOW_SLICE_FACADE=legacy
+```bash
+python -m impact_relay --durable seed --data-dir ./my-pilot
+```
+
+Optional Postgres (production pilot):
+
+```bash
+export IMPACT_RELAY_DATABASE_URL=postgresql://user:pass@localhost/impact_relay
+pip install 'impact-relay[db]'
+python -m impact_relay --durable seed --data-dir ./my-pilot
+```
+
+Default data dir: `.impact-relay/durable`
 """
 
 
@@ -74,15 +81,11 @@ DEFAULT_DATA_DIR = Path(".impact-relay/durable")
 @dataclass
 class DurableWorkspace:
     data_dir: Path
-    store: InMemoryWorkflowStore
+    store: Any  # SqlWorkflowStore or compatible
     binding: InMemoryLedgerBinding
     ledger_log: FileLedgerCommandLog
     runtime: WorkflowRuntime
     tenant_id: str
-
-    @property
-    def session_path(self) -> Path:
-        return self.data_dir / "workflow_session.pkl"
 
     @property
     def log_path(self) -> Path:
@@ -92,34 +95,31 @@ class DurableWorkspace:
     def meta_path(self) -> Path:
         return self.data_dir / "meta.json"
 
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "workflows.db"
+
     def save(self) -> None:
+        """Persist meta + HOWTO. Workflows live in SQLite; ledger log is append-only."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
         howto = self.data_dir / "HOWTO.md"
-        if not howto.is_file():
-            howto.write_text(HOWTO, encoding="utf-8")
-        with self.session_path.open("wb") as f:
-            pickle.dump(
-                {
-                    "version": 1,
-                    "tenant_id": self.tenant_id,
-                    "store": self.store,
-                    "binding": self.binding,
-                },
-                f,
-                protocol=pickle.HIGHEST_PROTOCOL,
-            )
+        howto.write_text(HOWTO, encoding="utf-8")
+        db_url = os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get(
+            "DATABASE_URL"
+        )
         meta = {
             "tenant_id": self.tenant_id,
-            "ledger_log": str(self.log_path.name),
-            "session": str(self.session_path.name),
-            "durability": "command_log",
+            "ledger_log": self.log_path.name,
+            "workflows_db": self.db_path.name if not db_url else None,
+            "database_url_set": bool(db_url),
+            "durability": "sqlite+command_log" if not db_url else "postgres+command_log",
         }
         self.meta_path.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
 
 def _logging_executor_factory(
     binding: InMemoryLedgerBinding,
-    store: InMemoryWorkflowStore,
+    store: Any,
     ledger_log: FileLedgerCommandLog,
 ):
     base = default_executor_factory(binding, store)
@@ -170,77 +170,66 @@ def _wrap_executor_with_log(
     ex._dispatch = dispatch  # type: ignore[method-assign]
 
 
+def _base_ledger(fixture_path: Path | str | None = None):
+    import copy
+
+    data = copy.deepcopy(load_fixture(fixture_path))
+    data["expenses"] = []
+    data["publish"] = []
+    return build_ledger_from_fixture(data)
+
+
 def open_workspace(
     data_dir: Path | str | None = None,
     *,
     fixture_path: Path | str | None = None,
     create: bool = False,
 ) -> DurableWorkspace:
-    """Load existing durable workspace or create empty scaffold."""
+    """Load existing durable workspace or create empty scaffold.
+
+    Workflows: SQLite (workflows.db) or Postgres via IMPACT_RELAY_DATABASE_URL.
+    Ledger: rehydrate from ledger_commands.jsonl (K17).
+    """
     data_dir = Path(data_dir or DEFAULT_DATA_DIR)
-    session_path = data_dir / "workflow_session.pkl"
     log_path = data_dir / "ledger_commands.jsonl"
+    meta_path = data_dir / "meta.json"
+    db_path = data_dir / "workflows.db"
     ledger_log = FileLedgerCommandLog(log_path)
 
-    if session_path.is_file():
-        with session_path.open("rb") as f:
-            payload = pickle.load(f)
-        store: InMemoryWorkflowStore = payload["store"]
-        binding: InMemoryLedgerBinding = payload["binding"]
-        tenant_id = str(payload["tenant_id"])
-        # Rehydrate ledger from base fixture + command log (process restart safe)
-        data = load_fixture(fixture_path)
-        import copy
-
-        data = copy.deepcopy(data)
-        data["expenses"] = []
-        data["publish"] = []
-        base = build_ledger_from_fixture(data)
-        org = base.organization
-        ledger = ledger_log.rehydrate(org, base_ledger=base)
-        # Replace binding ledger with rehydrated one
-        ws = TenantWorkspace(org, ledger=ledger)
-        binding.register(ledger, ws)
-        runtime = WorkflowRuntime(
-            store,
-            binding,
-            executor_factory=_logging_executor_factory(binding, store, ledger_log),
-        )
-        return DurableWorkspace(
-            data_dir=data_dir,
-            store=store,
-            binding=binding,
-            ledger_log=ledger_log,
-            runtime=runtime,
-            tenant_id=tenant_id,
-        )
-
-    if not create:
+    exists = meta_path.is_file() or db_path.is_file() or log_path.is_file()
+    if not exists and not create:
         raise FileNotFoundError(
-            f"No durable workspace at {data_dir}. Run: python -m impact_relay durable seed"
+            f"No durable workspace at {data_dir}.\n"
+            f"  Run:  python -m impact_relay --durable seed --data-dir {data_dir}"
         )
 
-    import copy
-
-    data = copy.deepcopy(load_fixture(fixture_path))
-    data["expenses"] = []
-    data["publish"] = []
-    ledger = build_ledger_from_fixture(data)
-    store = InMemoryWorkflowStore()
+    store = open_sql_store(data_dir)
+    base = _base_ledger(fixture_path)
+    org = base.organization
+    ledger = ledger_log.rehydrate(org, base_ledger=base)
     binding = InMemoryLedgerBinding()
-    binding.register(ledger, TenantWorkspace(ledger.organization, ledger=ledger))
+    binding.register(ledger, TenantWorkspace(org, ledger=ledger))
     runtime = WorkflowRuntime(
         store,
         binding,
         executor_factory=_logging_executor_factory(binding, store, ledger_log),
     )
+    tenant_id = org.id
+    if meta_path.is_file():
+        try:
+            tenant_id = json.loads(meta_path.read_text(encoding="utf-8")).get(
+                "tenant_id", tenant_id
+            )
+        except json.JSONDecodeError:
+            pass
+
     ws = DurableWorkspace(
         data_dir=data_dir,
         store=store,
         binding=binding,
         ledger_log=ledger_log,
         runtime=runtime,
-        tenant_id=ledger.organization.id,
+        tenant_id=tenant_id,
     )
     ws.save()
     return ws
@@ -257,7 +246,15 @@ def durable_seed(
     data_dir = Path(data_dir or DEFAULT_DATA_DIR)
     # Fresh start for seed
     if data_dir.exists():
-        for name in ("workflow_session.pkl", "ledger_commands.jsonl", "meta.json"):
+        for name in (
+            "workflow_session.pkl",
+            "ledger_commands.jsonl",
+            "meta.json",
+            "workflows.db",
+            "workflows.db-journal",
+            "workflows.db-wal",
+            "workflows.db-shm",
+        ):
             p = data_dir / name
             if p.is_file():
                 p.unlink()
@@ -390,11 +387,13 @@ def durable_status(data_dir: Path | str | None = None) -> dict[str, Any]:
     cases = list_operator_cases(ws.store, ws.tenant_id, filters=("all",))
     log_rows = ws.ledger_log.iter_rows(ws.tenant_id)
     ledger = ws.binding.for_tenant(ws.tenant_id)
+    backend = "postgres" if getattr(ws.store, "_is_postgres", False) else "sqlite"
     return {
         "ok": True,
         "data_dir": str(data_dir.resolve()),
         "tenant_id": ws.tenant_id,
-        "durability": "command_log",
+        "workflow_store": backend,
+        "durability": f"{backend}+command_log",
         "ledger_commands": len(log_rows),
         "expenses": {
             e.id: {"state": e.state.value, "external_source_id": e.external_source_id}
