@@ -15,6 +15,7 @@ from impact_relay.storage.template import (
     CANONICAL_PILOT_TENANT_ID,
     CANONICAL_POLICY_SLUG,
 )
+from impact_relay.host import open_hacker_dojo_session, open_host_session
 from impact_relay.domain.types import (
     Allocation,
     AttributionMethod,
@@ -31,6 +32,8 @@ from impact_relay.reconcile import apply_aggregate_reconciliation
 __all__ = [
     "CANONICAL_PILOT_TENANT_ID",
     "CANONICAL_POLICY_SLUG",
+    "open_hacker_dojo_session",
+    "open_host_session",
     "Ledger",
     "Platform",
     "TenantWorkspace",

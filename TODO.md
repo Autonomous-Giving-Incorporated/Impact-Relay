@@ -95,6 +95,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 - [x] Add `policies/tenants/hacker-dojo.v1.0.yaml` (canonical template for other nonprofits).
 - [x] Document Hacker-Dojo app integration (canonical pilot; reusable for other nonprofits).
+- [x] Host adapter façade (`impact_relay.host`) for Hacker-Dojo app + other nonprofit clones.
 - [ ] Confirm authoritative donation and accounting systems.
 - [ ] Map finance roles and approval chain.
 - [ ] Define first restricted hardware/community-class allocation.
