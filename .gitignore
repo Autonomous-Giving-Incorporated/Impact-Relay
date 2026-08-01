@@ -19,3 +19,4 @@ build/
 htmlcov/
 .impact-relay-workflow-session.pkl
 *.workflow-session.pkl
+.impact-relay/
