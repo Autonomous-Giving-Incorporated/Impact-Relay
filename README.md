@@ -2,10 +2,10 @@
 
 Donation fund-use transparency and impact notification platform.
 
-This repository has two related surfaces:
+This repository has related surfaces:
 
 1. **Public tracker (GitHub Pages)** — aggregate campaign progress only (no donor PII).
-2. **HD-IR-001 domain core** — use-of-funds ledger pilot (donation → allocation → approved expense → receipt).
+2. **Domain core (Python)** — HD-IR-001 ledger + Phases 2–6 fixture-backed product capabilities (donor reads, notifications, impact, multi-tenant pilot).
 
 Live public site:
 
@@ -77,27 +77,29 @@ npx --yes \
 
 ---
 
-## HD-IR-001 use-of-funds ledger pilot
+## Domain core (HD-IR-001 + Phases 2–6)
 
-**Status:** domain core for finance-grade use-of-funds receipts (preview/publish artifact only — not live push/email/SMS).
+**Status:** fixture-backed product capabilities. Live provider delivery, native HD app, and human finance cohort sign-off remain deferred.
 
-### What it ships
+### Capability map
 
-A pure-Python domain ledger that implements:
+| Phase | Capability | Module / entry |
+|-------|------------|----------------|
+| 1 / HD-IR-001 | Use-of-funds ledger, attribution, append-only corrections | `domain/ledger.py` |
+| 2 | Donor balances, fund timeline, receipt detail (read-only) | `domain/donor_views.py` |
+| 3 | Consent, preferences, policy dedup, in-process delivery adapters | `domain/notifications.py` |
+| 4 | Programs, funded assets, impact verify/publish IMPACT receipts | `domain/impact.py` |
+| 5–6 | Multi-org isolation + multi-stage HD fixture pilot | `domain/tenant.py`, `pilot.run_all_phases_pilot` |
 
-```text
-donation import → allocation assignment → expense import/classification
-  → finance approval / reconciliation → use-of-funds receipt
-```
-
-Hard invariants:
+### Money invariants (regression bar)
 
 - Donation allocations never exceed the cleared donation amount
 - Approved expense allocations sum to the expense amount
 - Restricted allocation remaining balance cannot go negative on approval
 - Verified use-of-funds receipts only from `APPROVED` or `RECONCILED` expenses
-- Attribution method required (no phantom one-to-one linkage)
-- Corrections are append-only (`reverse_expense` / `supersede_expense`); prior receipts are never rewritten
+- Attribution method required; donor attributions cannot exceed donation allocation
+- Single live UOF receipt per donation+expense+allocation
+- Corrections are append-only; prior receipts are never rewritten
 
 ### Setup
 
@@ -115,48 +117,61 @@ pip install -e ".[dev]"
 pytest
 ```
 
-### Pilot entry path
+### Pilot entry paths
+
+**HD-IR-001 (use-of-funds only):**
 
 ```bash
 python -m impact_relay
-# or
-impact-relay-pilot
-# or with explicit fixture
 python -m impact_relay --fixture fixtures/pilot_hd_ir_001.json
 ```
 
-Output is JSON on stdout with `receipts[]` containing allocation name, expenditure figures, verification state, remaining designated balance, attribution method, and receipt id/hash.
+**All phases (UOF → impact → notify → donor read, multi-tenant):**
+
+```bash
+python -m impact_relay --all-phases
+python -m impact_relay --all-phases --fixture fixtures/pilot_all_phases.json
+```
+
+`--all-phases` prints JSON including `primary.use_of_funds_receipts`, `primary.impact_receipts`, `primary.notification_intents`, `primary.notification_deliveries`, and `primary.donor_dashboard_alice`.
 
 Library API:
 
 ```python
-from impact_relay.pilot import run_pilot
+from impact_relay.pilot import run_pilot, run_all_phases_pilot
 
 ledger, receipts = run_pilot()
-print(receipts[0].to_dict())
+platform, payload = run_all_phases_pilot()
 ```
 
 ### Package layout (domain)
 
 ```text
 src/impact_relay/
-  domain/types.py    # entities, states, receipt model
-  domain/ledger.py   # invariants, approval, attribution, receipts, corrections
-  pilot.py           # fixture loader + pilot runner
-  cli.py             # documented CLI entry
+  domain/types.py           # entities, states, receipts, notify models
+  domain/ledger.py          # money ledger + UOF + corrections
+  domain/donor_views.py     # Phase 2 read projections
+  domain/notifications.py   # Phase 3 policy + in-process adapters
+  domain/impact.py          # Phase 4 impact layer
+  domain/tenant.py          # multi-tenant Platform / TenantWorkspace
+  pilot.py                  # fixture loaders + multi-stage runner
+  cli.py                    # documented CLI entry
 fixtures/pilot_hd_ir_001.json
+fixtures/pilot_all_phases.json
 tests/
 docs/pilot-systems-of-record.md
 ```
 
-Fixture systems of record: [docs/pilot-systems-of-record.md](docs/pilot-systems-of-record.md).
+### Fixture vs live
 
-### Non-goals (HD-IR-001)
+| Fixture-backed (shipped) | Live-integration deferred |
+|--------------------------|---------------------------|
+| Normalized donation/expense import | Payment processor / accounting product adapters |
+| In-process push/email/SMS adapters | APNs / FCM / Twilio / SendGrid production |
+| Multi-org isolation in domain | SaaS billing, white-label onboarding |
+| Hacker Dojo fixture pilot path | Native app screens, TestFlight finance sign-off |
 
-- Live push / email / SMS delivery
-- Full donor portal or Hacker Dojo native app
-- Multi-tenant SaaS onboarding
-- Impact-event / class digest layer
+See [docs/pilot-systems-of-record.md](docs/pilot-systems-of-record.md).
 
 ---
 

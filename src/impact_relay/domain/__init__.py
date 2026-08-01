@@ -1,6 +1,7 @@
-"""Pure domain logic for the HD-IR-001 use-of-funds pilot."""
+"""Domain packages: ledger, donor views, impact, notifications, multi-tenant platform."""
 
 from impact_relay.domain.ledger import Ledger
+from impact_relay.domain.tenant import Platform, TenantWorkspace
 from impact_relay.domain.types import (
     Allocation,
     AttributionMethod,
@@ -13,6 +14,8 @@ from impact_relay.domain.types import (
 
 __all__ = [
     "Ledger",
+    "Platform",
+    "TenantWorkspace",
     "Allocation",
     "AttributionMethod",
     "Donation",
