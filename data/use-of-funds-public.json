@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-01",
+  "source": "hd_ir_001_pilot_fixture",
+  "authority": "public_aggregate_only",
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualDonorAttributionAllowed": false,
+    "operatorIdentityAllowed": false
+  },
+  "summary": {
+    "receiptCount": 1,
+    "totalAttributed": "842.17",
+    "currency": "USD"
+  },
+  "receipts": [
+    {
+      "receiptId": "pub_dcbea2dda8a8",
+      "organizationName": "Hacker Dojo",
+      "allocationName": "Community Hardware Fund",
+      "restrictionType": "DONOR_RESTRICTED",
+      "category": "CLASSROOM_HARDWARE",
+      "description": "Soldering stations and safety equipment",
+      "vendor": "Example Vendor LLC",
+      "currency": "USD",
+      "grossAmount": "842.17",
+      "attributedAmount": "842.17",
+      "purchaseDate": "2026-08-18",
+      "verificationState": "RECONCILED",
+      "attributionMethod": "DIRECT_RESTRICTED",
+      "remainingDesignatedBalance": "157.83",
+      "evidenceSummary": "Invoice INV-9001 for soldering stations and safety equipment ($842.17)",
+      "receiptHash": "dcbea2dda8a85f8213fe0bdba7fd649ad4d8c9dd5b77e61a9f411c20ac050d5c",
+      "createdAt": "2026-08-20T12:00:00+00:00",
+      "corrected": false,
+      "correctionKind": null
+    }
+  ]
+}
