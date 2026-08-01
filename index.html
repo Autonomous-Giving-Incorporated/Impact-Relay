@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Impact Relay — public donation progress and impact milestone notifications. Aggregate totals only.">
+  <meta name="robots" content="index,follow">
+  <title>Impact Relay · Donation Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Impact Relay</p>
+      <h1 id="orgName">Donation Tracker</h1>
+      <p id="orgTagline" class="lede">Public aggregate progress and impact notifications.</p>
+    </div>
+    <div class="header-actions">
+      <a id="donateLink" class="button" href="#" target="_blank" rel="noreferrer">Donate</a>
+      <a class="button secondary" href="#notifications">Notifications</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="section hero">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Campaign progress</p>
+          <h2 id="campaignName">Loading…</h2>
+          <p id="campaignMeta" class="note">Fetching public aggregate state.</p>
+        </div>
+        <span id="campaignStatus" class="status-pill">…</span>
+      </div>
+
+      <div class="metric-grid" aria-label="Public donation metrics">
+        <article class="metric-card">
+          <span class="metric-label">Raised (public)</span>
+          <strong id="raisedValue">—</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Committed (public)</span>
+          <strong id="committedValue">—</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Public donor count</span>
+          <strong id="donorCount">—</strong>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Minimum target</span>
+          <strong id="minimumTarget">—</strong>
+        </article>
+      </div>
+
+      <div class="panel progress-panel">
+        <div class="panel-heading">
+          <h3>Minimum campaign progress</h3>
+          <span id="progressPct" class="tag">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressFill" style="width:0%"></div>
+        </div>
+        <p id="progressCaption" class="note">Progress uses public aggregate raised amount only.</p>
+      </div>
+    </section>
+
+    <section class="section" id="milestones">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Impact ladder</p>
+          <h2>Milestones</h2>
+        </div>
+      </div>
+      <div id="milestoneGrid" class="milestone-grid"></div>
+    </section>
+
+    <section class="section" id="notifications">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Relay feed</p>
+          <h2>Impact notifications</h2>
+        </div>
+      </div>
+      <div id="notificationList" class="notification-list"></div>
+    </section>
+
+    <section class="section">
+      <div class="panel privacy-callout">
+        <h2>Privacy boundary</h2>
+        <p id="privacyCopy">
+          This site publishes aggregate campaign totals and milestone notifications only.
+          It must never contain donor names, emails, individual gift amounts, or private notes.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Impact Relay · public aggregate surface</span>
+    <span id="updatedAt">Updated —</span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

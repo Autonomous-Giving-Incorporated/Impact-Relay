@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrimshawlife-ctrl.github.io/Impact-Relay/schemas/impact-state.schema.json",
+  "title": "Impact Relay public state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "authority", "organization", "campaign", "milestones", "notifications", "privacy"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "updatedAt": { "type": "string", "format": "date" },
+    "authority": {
+      "type": "string",
+      "enum": ["public_aggregate_only"]
+    },
+    "organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "tagline", "homepage", "donationUrl", "processor"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "tagline": { "type": "string" },
+        "homepage": { "type": "string", "format": "uri" },
+        "donationUrl": { "type": "string", "format": "uri" },
+        "processor": { "type": "string", "minLength": 1 }
+      }
+    },
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "currency",
+        "minimumTarget",
+        "stretchTarget",
+        "raisedPublic",
+        "committedPublic",
+        "donorCountPublic",
+        "status"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "eventDate": { "type": ["string", "null"], "format": "date" },
+        "currency": { "type": "string", "enum": ["USD"] },
+        "minimumTarget": { "type": "number", "minimum": 0 },
+        "stretchTarget": { "type": "number", "minimum": 0 },
+        "raisedPublic": { "type": "number", "minimum": 0 },
+        "committedPublic": { "type": "number", "minimum": 0 },
+        "donorCountPublic": { "type": "integer", "minimum": 0 },
+        "lastReconciledAt": { "type": ["string", "null"], "format": "date-time" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "awaiting_live_reconciliation",
+            "active",
+            "paused",
+            "completed"
+          ]
+        }
+      }
+    },
+    "milestones": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "threshold", "state", "impact"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "threshold": { "type": "number", "minimum": 0 },
+          "state": { "type": "string", "enum": ["open", "reached", "deferred"] },
+          "impact": { "type": "string" }
+        }
+      }
+    },
+    "notifications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "title", "body", "publishedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "success", "warning", "critical"] },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "publishedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "piiAllowed",
+        "donorNamesAllowed",
+        "individualAmountsAllowed",
+        "contactDataAllowed"
+      ],
+      "properties": {
+        "classification": { "type": "string", "const": "public_aggregate_only" },
+        "piiAllowed": { "type": "boolean", "const": false },
+        "donorNamesAllowed": { "type": "boolean", "const": false },
+        "individualAmountsAllowed": { "type": "boolean", "const": false },
+        "contactDataAllowed": { "type": "boolean", "const": false }
+      }
+    }
+  }
+}

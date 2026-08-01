@@ -1,0 +1,87 @@
+name: Validate and deploy Impact Relay
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate impact state schema
+        run: >-
+          npx --yes --package=ajv-cli@5 --package=ajv-formats@3
+          ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s schemas/impact-state.schema.json
+          -d data/impact-state.json
+      - name: Enforce privacy contract flags
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path('data/impact-state.json').read_text())
+          privacy = state.get('privacy') or {}
+          required_false = [
+              'piiAllowed',
+              'donorNamesAllowed',
+              'individualAmountsAllowed',
+              'contactDataAllowed',
+          ]
+          for key in required_false:
+              if privacy.get(key) is not False:
+                  raise SystemExit(f'privacy.{key} must be false')
+          if privacy.get('classification') != 'public_aggregate_only':
+              raise SystemExit('privacy.classification must be public_aggregate_only')
+          print('privacy contract ok')
+          PY
+      - name: Prohibit sensitive export files
+        shell: bash
+        run: |
+          set -euo pipefail
+          hits=$(find . -type f \
+            \( -iname '*.xlsx' -o -iname '*.csv' -o -iname '*donor*' -o -iname '*member*registry*' \) \
+            -not -path './.git/*' -print || true)
+          if [[ -n "$hits" ]]; then
+            echo "Restricted files detected:"
+            echo "$hits"
+            exit 1
+          fi
+      - name: Verify static entry points
+        run: test -f index.html && test -f styles.css && test -f app.js && test -f data/impact-state.json
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

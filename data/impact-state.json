@@ -1,0 +1,78 @@
+{
+  "$schema": "../schemas/impact-state.schema.json",
+  "version": "1.0.0",
+  "updatedAt": "2026-08-01",
+  "authority": "public_aggregate_only",
+  "organization": {
+    "name": "Hacker Dojo",
+    "tagline": "Keep the room where builders become possible.",
+    "homepage": "https://www.hackerdojo.org/",
+    "donationUrl": "https://www.every.org/hacker-dojo",
+    "processor": "Every.org"
+  },
+  "campaign": {
+    "name": "SupperHappyFundHouse Campaign",
+    "eventDate": "2026-08-21",
+    "currency": "USD",
+    "minimumTarget": 420000,
+    "stretchTarget": 2000000,
+    "raisedPublic": 0,
+    "committedPublic": 0,
+    "donorCountPublic": 0,
+    "lastReconciledAt": null,
+    "status": "awaiting_live_reconciliation"
+  },
+  "milestones": [
+    {
+      "id": "stabilize-ops",
+      "label": "Stabilize operations",
+      "threshold": 420000,
+      "state": "open",
+      "impact": "Keep the lights on and the room open for builders."
+    },
+    {
+      "id": "growth-capacity",
+      "label": "Growth capacity",
+      "threshold": 750000,
+      "state": "open",
+      "impact": "Expand programs and community infrastructure."
+    },
+    {
+      "id": "expansion",
+      "label": "Expansion",
+      "threshold": 1200000,
+      "state": "open",
+      "impact": "Scale space and builder pathways."
+    },
+    {
+      "id": "transformation",
+      "label": "Transformation path",
+      "threshold": 2000000,
+      "state": "open",
+      "impact": "Fund the long-horizon transformation case under board governance."
+    }
+  ],
+  "notifications": [
+    {
+      "id": "relay-online",
+      "severity": "info",
+      "title": "Impact Relay is live",
+      "body": "Public aggregate donation progress and milestone notifications are now published from this repository. No personal donor data is stored here.",
+      "publishedAt": "2026-08-01T14:00:00Z"
+    },
+    {
+      "id": "reconciliation-pending",
+      "severity": "warning",
+      "title": "Live totals await reconciliation",
+      "body": "Raised and committed amounts remain zero until an authorized Every.org export is reconciled into the public aggregate feed.",
+      "publishedAt": "2026-08-01T14:05:00Z"
+    }
+  ],
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualAmountsAllowed": false,
+    "contactDataAllowed": false
+  }
+}
