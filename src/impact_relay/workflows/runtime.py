@@ -507,6 +507,44 @@ class WorkflowRuntime:
     ) -> WorkflowInstance:
         signals = self.store.take_unconsumed_signals(inst.tenant_id, inst.workflow_id)
         wait = inst.context.get("wait") or {}
+        # K13 late APPROVE: after timeout, wait is cleared and wait_expired set
+        if inst.context.get("wait_expired") and not wait:
+            for s in signals:
+                ar = s.approval_receipt()
+                if ar is None:
+                    continue
+                expired = inst.context.get("expired_wait") or {}
+                expired_key = expired.get("command_idempotency_key") or (
+                    (expired.get("frozen_command") or {}).get("idempotency_key")
+                )
+                prior = (inst.wait_descriptor or {}).get(
+                    "prior_command_idempotency_key"
+                )
+                if ar.command_idempotency_key in (
+                    expired_key,
+                    prior,
+                ) or ar.decision == "APPROVE":
+                    # Reject late APPROVE on expired frozen key
+                    return self._commit(
+                        inst,
+                        events=[
+                            WorkflowEventWrite(
+                                event_type=WorkflowEventType.ERROR,
+                                payload={
+                                    "error": "late_approve_after_timeout",
+                                    "key": ar.command_idempotency_key,
+                                },
+                            )
+                        ],
+                        consume=[
+                            (s.signal_id, SignalConsumeResult.REJECTED_INVALID)
+                        ],
+                    )
+            inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+            inst.lease_owner = None
+            inst.lease_expires_at = None
+            return self._commit(inst)
+
         want_key = wait.get("command_idempotency_key") or (
             (wait.get("frozen_command") or {}).get("idempotency_key")
         )
