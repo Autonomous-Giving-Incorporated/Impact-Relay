@@ -94,6 +94,33 @@ EXPENSE_TO_RECEIPT_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = 
     ),
 }
 
+# Scheduled digest workflow (PR-L2): assemble → privacy → optional ack → complete.
+DIGEST_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = {
+    WorkflowState.RECEIVED: frozenset(
+        {
+            WorkflowState.PUBLISHED,
+            WorkflowState.PUBLICATION_PENDING,
+            WorkflowState.BLOCKED,
+        }
+    ),
+    WorkflowState.PUBLICATION_PENDING: frozenset(
+        {
+            WorkflowState.PUBLISHED,
+            WorkflowState.REJECTED,
+            WorkflowState.NEEDS_INFORMATION,
+            WorkflowState.BLOCKED,
+        }
+    ),
+    WorkflowState.PUBLISHED: frozenset({WorkflowState.DELIVERED}),
+    WorkflowState.DELIVERED: frozenset(),
+    WorkflowState.BLOCKED: frozenset(),
+    WorkflowState.REJECTED: frozenset(),
+    WorkflowState.NEEDS_INFORMATION: frozenset(
+        {WorkflowState.RECEIVED, WorkflowState.PUBLICATION_PENDING}
+    ),
+}
+
+
 # Correction workflow (PR-L1): reuse business states; separate transition table.
 CORRECTION_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = {
     WorkflowState.RECEIVED: frozenset(
@@ -185,6 +212,14 @@ def can_correction_transition(current: WorkflowState, nxt: WorkflowState) -> boo
 
 def assert_correction_transition(current: WorkflowState, nxt: WorkflowState) -> None:
     assert_transition(current, nxt, table=CORRECTION_TRANSITIONS)
+
+
+def can_digest_transition(current: WorkflowState, nxt: WorkflowState) -> bool:
+    return can_transition(current, nxt, table=DIGEST_TRANSITIONS)
+
+
+def assert_digest_transition(current: WorkflowState, nxt: WorkflowState) -> None:
+    assert_transition(current, nxt, table=DIGEST_TRANSITIONS)
 
 
 def is_human_gate(state: WorkflowState) -> bool:

@@ -178,6 +178,77 @@ class WorkflowRuntime:
             clear_lease=True,
         )
 
+    def start_scheduled_digest(
+        self,
+        *,
+        tenant_id: str,
+        period_key: str | None = None,
+        events_doc: dict[str, Any] | None = None,
+        events_path: str | None = None,
+        source: str | None = None,
+        require_approval: bool = False,
+        next_run_at: datetime | str | None = None,
+        simulation: bool = False,
+        policy: TenantPolicy | None = None,
+        business_key: str | None = None,
+    ) -> WorkflowInstance:
+        """Start scheduled digest job (PR-L2 skeleton).
+
+        ``next_run_at`` controls when the worker may claim (schedule).
+        Default: claimable immediately.
+        """
+        pol = policy or default_policy(tenant_id)
+        pk = period_key or self.clock.now_iso()[:10]
+        bk = business_key or f"digest:{pk}"
+        now = self.clock.now_iso()
+        if next_run_at is None:
+            nxt = now
+        elif isinstance(next_run_at, datetime):
+            nxt = next_run_at.replace(microsecond=0).isoformat()
+        else:
+            nxt = str(next_run_at)
+        wid = _new_id("wf_dig")
+        ctx_data: dict[str, Any] = {
+            "period_key": pk,
+            "events_doc": events_doc,
+            "events_path": events_path,
+            "source": source,
+            "require_approval": require_approval,
+            "policy": pol.to_dict(),
+            "policy_version": pol.version,
+        }
+        inst = WorkflowInstance(
+            workflow_id=wid,
+            tenant_id=tenant_id,
+            workflow_type=WorkflowType.SCHEDULED_DIGEST,
+            business_key=bk,
+            workflow_state=WorkflowState.RECEIVED,
+            run_status=WorkflowRunStatus.PENDING,
+            context=ctx_data,
+            simulation=simulation,
+            next_run_at=nxt,
+            policy_version=pol.version,
+            created_at=now,
+            updated_at=now,
+        )
+        self.store.create(inst)
+        self.store.append_events(
+            tenant_id,
+            wid,
+            [
+                WorkflowEventWrite(
+                    event_type=WorkflowEventType.CREATED,
+                    payload={
+                        "business_key": bk,
+                        "period_key": pk,
+                        "require_approval": require_approval,
+                        "next_run_at": nxt,
+                    },
+                )
+            ],
+        )
+        return self.store.get(tenant_id, wid)  # type: ignore[return-value]
+
     def start_correction(
         self,
         *,
@@ -265,6 +336,10 @@ class WorkflowRuntime:
         # Correction workflow branch (PR-L1)
         if inst.workflow_type == WorkflowType.CORRECTION:
             return self._advance_correction(inst, executor, ctx, ledger)
+
+        # Scheduled digest branch (PR-L2)
+        if inst.workflow_type == WorkflowType.SCHEDULED_DIGEST:
+            return self._advance_digest(inst, executor, ctx)
 
         # Human gate: need signal or repark
         if inst.workflow_state in HUMAN_GATE_STATES:
@@ -849,6 +924,145 @@ class WorkflowRuntime:
             receipts=[receipt]
             if receipt.status in ("SUCCEEDED", "SIMULATED", "SKIPPED")
             else [],
+            consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
+        )
+
+    def _advance_digest(
+        self,
+        inst: WorkflowInstance,
+        executor: CommandExecutor,
+        ctx: AgentContext,
+    ) -> WorkflowInstance:
+        """Scheduled digest (PR-L2): assemble → privacy → optional ack → complete."""
+        from impact_relay.workflows.scheduled_digest import (
+            step_assemble_and_privacy,
+            step_complete_digest,
+        )
+
+        if inst.run_status in (
+            WorkflowRunStatus.COMPLETED,
+            WorkflowRunStatus.FAILED_TERMINAL,
+            WorkflowRunStatus.DEAD_LETTER,
+            WorkflowRunStatus.CANCELLED,
+        ):
+            return inst
+
+        if inst.workflow_state == WorkflowState.PUBLICATION_PENDING:
+            return self._advance_digest_approval(inst)
+
+        if inst.workflow_state == WorkflowState.RECEIVED:
+            out = step_assemble_and_privacy(
+                events_doc=inst.context.get("events_doc"),
+                events_path=inst.context.get("events_path"),
+                source=inst.context.get("source"),
+                require_approval=bool(inst.context.get("require_approval")),
+                period_key=inst.context.get("period_key"),
+                current=WorkflowState.RECEIVED,
+            )
+            # Fill tenant on frozen ack command
+            wait = (out.context_patch or {}).get("wait")
+            if wait and isinstance(wait.get("frozen_command"), dict):
+                wait["frozen_command"]["tenant_id"] = inst.tenant_id
+            inst.context.update(out.context_patch or {})
+            if wait:
+                inst.context["wait"] = wait
+                inst.wait_descriptor = {
+                    "signal_type": "APPROVAL",
+                    "command_idempotency_key": wait.get("command_idempotency_key"),
+                    "digest_ack": True,
+                }
+            inst.wait_deadline = str(out.wait_deadline) if out.wait_deadline else None
+            inst.workflow_state = out.next_state
+            inst.run_status = out.run_status
+            inst.lease_owner = None
+            inst.lease_expires_at = None
+            if out.run_status == WorkflowRunStatus.PENDING:
+                inst.next_run_at = self.clock.now_iso()
+            return self._commit(inst, events=out.events)
+
+        if inst.workflow_state == WorkflowState.PUBLISHED:
+            out = step_complete_digest(current=WorkflowState.PUBLISHED)
+            inst.workflow_state = out.next_state
+            inst.run_status = out.run_status
+            return self._commit(inst, events=out.events)
+
+        inst.run_status = WorkflowRunStatus.PENDING
+        inst.next_run_at = self.clock.now_iso()
+        return self._commit(inst)
+
+    def _advance_digest_approval(self, inst: WorkflowInstance) -> WorkflowInstance:
+        """Human ack for public digest publish (no money command)."""
+        signals = self.store.take_unconsumed_signals(inst.tenant_id, inst.workflow_id)
+        wait = inst.context.get("wait") or {}
+        want_key = wait.get("command_idempotency_key")
+        matching = []
+        for s in signals:
+            if s.signal_type != SignalType.APPROVAL:
+                continue
+            ar = s.approval_receipt()
+            if ar is None:
+                continue
+            if want_key and ar.command_idempotency_key != want_key:
+                continue
+            matching.append((s, ar))
+
+        if not matching:
+            inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+            inst.lease_owner = None
+            inst.lease_expires_at = None
+            return self._commit(inst)
+
+        signal, approval = matching[0]
+        if approval.approver_id.startswith("agent:"):
+            inst.last_error = "approver_id must be a human operator identity"
+            return self._commit(
+                inst,
+                events=[
+                    WorkflowEventWrite(
+                        event_type=WorkflowEventType.ERROR,
+                        payload={"error": "agent_approver_rejected"},
+                    )
+                ],
+                consume=[(signal.signal_id, SignalConsumeResult.REJECTED_INVALID)],
+            )
+        if approval.decision == "REJECT":
+            inst.workflow_state = WorkflowState.REJECTED
+            inst.run_status = WorkflowRunStatus.FAILED_TERMINAL
+            inst.context.pop("wait", None)
+            return self._commit(
+                inst,
+                consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
+            )
+        if approval.decision != "APPROVE":
+            inst.workflow_state = WorkflowState.NEEDS_INFORMATION
+            inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+            return self._commit(
+                inst,
+                consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
+            )
+
+        # APPROVE — publish path without ledger mutation
+        inst.workflow_state = WorkflowState.PUBLISHED
+        inst.run_status = WorkflowRunStatus.PENDING
+        inst.next_run_at = self.clock.now_iso()
+        inst.context.pop("wait", None)
+        inst.wait_descriptor = None
+        inst.wait_deadline = None
+        inst.context["digest_approved_by"] = approval.approver_id
+        inst.lease_owner = None
+        inst.lease_expires_at = None
+        return self._commit(
+            inst,
+            events=[
+                WorkflowEventWrite(
+                    event_type=WorkflowEventType.APPROVAL,
+                    payload={"decision": "APPROVE", "approver_id": approval.approver_id},
+                ),
+                WorkflowEventWrite(
+                    event_type=WorkflowEventType.STATE_CHANGED,
+                    payload={"to": WorkflowState.PUBLISHED.value},
+                ),
+            ],
             consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
         )
 

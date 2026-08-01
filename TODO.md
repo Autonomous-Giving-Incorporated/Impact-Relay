@@ -37,7 +37,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add human approval pause/resume behavior.
 - [x] Add retry policy and dead-letter state.
 - [x] Add workflow replay / parity tests.
-- [ ] Add scheduled digest workflow.
+- [x] Add scheduled digest workflow (PR-L2 skeleton: assemble → privacy → optional ack).
 - [x] Add correction and retraction workflow (PR-L1 reverse/supersede L3 + workflow).
 - [x] Pilot P1: file ledger command log rehydrate + durable CLI (seed/list/approve/check).
 - [x] Pilot P2: SQL WorkflowStore (SQLite default, Postgres + SKIP LOCKED optional).
