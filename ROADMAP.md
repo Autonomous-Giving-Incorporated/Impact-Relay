@@ -2,29 +2,35 @@
 
 Impact Relay is moving from a fixture-backed transparency prototype to a human-governed donor-impact platform. Milestones are capability gates, not calendar promises.
 
-## Current baseline — v0.5
+## Current baseline — library + pilot host path
 
 Shipped:
 
 - deterministic donation, allocation, expense, attribution, and receipt domain;
-- append-only corrections and receipt lineage;
-- donor read projections;
-- fixture-backed notification and impact services;
-- multi-tenant domain isolation;
+- append-only corrections and receipt lineage (ledger + correction workflows);
+- donor read projections and authenticated donor experience API;
+- program / funded-asset / impact receipt domain;
+- fixture-backed notification adapters and consent/preference model;
+- multi-tenant domain isolation + tenant registry / clone-from-Hacker-Dojo template;
 - privacy-safe public Pages exports;
 - Every.org aggregate and Notion public-evidence bridges;
-- **agent contracts (L0–L3), Privacy Sentinel, simulation executor** (HD-IR-007);
-- **fixture expense → human approval → ledger → UOF vertical slice** (HD-IR-007);
-- live Every.org OBSERVED dry-run validation + operator script.
+- agent contracts (L0–L3), Privacy Sentinel, simulation executor (HD-IR-007);
+- fixture expense → human approval → ledger → UOF vertical slice (HD-IR-007);
+- durable workflow pilot path: memory MVP + SQLite/Postgres store + command log (K11/K17) + worker CLI;
+- storage ports: SQL ledger entities, local FS + S3 object storage, outbox skeleton;
+- RBAC roles, separation of duties, OIDC identity ports, Hacker-Dojo campaign role map;
+- host façade (`impact_relay.host`), finance/donor console APIs, pilot `console_server`;
+- Hacker-Dojo host screens + shadow/live-cohort runbooks (sibling repo);
+- ops docs: threat model, incident response, runbooks, security checklist, findings template.
 
-Deferred:
+Open (ops / production):
 
-- live accounting ingestion;
-- production email, push, and SMS delivery;
-- production multi-tenant DR / observability for workflows (pilot durable path **shipped**: memory MVP + SQLite/Postgres store + command log + worker CLI);
-- authenticated finance console;
-- native Hacker Dojo donor experience;
-- human finance pilot sign-off.
+- live accounting ingestion beyond fixture batch;
+- production email, push, and SMS credentials (adapters exist);
+- production multi-tenant workflow DR / multi-region observability;
+- live OIDC JWT validation in host IdP SDK (library ports + fixture mapper shipped);
+- execute live finance cohort and fill `docs/pilot/FINDINGS.md`;
+- leadership sign-off on language, privacy, and operating runbooks.
 
 ## v0.5 — Agent Framework and Governance
 
@@ -51,14 +57,15 @@ Deferred:
 - [x] Add allocation-classification proposals.
 - [x] Add evidence sufficiency and redaction assessment.
 - [x] Build finance review packets.
-- [x] Add approval / rejection gates via `ApprovalReceipt` (authN UI still deferred).
+- [x] Add approval / rejection gates via `ApprovalReceipt` (live host auth via Supabase bridge; library OIDC ports).
 - [x] Record approval receipts on the run.
 - [x] Add durable retry and blocked-case handling (MVP M1–M6 memory runtime, worker, ops CLI, façade default runtime).
 - [x] Pilot durable path: ledger command log (K17), SQL WorkflowStore (SQLite / Postgres), worker entrypoint + restart runbook.
 - [x] Correction workflow + L3 `reverse_expense` / `supersede_expense` (K15).
 - [x] Scheduled digest workflow skeleton (assemble → privacy → optional ack).
+- [x] Finance console API + pilot HTTP server; host UI in Hacker-Dojo app.
 
-**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture + durable pilot path met; live OIDC and production multi-tenant DR still deferred.**
+**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture + durable pilot + host console path met; production multi-tenant DR still deferred.**
 
 ## v0.7 — Donor Receipt Engine
 
@@ -69,39 +76,43 @@ Deferred:
 - [x] Add donor-readable attribution explanations (`DonorExperienceAPI` / `ATTRIBUTION_EXPLANATIONS`).
 - [x] Add receipt preview and publication approval (agent slice + L3 gates).
 - [x] Add remaining designated-balance projection.
-- [x] Add correction, reversal, and supersession **ledger + workflow** path (communication/UI still deferred).
+- [x] Add correction, reversal, and supersession **ledger + workflow** path.
 - [x] Add evidence-safe donor attachments.
 - [x] Add authenticated donor receipt API (`impact_relay.donor` + optional Principal).
+- [x] Donor console API + host donor timeline/receipt screens (Hacker-Dojo).
 
-**Exit gate:** a donor can see what approved funds were spent on, how attribution was calculated, and any later correction. **Library path met; host UI still in Hacker-Dojo app.**
+**Exit gate:** a donor can see what approved funds were spent on, how attribution was calculated, and any later correction. **Library + host pilot path met; production notification delivery still host credentials.**
 
 ## v0.8 — Program and Impact Engine
 
 **Goal:** connect expenditures to verified program activity and outcomes.
 
-- [ ] Add funded-asset, program, and program-occurrence models.
-- [ ] Link expenses to assets and programs.
-- [ ] Add activity evidence hierarchy.
-- [ ] Add staff verification workflow.
-- [ ] Add canonical impact receipt schema.
-- [ ] Distinguish scheduled, completed, verified, and published activity.
-- [ ] Add cumulative asset-use and program metrics.
-- [ ] Add correction/retraction behavior for invalid impact events.
+- [x] Add funded-asset, program, and program-occurrence models.
+- [x] Link expenses to assets and programs.
+- [x] Add activity evidence hierarchy.
+- [x] Add program-verifier approval command path (role + domain verify flow).
+- [x] Add canonical impact receipt schema.
+- [x] Distinguish scheduled, completed, verified, and published activity (domain states).
+- [x] Add cumulative asset-use and program metrics (donor balances / allocation remaining).
+- [x] Add correction/retraction behavior for invalid impact events.
 
-**Exit gate:** a verified class or program event can produce a linked impact receipt without unsupported causal claims.
+**Exit gate:** a verified class or program event can produce a linked impact receipt without unsupported causal claims. **Domain library met; richer staff verification UI remains host product work.**
 
 ## v0.9 — Hacker Dojo Pilot
 
 **Goal:** operate the first end-to-end deployment with real organizational review.
 
-- [ ] Configure Hacker Dojo tenant policies.
-- [ ] Integrate an authorized donation aggregate or provider feed.
-- [ ] Integrate one accounting/expense source.
-- [ ] Deploy finance review console.
-- [ ] Deploy donor timeline and receipt-detail screens.
-- [ ] Enable email and app push in controlled cohorts.
-- [ ] Complete privacy, security, and finance review.
-- [ ] Run correction and provider-outage exercises.
+- [x] Configure Hacker Dojo tenant policies (`policies/tenants/hacker-dojo.v1.0.yaml`).
+- [x] Document authoritative donation/accounting assumptions and role map.
+- [x] Deploy finance review console API + host screens.
+- [x] Deploy donor timeline and receipt-detail screens.
+- [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
+- [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists).
+- [ ] Integrate one live accounting/expense source (fixture batch only today).
+- [ ] Enable email and app push in controlled cohorts (fixture adapters only).
+- [ ] Complete privacy, security, and finance review with leadership.
+- [ ] Run correction and provider-outage exercises with operators.
+- [ ] Execute live cohort and fill findings template.
 - [ ] Collect donor comprehension and notification-fatigue feedback.
 
 **Exit gate:** Hacker Dojo leadership signs off on financial accuracy, donor language, privacy, and operating runbooks.
@@ -112,11 +123,11 @@ Deferred:
 
 - [ ] Production durable workflow DR / multi-region (pilot local+SQL path already on main).
 - [ ] Production observability, alerting, and audit explorer.
-- [ ] OIDC, RBAC, and separation of duties.
-- [ ] Encrypted evidence storage and retention controls.
+- [ ] Live OIDC JWT validation in host gateway (library ports + RBAC already shipped).
+- [ ] Encrypted evidence storage and retention controls (object ports + SSE option exist).
 - [ ] Production email and push delivery.
-- [ ] Consent and preference center.
-- [ ] SLA/SLO definitions and incident response.
+- [ ] Consent and preference center (model shipped; full UX deferred).
+- [ ] SLA/SLO definitions and incident response (runbooks drafted; SLOs not signed).
 - [ ] External security assessment.
 - [ ] Data export and deletion workflows.
 
@@ -124,11 +135,11 @@ Deferred:
 
 **Goal:** support additional organizations without forking the product.
 
-- [ ] Tenant onboarding and policy packs.
+- [x] Tenant onboarding template clone from Hacker Dojo (`clone_tenant_from_hacker_dojo` / `open_host_session`).
 - [ ] White-label donor presentation.
 - [ ] Provider adapter SDK.
-- [ ] Organization-specific retention, evidence, and notification policies.
-- [ ] Multiple finance roles and approval chains.
+- [ ] Organization-specific retention, evidence, and notification policies (policy pack path exists; self-serve UX deferred).
+- [ ] Multiple finance roles and approval chains (RBAC roles shipped; multi-step chains deferred).
 - [ ] Grant and restricted-fund templates.
 - [ ] Tenant-level export and archival.
 
