@@ -52,6 +52,7 @@ from impact_relay.workflows.ports import (
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
+from impact_relay.workflows.worker import TickResult, WorkerConfig, WorkflowWorker
 from impact_relay.workflows.types import (
     CLAIMABLE_RUN_STATUSES,
     TERMINAL_RUN_STATUSES,
@@ -96,7 +97,9 @@ __all__ = [
     "StepResult",
     "SystemClock",
     "TERMINAL_RUN_STATUSES",
+    "TickResult",
     "UuidIdGenerator",
+    "WorkerConfig",
     "WorkflowConflictError",
     "WorkflowError",
     "WorkflowEvent",
@@ -111,6 +114,7 @@ __all__ = [
     "WorkflowStateError",
     "WorkflowStore",
     "WorkflowType",
+    "WorkflowWorker",
     "assert_transition",
     "build_executable_command",
     "can_transition",

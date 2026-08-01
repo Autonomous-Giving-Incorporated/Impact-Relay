@@ -155,6 +155,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--workflow-worker-ticks",
+        type=int,
+        default=None,
+        help=(
+            "Run in-process workflow worker for N ticks (PR-M4). "
+            "Uses memory store; demo path starts batch then pumps claims."
+        ),
+    )
+    parser.add_argument(
         "--write-impact-state",
         type=Path,
         default=None,
@@ -199,6 +208,65 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     import os
+
+    # --- Workflow worker demo ticks (PR-M4) ---
+    if args.workflow_worker_ticks is not None:
+        import copy
+
+        from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
+        from impact_relay.domain.tenant import TenantWorkspace
+        from impact_relay.pilot import build_ledger_from_fixture, load_fixture
+        from impact_relay.workflows.runtime import WorkflowRuntime
+        from impact_relay.workflows.store_memory import InMemoryWorkflowStore
+        from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
+
+        batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")
+        with batch_path.open(encoding="utf-8") as f:
+            batch = json.load(f)
+        data = copy.deepcopy(load_fixture(args.fixture))
+        data["expenses"] = []
+        data["publish"] = []
+        ledger = build_ledger_from_fixture(data)
+        store = InMemoryWorkflowStore()
+        binding = InMemoryLedgerBinding()
+        binding.register(
+            ledger, TenantWorkspace(ledger.organization, ledger=ledger)
+        )
+        runtime = WorkflowRuntime(store, binding)
+        rows = batch.get("expenses") or []
+        started_ids: list[str] = []
+        for row in rows:
+            inst = runtime.start_expense_to_receipt(
+                tenant_id=ledger.organization.id,
+                expense_row=row,
+                simulation=args.simulate_agents,
+            )
+            started_ids.append(inst.workflow_id)
+        worker = WorkflowWorker(
+            runtime,
+            WorkerConfig(
+                worker_id="cli-worker",
+                poll_interval_seconds=0.0,
+                claim_batch_size=10,
+            ),
+        )
+        ticks = worker.run(max_ticks=max(1, args.workflow_worker_ticks), stop_when_idle=True)
+        summary = {
+            "started_workflows": started_ids,
+            "ticks": [t.to_dict() for t in ticks],
+            "instances": [
+                {
+                    "workflow_id": i.workflow_id,
+                    "workflow_state": i.workflow_state.value,
+                    "run_status": i.run_status.value,
+                    "attempt_count": i.attempt_count,
+                    "last_error": i.last_error,
+                }
+                for i in store.list(ledger.organization.id, limit=100)
+            ],
+        }
+        print(json.dumps(summary, indent=2, default=str))
+        return 0
 
     # --- Dry-run live aggregate validation (C: operator path) ---
     if args.validate_every_org_aggregate is not None:

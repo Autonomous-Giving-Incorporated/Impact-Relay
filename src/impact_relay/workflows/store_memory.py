@@ -10,7 +10,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from impact_relay.agents.types import ExecutionReceipt, to_jsonable, utc_now_iso
+from impact_relay.agents.types import ExecutionReceipt, WorkflowState, utc_now_iso
 from impact_relay.workflows.exceptions import (
     WorkflowConflictError,
     WorkflowNotFoundError,
@@ -27,6 +27,15 @@ from impact_relay.workflows.types import (
     WorkflowRunStatus,
     WorkflowSignal,
     WorkflowType,
+)
+
+# Human-gate states eligible for K13 approval timeout.
+_TIMEOUT_GATE_STATES = frozenset(
+    {
+        WorkflowState.REVIEW_PENDING,
+        WorkflowState.PUBLICATION_PENDING,
+        WorkflowState.NOTIFICATION_PENDING,
+    }
 )
 
 
@@ -353,3 +362,86 @@ class InMemoryWorkflowStore:
                             consumed=True,
                             consume_result=res,
                         )
+
+    def sweep_approval_timeouts(self, now: datetime | None = None) -> list[str]:
+        """K13: overdue WAITING_SIGNAL human gates → NEEDS_INFORMATION.
+
+        Idempotent: only rows with wait_deadline set and not yet timeout_applied_at.
+        Clears wait_deadline so the sweeper never re-fires on the same wait cycle.
+        Moves expired wait into context.expired_wait and clears context.wait
+        so late APPROVE cannot bind the frozen L3 key.
+        Returns list of workflow_ids timed out.
+        """
+        now = now or datetime.now(timezone.utc)
+        now_aware = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+        now_iso = now_aware.replace(microsecond=0).isoformat()
+        timed_out: list[str] = []
+
+        with self._lock:
+            for inst in list(self._instances.values()):
+                if inst.run_status != WorkflowRunStatus.WAITING_SIGNAL:
+                    continue
+                if inst.workflow_state not in _TIMEOUT_GATE_STATES:
+                    continue
+                if not inst.wait_deadline:
+                    continue
+                if inst.timeout_applied_at:
+                    continue  # already swept
+                deadline = _parse_iso(inst.wait_deadline)
+                if deadline is None:
+                    continue
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if deadline >= now_aware:
+                    continue
+
+                prior_wait = dict(inst.context.get("wait") or {})
+                prior_key = (
+                    (inst.wait_descriptor or {}).get("command_idempotency_key")
+                    or prior_wait.get("command_idempotency_key")
+                    or (prior_wait.get("frozen_command") or {}).get("idempotency_key")
+                )
+                prior_proposal = (inst.wait_descriptor or {}).get("proposal_id") or prior_wait.get(
+                    "proposal_id"
+                )
+
+                inst.workflow_state = WorkflowState.NEEDS_INFORMATION
+                inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
+                inst.last_error = "approval_timeout"
+                inst.wait_deadline = None
+                inst.timeout_applied_at = now_iso
+                inst.wait_descriptor = {
+                    "signal_type": "RESUBMIT",
+                    "reason": "approval_timeout",
+                    "prior_command_idempotency_key": prior_key,
+                    "prior_proposal_id": prior_proposal,
+                }
+                # Clear active wait so late APPROVE cannot match frozen key
+                ctx = dict(inst.context)
+                if "wait" in ctx:
+                    ctx["expired_wait"] = ctx.pop("wait")
+                ctx["wait_expired"] = True
+                inst.context = ctx
+                inst.touch(now_iso)
+
+                # One APPROVAL_TIMEOUT event
+                store = self._events.setdefault(inst.workflow_id, [])
+                next_seq = (store[-1].seq + 1) if store else (inst.event_seq + 1)
+                inst.event_seq = next_seq
+                store.append(
+                    WorkflowEvent(
+                        event_id=f"evt_{inst.workflow_id}_{inst.event_seq}",
+                        workflow_id=inst.workflow_id,
+                        tenant_id=inst.tenant_id,
+                        seq=inst.event_seq,
+                        event_type=WorkflowEventType.APPROVAL_TIMEOUT,
+                        payload={
+                            "reason": "approval_timeout",
+                            "prior_command_idempotency_key": prior_key,
+                        },
+                        at=now_iso,
+                    )
+                )
+                timed_out.append(inst.workflow_id)
+
+        return timed_out
