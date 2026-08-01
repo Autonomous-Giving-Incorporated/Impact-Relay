@@ -104,8 +104,9 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Donor timeline/receipt **API** (`DonorConsole` + donor routes); host UI pages in Hacker-Dojo app.
 - [x] Run synthetic dry run (host session + `--all-phases`; see pilot doc).
 - [x] Finance-controlled shadow mode **runbook** (Hacker-Dojo `docs/IMPACT-RELAY-SHADOW.md` + host role headers).
-- [ ] Run limited live cohort (ops process).
-- [ ] Document pilot findings and approval decision (ops process).
+- [x] Limited live cohort **runbook** (Hacker-Dojo `docs/IMPACT-RELAY-LIVE-COHORT.md`).
+- [x] Pilot findings template (`docs/pilot/FINDINGS.md`) — fill during ops sessions.
+- [ ] Execute live cohort + fill findings (ops process — not automated).
 
 ## P2 — Operations and security
 
