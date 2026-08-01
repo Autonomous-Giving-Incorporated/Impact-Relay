@@ -53,9 +53,17 @@ python -m impact_relay --all-phases  # multi-stage pilot with donor dashboard
 
 ## Shadow / live cohort
 
-- **Shadow:** run durable + donor API against copy of aggregates; no donor notifications (`deliver=False`).
-- **Live cohort:** enable fixture→email only after consent records; start with staff donors.
+- **Shadow:** see Hacker-Dojo `docs/IMPACT-RELAY-SHADOW.md` — dedicated data-dir, finance UI + donor UI, `deliver=False` only.
+- **Live cohort:** enable fixture→email only after consent records; start with staff donors; require Supabase MFA for privileged roles.
+
+### Shadow exit criteria (copy from host runbook)
+
+- [ ] Seed + approve via `finance-impact.html` with campaign_lead/director
+- [ ] data_steward cannot approve
+- [ ] Donor dashboard for fixture donor without CRM in git
+- [ ] Rehydrate check green; no Pages publish from shadow dir
 
 ## Findings
 
 _Record sign-off here when pilot completes._
+

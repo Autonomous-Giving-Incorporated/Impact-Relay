@@ -22,6 +22,11 @@ from impact_relay.auth.rbac import (
     assert_separation_of_duties,
     has_permission,
 )
+from impact_relay.auth.role_map import (
+    HACKER_DOJO_CAMPAIGN_ROLE_MAP,
+    principal_from_host_headers,
+    roles_for_campaign_role,
+)
 from impact_relay.auth.roles import (
     Role,
     default_role_permissions,
@@ -31,6 +36,7 @@ from impact_relay.auth.roles import (
 __all__ = [
     "AuthorizationError",
     "FixtureOidcMapper",
+    "HACKER_DOJO_CAMPAIGN_ROLE_MAP",
     "OidcClaims",
     "OidcIdentityProvider",
     "Permission",
@@ -43,4 +49,6 @@ __all__ = [
     "permissions_for_roles",
     "principal_from_claims",
     "principal_from_fixture",
+    "principal_from_host_headers",
+    "roles_for_campaign_role",
 ]
