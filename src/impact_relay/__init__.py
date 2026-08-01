@@ -3,10 +3,12 @@
 HD-IR-001: use-of-funds ledger pilot
 HD-IR-002: privacy-safe public export for GitHub Pages
 HD-IR-003: impact digests + aggregate reconciliation for Pages
+HD-IR-004: domain digests + Every.org aggregate adapter
 Phases 2–6: donor reads, notifications, impact, multi-tenant fixture pilot
 """
 
-from impact_relay.digest import build_public_digests
+from impact_relay.digest import build_public_digests, digests_from_workspace
+from impact_relay.every_org import every_org_to_reconcile_aggregate
 from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.tenant import Platform, TenantWorkspace
 from impact_relay.domain.types import (
@@ -38,7 +40,9 @@ __all__ = [
     "build_public_export",
     "receipt_to_public",
     "build_public_digests",
+    "digests_from_workspace",
     "apply_aggregate_reconciliation",
+    "every_org_to_reconcile_aggregate",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
