@@ -6,13 +6,13 @@ Agents must not import ledger mutation APIs except through LedgerCommandExecutor
 
 from impact_relay.agents.authority import AuthorityError, requires_human_approval
 from impact_relay.agents.base import AgentContext, CommandExecutor, build_run_receipt
+from impact_relay.agents.executor import LedgerCommandExecutor
 from impact_relay.agents.expense_workflow import (
     AllocationClassifierAgent,
     EvidenceValidatorAgent,
     ExpenseIntakeAgent,
     FinanceReviewAgent,
     FinanceReviewPacket,
-    LedgerCommandExecutor,
     NormalizedExpenseImport,
     run_expense_approval_slice,
 )

@@ -4,6 +4,16 @@ PR-M1: types, ports, exception taxonomy.
 Later PRs: memory store, runtime, worker, postgres.
 """
 
+from impact_relay.workflows.expense_to_receipt import (
+    HandlerBundle,
+    StepOutcome,
+    freeze_command,
+    step_classify,
+    step_compose_send,
+    step_evidence,
+    step_intake,
+    step_review,
+)
 from impact_relay.workflows.exceptions import (
     ClassifiedError,
     ErrorClass,
@@ -14,6 +24,15 @@ from impact_relay.workflows.exceptions import (
     classify_error,
     is_retryable,
     is_terminal,
+)
+from impact_relay.workflows.machine import (
+    DEFAULT_RUN_STATUS,
+    EXPENSE_TO_RECEIPT_TRANSITIONS,
+    HUMAN_GATE_STATES,
+    assert_transition,
+    can_transition,
+    default_run_status,
+    is_human_gate,
 )
 from impact_relay.workflows.ports import (
     Clock,
@@ -49,15 +68,20 @@ __all__ = [
     "CLAIMABLE_RUN_STATUSES",
     "ClassifiedError",
     "Clock",
+    "DEFAULT_RUN_STATUS",
+    "EXPENSE_TO_RECEIPT_TRANSITIONS",
     "ErrorClass",
     "ExecutableCommand",
     "ExecutorFactory",
     "FrozenProposedCommand",
+    "HUMAN_GATE_STATES",
+    "HandlerBundle",
     "IdGenerator",
     "LedgerBinding",
     "RetryPolicy",
     "SignalConsumeResult",
     "SignalType",
+    "StepOutcome",
     "StepResult",
     "SystemClock",
     "TERMINAL_RUN_STATUSES",
@@ -75,7 +99,17 @@ __all__ = [
     "WorkflowStateError",
     "WorkflowStore",
     "WorkflowType",
+    "assert_transition",
+    "can_transition",
     "classify_error",
+    "default_run_status",
+    "freeze_command",
+    "is_human_gate",
     "is_retryable",
     "is_terminal",
+    "step_classify",
+    "step_compose_send",
+    "step_evidence",
+    "step_intake",
+    "step_review",
 ]
