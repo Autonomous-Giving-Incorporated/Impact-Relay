@@ -103,7 +103,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Finance review console **API** (`FinanceConsole` + `console_server`); host UI pages in Hacker-Dojo app.
 - [x] Donor timeline/receipt **API** (`DonorConsole` + donor routes); host UI pages in Hacker-Dojo app.
 - [x] Run synthetic dry run (host session + `--all-phases`; see pilot doc).
-- [ ] Run finance-controlled shadow mode (ops process).
+- [x] Finance-controlled shadow mode **runbook** (Hacker-Dojo `docs/IMPACT-RELAY-SHADOW.md` + host role headers).
 - [ ] Run limited live cohort (ops process).
 - [ ] Document pilot findings and approval decision (ops process).
 

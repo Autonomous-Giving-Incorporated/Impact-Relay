@@ -17,9 +17,58 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from impact_relay.auth.role_map import principal_from_host_headers
 from impact_relay.host.console import open_donor_console, open_finance_console
 from impact_relay.host.hacker_dojo import finance_approver_fixture
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
+
+
+def resolve_principal_from_request(handler: BaseHTTPRequestHandler, tenant_id: str):
+    """Resolve Principal from Authorization + optional host role headers.
+
+    Order:
+    1. X-Impact-Email + X-HD-Campaign-Role (or X-Impact-Roles) — Supabase host bridge
+    2. Bearer fixture email / email:user@x — pilot FixtureOidcMapper
+    3. None
+    """
+    email_hdr = (handler.headers.get("X-Impact-Email") or "").strip()
+    campaign_role = (handler.headers.get("X-HD-Campaign-Role") or "").strip()
+    roles_hdr = (handler.headers.get("X-Impact-Roles") or "").strip()
+    subject = (handler.headers.get("X-Impact-Subject") or "").strip() or None
+    display = (handler.headers.get("X-Impact-Display-Name") or "").strip()
+
+    auth = (handler.headers.get("Authorization") or "").replace("Bearer ", "").strip()
+
+    if email_hdr and (campaign_role or roles_hdr):
+        try:
+            impact_roles = (
+                [r.strip() for r in roles_hdr.split(",") if r.strip()]
+                if roles_hdr
+                else None
+            )
+            return principal_from_host_headers(
+                email=email_hdr,
+                campaign_role=campaign_role or None,
+                subject=subject or (f"supabase:{email_hdr}" if email_hdr else None),
+                tenant_id=tenant_id,
+                display_name=display,
+                impact_roles=impact_roles,
+            )
+        except ValueError:
+            pass
+
+    if auth:
+        try:
+            from impact_relay.auth.oidc import hacker_dojo_fixture_oidc
+
+            return hacker_dojo_fixture_oidc().principal_for_token(auth)
+        except Exception:  # noqa: BLE001
+            if "@" in auth and not campaign_role:
+                try:
+                    return finance_approver_fixture(auth if "@" in auth else None)
+                except Exception:  # noqa: BLE001
+                    return None
+    return None
 
 
 def _json_response(handler: BaseHTTPRequestHandler, code: int, body: Any) -> None:
@@ -49,25 +98,21 @@ def make_handler(data_dir: Path, tenant_id: str):
             self.end_headers()
 
         def _principal(self):
-            # Authorization: Bearer email:user@x or fixture email
-            auth = self.headers.get("Authorization") or ""
-            if not auth:
-                return None
-            token = auth.replace("Bearer ", "").strip()
-            try:
-                from impact_relay.auth.oidc import hacker_dojo_fixture_oidc
-
-                return hacker_dojo_fixture_oidc().principal_for_token(token)
-            except Exception:  # noqa: BLE001
-                return finance_approver_fixture()
+            return resolve_principal_from_request(self, tenant_id)
 
         def _finance(self):
             p = self._principal()
+            # Production host mode: require principal when role headers present
+            require = bool(
+                self.headers.get("X-HD-Campaign-Role")
+                or self.headers.get("X-Impact-Roles")
+                or self.headers.get("X-Impact-Email")
+            )
             return open_finance_console(
                 data_dir,
                 tenant_id=tenant_id,
                 principal=p,
-                require_principal_for_approve=bool(p),
+                require_principal_for_approve=require,
             )
 
         def do_GET(self) -> None:  # noqa: N802

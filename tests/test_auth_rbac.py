@@ -136,6 +136,39 @@ def test_host_require_principal_for_approve(tmp_path: Path) -> None:
     assert ok["ok"] is True
 
 
+def test_hacker_dojo_campaign_role_map() -> None:
+    from impact_relay.auth.role_map import (
+        principal_from_host_headers,
+        roles_for_campaign_role,
+    )
+
+    assert Role.FINANCE_APPROVER in roles_for_campaign_role("director")
+    assert Role.FINANCE_REVIEWER in roles_for_campaign_role("data_steward")
+    p = principal_from_host_headers(
+        email="dir@hackersdojo.org",
+        campaign_role="director",
+        subject="supabase-uuid",
+    )
+    assert p.email == "dir@hackersdojo.org"
+    assert has_permission(p, Permission.WORKFLOW_APPROVE_EXPENSE)
+
+
+def test_console_resolves_host_role_headers(tmp_path: Path) -> None:
+    from impact_relay.console_server import resolve_principal_from_request
+
+    class H:
+        headers = {
+            "X-Impact-Email": "lead@hackersdojo.org",
+            "X-HD-Campaign-Role": "campaign_lead",
+            "X-Impact-Subject": "uuid-1",
+            "Authorization": "Bearer ignored-when-headers-set",
+        }
+
+    p = resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID)
+    assert p is not None
+    assert Role.FINANCE_APPROVER in p.roles
+
+
 def test_sod_on_host_approve(tmp_path: Path) -> None:
     session = open_hacker_dojo_session(tmp_path / "hd3")
     session.seed(expense_batch=BATCH)
