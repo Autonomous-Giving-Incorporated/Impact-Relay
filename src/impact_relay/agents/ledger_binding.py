@@ -16,6 +16,12 @@ class InMemoryLedgerBinding:
         self._ledgers: dict[str, Ledger] = {}
         self._workspaces: dict[str, TenantWorkspace] = {}
 
+    def __getstate__(self) -> dict:
+        return dict(self.__dict__)
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+
     def register(self, ledger: Ledger, workspace: TenantWorkspace | None = None) -> None:
         tid = ledger.organization.id
         self._ledgers[tid] = ledger

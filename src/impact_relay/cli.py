@@ -42,6 +42,229 @@ from impact_relay.reconcile import (
 )
 
 
+def _run_workflow_ops(args: argparse.Namespace) -> int:
+    """PR-M5 operator CLI: list / signal / seed / demo."""
+    import json as _json
+
+    from impact_relay.workflows.ops import (
+        approval_from_dict,
+        list_operator_cases,
+        load_ops_session,
+        save_ops_session,
+        seed_session_to_wait,
+        signal_approval_and_pump,
+    )
+    from impact_relay.workflows.runtime import WorkflowRuntime
+
+    op = args.workflow_ops
+    session_path = args.workflow_session or Path(".impact-relay-workflow-session.pkl")
+
+    if op == "seed":
+        batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")
+        with batch_path.open(encoding="utf-8") as f:
+            batch = _json.load(f)
+        runtime, store, binding, tenant_id, ids = seed_session_to_wait(
+            expense_rows=batch.get("expenses") or [],
+            fixture_path=args.fixture,
+            simulation=args.simulate_agents,
+        )
+        save_ops_session(session_path, store, binding, tenant_id=tenant_id)
+        cases = list_operator_cases(
+            store,
+            tenant_id,
+            filters=[x.strip() for x in args.workflow_filter.split(",") if x.strip()],
+        )
+        print(
+            _json.dumps(
+                {
+                    "op": "seed",
+                    "session": str(session_path),
+                    "tenant_id": tenant_id,
+                    "started": ids,
+                    "cases": [c.to_dict() for c in cases],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if op == "list":
+        if not session_path.is_file():
+            print(
+                _json.dumps(
+                    {
+                        "error": "session_not_found",
+                        "hint": "Run --workflow-ops seed first",
+                        "session": str(session_path),
+                    },
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        store, binding, tenant_id = load_ops_session(session_path)
+        cases = list_operator_cases(
+            store,
+            tenant_id,
+            filters=[x.strip() for x in args.workflow_filter.split(",") if x.strip()],
+        )
+        print(
+            _json.dumps(
+                {
+                    "op": "list",
+                    "session": str(session_path),
+                    "tenant_id": tenant_id,
+                    "count": len(cases),
+                    "cases": [c.to_dict() for c in cases],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if op == "signal":
+        if not session_path.is_file():
+            print(
+                _json.dumps({"error": "session_not_found", "session": str(session_path)}),
+                file=sys.stderr,
+            )
+            return 2
+        if not args.workflow_id:
+            print(
+                _json.dumps({"error": "workflow_id_required"}),
+                file=sys.stderr,
+            )
+            return 2
+        store, binding, tenant_id = load_ops_session(session_path)
+        runtime = WorkflowRuntime(store, binding)
+        inst = store.get(tenant_id, args.workflow_id)
+        if inst is None:
+            print(
+                _json.dumps(
+                    {"error": "workflow_not_found", "workflow_id": args.workflow_id}
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        if args.approval_json is not None:
+            data = _json.loads(args.approval_json.read_text(encoding="utf-8"))
+            approval = approval_from_dict(data, tenant_id=tenant_id)
+        else:
+            # Auto-build APPROVE from frozen wait key
+            wait = inst.context.get("wait") or {}
+            frozen = wait.get("frozen_command") or {}
+            key = frozen.get("idempotency_key") or wait.get("command_idempotency_key")
+            if not key:
+                print(
+                    _json.dumps(
+                        {
+                            "error": "no_wait_key",
+                            "hint": "Provide --approval-json or ensure workflow is WAITING_SIGNAL",
+                        }
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
+            if str(args.approver_id).startswith("agent:"):
+                print(
+                    _json.dumps({"error": "approver_must_be_human"}),
+                    file=sys.stderr,
+                )
+                return 2
+            approval = approval_from_dict(
+                {
+                    "tenant_id": tenant_id,
+                    "command_idempotency_key": key,
+                    "decision": "APPROVE",
+                    "approver_id": args.approver_id,
+                    "proposal_id": wait.get("proposal_id") or "operator",
+                },
+                tenant_id=tenant_id,
+            )
+        updated = signal_approval_and_pump(
+            runtime,
+            tenant_id=tenant_id,
+            workflow_id=args.workflow_id,
+            approval=approval,
+        )
+        save_ops_session(session_path, store, binding, tenant_id=tenant_id)
+        print(
+            _json.dumps(
+                {
+                    "op": "signal",
+                    "workflow_id": args.workflow_id,
+                    "workflow_state": updated.workflow_state.value if updated else None,
+                    "run_status": updated.run_status.value if updated else None,
+                    "last_error": updated.last_error if updated else None,
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    if op == "demo":
+        batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")
+        with batch_path.open(encoding="utf-8") as f:
+            batch = _json.load(f)
+        runtime, store, binding, tenant_id, ids = seed_session_to_wait(
+            expense_rows=batch.get("expenses") or [],
+            fixture_path=args.fixture,
+            simulation=args.simulate_agents,
+        )
+        before = list_operator_cases(store, tenant_id, filters=("waiting", "all"))
+        results = []
+        for wid in ids:
+            inst = store.get(tenant_id, wid)
+            if inst is None:
+                continue
+            wait = inst.context.get("wait") or {}
+            frozen = wait.get("frozen_command") or {}
+            key = frozen.get("idempotency_key") or wait.get("command_idempotency_key")
+            if not key:
+                results.append({"workflow_id": wid, "skipped": True, "reason": "no_wait"})
+                continue
+            approval = approval_from_dict(
+                {
+                    "tenant_id": tenant_id,
+                    "command_idempotency_key": key,
+                    "decision": "APPROVE",
+                    "approver_id": args.approver_id,
+                    "proposal_id": wait.get("proposal_id") or "demo",
+                },
+                tenant_id=tenant_id,
+            )
+            updated = signal_approval_and_pump(
+                runtime, tenant_id=tenant_id, workflow_id=wid, approval=approval
+            )
+            results.append(
+                {
+                    "workflow_id": wid,
+                    "workflow_state": updated.workflow_state.value if updated else None,
+                    "run_status": updated.run_status.value if updated else None,
+                }
+            )
+        save_ops_session(session_path, store, binding, tenant_id=tenant_id)
+        after = list_operator_cases(
+            store, tenant_id, filters=("waiting", "blocked", "dead_letter", "all")
+        )
+        print(
+            _json.dumps(
+                {
+                    "op": "demo",
+                    "session": str(session_path),
+                    "before_cases": [c.to_dict() for c in before],
+                    "signal_results": results,
+                    "after_cases": [c.to_dict() for c in after],
+                },
+                indent=2,
+            )
+        )
+        return 0
+
+    print(_json.dumps({"error": f"unknown_ops:{op}"}), file=sys.stderr)
+    return 2
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Impact Relay pilot — UOF, multi-phase fixtures, public Pages exports"
@@ -164,6 +387,42 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--workflow-ops",
+        choices=["list", "signal", "seed", "demo"],
+        default=None,
+        help=(
+            "PR-M5 operator tools: list waiting/blocked/DLQ cases, signal approval, "
+            "seed session to human wait, or full demo (seed+list+approve+pump)."
+        ),
+    )
+    parser.add_argument(
+        "--workflow-session",
+        type=Path,
+        default=None,
+        help="Pickle session path for ops list/signal across CLI invocations",
+    )
+    parser.add_argument(
+        "--workflow-filter",
+        default="waiting,blocked,dead_letter,needs_information,failed",
+        help="Comma filters for --workflow-ops list (or 'all')",
+    )
+    parser.add_argument(
+        "--workflow-id",
+        default=None,
+        help="Workflow id for --workflow-ops signal",
+    )
+    parser.add_argument(
+        "--approval-json",
+        type=Path,
+        default=None,
+        help="ApprovalReceipt JSON for --workflow-ops signal (or auto from wait key in demo)",
+    )
+    parser.add_argument(
+        "--approver-id",
+        default="finance.approver@hackersdojo.example",
+        help="Human approver id for demo/auto signal (never agent:*)",
+    )
+    parser.add_argument(
         "--write-impact-state",
         type=Path,
         default=None,
@@ -208,6 +467,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     import os
+
+    # --- Operator workflow ops (PR-M5) ---
+    if args.workflow_ops is not None:
+        return _run_workflow_ops(args)
 
     # --- Workflow worker demo ticks (PR-M4) ---
     if args.workflow_worker_ticks is not None:

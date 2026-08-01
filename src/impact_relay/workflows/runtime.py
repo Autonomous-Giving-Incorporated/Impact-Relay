@@ -255,12 +255,59 @@ class WorkflowRuntime:
         return inst  # type: ignore[return-value]
 
     def list_blocked(self, tenant_id: str) -> list[WorkflowInstance]:
-        return self.store.list(
-            tenant_id,
-            workflow_state=["BLOCKED", "NEEDS_INFORMATION"],
-        ) + self.store.list(
-            tenant_id,
-            run_status=["DEAD_LETTER", "FAILED_TERMINAL"],
+        """Instances needing operator attention (blocked, DLQ, failed, needs info)."""
+        from impact_relay.workflows.ops import list_blocked as _list_cases
+
+        cases = _list_cases(self.store, tenant_id)
+        out: list[WorkflowInstance] = []
+        for c in cases:
+            inst = self.store.get(tenant_id, c.workflow_id)
+            if inst is not None:
+                out.append(inst)
+        return out
+
+    def list_operator_cases(
+        self, tenant_id: str, *, filters: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        from impact_relay.workflows.ops import list_operator_cases as _list
+
+        return [c.to_dict() for c in _list(self.store, tenant_id, filters=filters)]
+
+    def signal_operator(
+        self,
+        *,
+        tenant_id: str,
+        workflow_id: str,
+        signal_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """Generic operator signal (APPROVAL payload preferred as ApprovalReceipt dict)."""
+        from impact_relay.workflows.ops import approval_from_dict, signal_approval_and_pump
+        from impact_relay.workflows.types import SignalType, WorkflowSignal
+
+        st = signal_type.upper()
+        if st == "APPROVAL" or "command_idempotency_key" in payload:
+            approval = approval_from_dict(payload, tenant_id=tenant_id)
+            signal_approval_and_pump(
+                self, tenant_id=tenant_id, workflow_id=workflow_id, approval=approval
+            )
+            return
+        # Non-approval operator signals: enqueue + wake only
+        sig = WorkflowSignal(
+            signal_id=_new_id("sig"),
+            workflow_id=workflow_id,
+            tenant_id=tenant_id,
+            signal_type=SignalType(st) if st in SignalType.__members__ else SignalType.RESUBMIT,
+            payload=payload,
+            created_at=self.clock.now_iso(),
+        )
+        self.store.enqueue_signal_and_wake(
+            tenant_id=tenant_id,
+            workflow_id=workflow_id,
+            signal=sig,
+            new_run_status=WorkflowRunStatus.PENDING,
+            next_run_at=self.clock.now(),
+            clear_lease=True,
         )
 
     # ------------------------------------------------------------------

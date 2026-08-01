@@ -17,3 +17,5 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+.impact-relay-workflow-session.pkl
+*.workflow-session.pkl
