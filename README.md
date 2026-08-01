@@ -170,6 +170,9 @@ python -m impact_relay --durable approve
 python -m impact_relay --durable check
 python -m impact_relay --durable status
 
+# Synthetic shadow checklist (library path; not live-cohort sign-off)
+python -m impact_relay --shadow-rehearsal --data-dir .impact-relay/shadow-rehearsal
+
 # Validate a live Every.org aggregate without writing (path must not be under fixtures/)
 python -m impact_relay --validate-every-org-aggregate ~/private/every_org_live.json
 ./scripts/apply_live_every_org_aggregate.sh --dry-run ~/private/every_org_live.json

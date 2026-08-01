@@ -106,7 +106,8 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Finance-controlled shadow mode **runbook** (Hacker-Dojo `docs/IMPACT-RELAY-SHADOW.md` + host role headers).
 - [x] Limited live cohort **runbook** (Hacker-Dojo `docs/IMPACT-RELAY-LIVE-COHORT.md`).
 - [x] Pilot findings template (`docs/pilot/FINDINGS.md`) — fill during ops sessions.
-- [ ] Execute live cohort + fill findings (ops process — not automated).
+- [x] Automated synthetic shadow rehearsal (`--shadow-rehearsal` + findings append).
+- [ ] Execute live cohort + fill findings (ops process — human MFA/UI; not fully automated).
 
 ## P2 — Operations and security
 
