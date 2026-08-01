@@ -54,10 +54,17 @@ python -m impact_relay --durable approve --data-dir .impact-relay/hd-pilot
 from pathlib import Path
 from impact_relay.storage import open_storage
 from impact_relay.storage.template import ensure_canonical_hacker_dojo_tenant
+from impact_relay.pilot import run_pilot
 
 store = open_storage(Path(".impact-relay/storage"))
 tenant = ensure_canonical_hacker_dojo_tenant(store)
 assert tenant.tenant_id == "org_hacker_dojo"
+
+# After a pilot / durable approve: persist queryable entity snapshot
+ledger, _ = run_pilot()
+store.ledger.save_ledger(ledger)
+expenses = store.ledger.list_expenses("org_hacker_dojo")
+loaded = store.ledger.load_ledger(tenant_id="org_hacker_dojo")
 ```
 
 ## Onboarding another nonprofit (template pattern)

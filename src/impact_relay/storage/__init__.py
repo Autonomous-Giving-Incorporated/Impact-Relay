@@ -4,6 +4,7 @@ Hacker Dojo (``org_hacker_dojo``) is the canonical pilot tenant and policy
 template for other nonprofits. See ``docs/HACKER-DOJO-INTEGRATION.md``.
 """
 
+from impact_relay.storage.ledger_repo import LedgerEntityRepository
 from impact_relay.storage.objects import LocalObjectStorage
 from impact_relay.storage.ports import (
     ObjectStorage,
@@ -23,6 +24,7 @@ from impact_relay.storage.template import (
 __all__ = [
     "CANONICAL_PILOT_TENANT_ID",
     "CANONICAL_POLICY_SLUG",
+    "LedgerEntityRepository",
     "LocalObjectStorage",
     "ObjectStorage",
     "OutboxEvent",
