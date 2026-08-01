@@ -1,7 +1,7 @@
 """Durable workflow package (v0.6+).
 
-PR-M1: types, ports, exception taxonomy.
-Later PRs: memory store, runtime, worker, postgres.
+PR-M1–M6: types, ports, memory store, runtime, worker, ops, façade.
+Pilot P1–P2: ledger command log + SQL store (SQLite / Postgres).
 """
 
 from impact_relay.workflows.commands import build_executable_command
@@ -52,6 +52,7 @@ from impact_relay.workflows.ports import (
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
+from impact_relay.workflows.store_sql import SqlWorkflowStore, open_sql_store
 from impact_relay.workflows.ops import (
     OperatorCase,
     approval_from_dict,
@@ -100,6 +101,7 @@ __all__ = [
     "InMemoryLedgerBinding",
     "InMemoryWorkflowStore",
     "LedgerBinding",
+    "SqlWorkflowStore",
     "OperatorCase",
     "RetryPolicy",
     "SignalConsumeResult",
@@ -141,6 +143,7 @@ __all__ = [
     "list_blocked",
     "list_operator_cases",
     "load_ops_session",
+    "open_sql_store",
     "run_expense_approval_slice",
     "run_expense_approval_slice_via_runtime",
     "save_ops_session",

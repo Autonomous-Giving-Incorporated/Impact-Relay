@@ -1,10 +1,11 @@
 # Durable pilot — quick start
 
-File-backed durable workflows (pilot P1). **No database required.**
+Easy durable workflows. **Default: SQLite in a local folder — no Docker, no Postgres install.**
 
 ## One-time flow
 
 ```bash
+# optional: pip install -e '.[dev]'
 # 1. Seed a fixture expense and park at human approval
 python -m impact_relay --durable seed
 
@@ -14,12 +15,14 @@ python -m impact_relay --durable list
 # 3. Approve (picks the first waiting workflow)
 python -m impact_relay --durable approve
 
-# 4. Confirm ids survive a “restart” (rehydrate from log)
+# 4. Confirm expense ids survive a “restart” (rehydrate from log)
 python -m impact_relay --durable check
 
-# 5. Status overview
+# 5. Status overview (includes completed workflows)
 python -m impact_relay --durable status
 ```
+
+Or after install: `impact-relay --durable seed` (same as `python -m impact_relay`).
 
 Custom data directory:
 
@@ -34,15 +37,30 @@ python -m impact_relay --durable approve --data-dir ./my-pilot-data --approver-i
 | Path | Purpose |
 |------|---------|
 | `.impact-relay/durable/HOWTO.md` | Copy of these steps |
-| `ledger_commands.jsonl` | Successful money commands (rehydrate source of truth) |
-| `workflow_session.pkl` | Workflow wait/signal state |
-| `meta.json` | Tenant pointer |
+| `workflows.db` | SQLite workflow store (instances, waits, signals, receipts) |
+| `ledger_commands.jsonl` | Successful money commands (K17 rehydrate — stable expense ids) |
+| `meta.json` | Tenant pointer + backend |
+
+## Optional Postgres
+
+Same CLI. Point the store at Postgres with one env var:
+
+```bash
+# docker compose -f docker-compose.postgres.yml up -d
+export IMPACT_RELAY_DATABASE_URL=postgresql://impact:impact@localhost:5432/impact_relay
+pip install 'impact-relay[db]'   # or: pip install 'psycopg[binary]>=3.1'
+python -m impact_relay --durable seed --data-dir ./my-pilot-data
+```
+
+Ledger money log still lives under `--data-dir` (`ledger_commands.jsonl`).
+Workflow rows live in Postgres (`SKIP LOCKED` claim for multi-worker pilots).
 
 ## Rules (trust)
 
 - Approvers must be humans (`agent:*` is rejected).
 - Rehydrate **folds** logged results; it never re-runs mutations with new random ids.
 - Expense ids stay stable across process restarts when you use the same `--data-dir`.
+- Claim never returns pure `WAITING_SIGNAL`. FAILED execution receipts are never stored as skip keys.
 
 ## Help
 

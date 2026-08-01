@@ -39,7 +39,9 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add workflow replay / parity tests.
 - [ ] Add scheduled digest workflow.
 - [ ] Add correction and retraction workflow.
-- [ ] PostgreSQL workflow store + co-durable ledger (pilot P1–P3).
+- [x] Pilot P1: file ledger command log rehydrate + durable CLI (seed/list/approve/check).
+- [x] Pilot P2: SQL WorkflowStore (SQLite default, Postgres + SKIP LOCKED optional).
+- [ ] Pilot P3: multi-process durable worker entrypoint and restart runbook.
 
 ## P1 — Storage and service boundaries
 

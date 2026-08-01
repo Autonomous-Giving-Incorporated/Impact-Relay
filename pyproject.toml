@@ -14,9 +14,11 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+db = ["psycopg[binary]>=3.1"]
 
 [project.scripts]
 impact-relay-pilot = "impact_relay.cli:main"
+impact-relay = "impact_relay.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
