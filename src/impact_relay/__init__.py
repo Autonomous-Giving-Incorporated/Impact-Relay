@@ -11,6 +11,10 @@ from impact_relay.digest import build_public_digests, digests_from_workspace
 from impact_relay.every_org import every_org_to_reconcile_aggregate
 from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.tenant import Platform, TenantWorkspace
+from impact_relay.storage.template import (
+    CANONICAL_PILOT_TENANT_ID,
+    CANONICAL_POLICY_SLUG,
+)
 from impact_relay.domain.types import (
     Allocation,
     AttributionMethod,
@@ -25,6 +29,8 @@ from impact_relay.public_export import build_public_export, receipt_to_public
 from impact_relay.reconcile import apply_aggregate_reconciliation
 
 __all__ = [
+    "CANONICAL_PILOT_TENANT_ID",
+    "CANONICAL_POLICY_SLUG",
     "Ledger",
     "Platform",
     "TenantWorkspace",
