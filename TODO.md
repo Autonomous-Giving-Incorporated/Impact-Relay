@@ -46,11 +46,15 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 ## P1 — Storage and service boundaries
 
-- [ ] Add PostgreSQL persistence design and migrations.
-- [ ] Add repository interfaces for ledger, receipts, evidence, approvals, consent, and workflows.
-- [ ] Add encrypted object storage interface for receipts and invoices.
-- [ ] Add structured event outbox.
-- [ ] Add OIDC identity boundary.
+- [x] Add multi-tenant storage design + SQLite migrate (Postgres DSN ready) — `docs/architecture/STORAGE.md`.
+- [x] Tenant registry repository + Hacker Dojo canonical pilot / nonprofit template clone.
+- [x] SQL `ledger_command_log` (K17 fold) alongside file log.
+- [x] Object storage port (local FS pilot; S3 later) — tenant-scoped keys.
+- [x] Structured event outbox skeleton.
+- [x] Hacker-Dojo integration + template guide — `docs/HACKER-DOJO-INTEGRATION.md`.
+- [ ] Full domain entity SQL repos (donors/expenses/receipts tables) beyond command_log.
+- [ ] Encrypted / S3-compatible object backend.
+- [ ] OIDC identity boundary.
 - [ ] Add RBAC roles: donor, finance reviewer, finance approver, program verifier, communications approver, auditor, tenant admin.
 - [ ] Enforce separation of duties.
 
@@ -88,7 +92,8 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 ## P2 — Hacker Dojo pilot
 
-- [ ] Add `policies/tenants/hacker-dojo.yaml`.
+- [x] Add `policies/tenants/hacker-dojo.v1.0.yaml` (canonical template for other nonprofits).
+- [x] Document Hacker-Dojo app integration (canonical pilot; reusable for other nonprofits).
 - [ ] Confirm authoritative donation and accounting systems.
 - [ ] Map finance roles and approval chain.
 - [ ] Define first restricted hardware/community-class allocation.
