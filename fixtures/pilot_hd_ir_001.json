@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "milestone": "HD-IR-001",
+    "description": "Hacker Dojo Community Hardware Fund pilot — fixture systems of record only",
+    "systems_of_record": {
+      "payment": "fixture://payments/stripe-export-v1",
+      "accounting": "fixture://accounting/quickbooks-export-v1",
+      "crm": "fixture://crm/manual-roster-v1",
+      "note": "Pilot uses normalized fixtures; live processors are out of scope for HD-IR-001"
+    }
+  },
+  "organization": {
+    "id": "org_hacker_dojo",
+    "name": "Hacker Dojo",
+    "policy_version": "v1.0"
+  },
+  "donors": [
+    {
+      "id": "donor_alice",
+      "display_name": "Alice Patron"
+    },
+    {
+      "id": "donor_bob",
+      "display_name": "Bob Benefactor"
+    }
+  ],
+  "allocations": [
+    {
+      "id": "alloc_community_hardware",
+      "name": "Community Hardware Fund",
+      "purpose": "Soldering stations, safety equipment, and classroom tools",
+      "restriction_type": "DONOR_RESTRICTED"
+    }
+  ],
+  "donations": [
+    {
+      "id": "don_1000_alice",
+      "donor_id": "donor_alice",
+      "amount": "1000.00",
+      "currency": "USD",
+      "cleared": true,
+      "external_source_id": "pay_fixture_1001",
+      "received_at": "2026-07-01",
+      "allocations": [
+        {
+          "id": "da_alice_hw",
+          "allocation_id": "alloc_community_hardware",
+          "amount": "1000.00"
+        }
+      ]
+    },
+    {
+      "id": "don_500_bob",
+      "donor_id": "donor_bob",
+      "amount": "500.00",
+      "currency": "USD",
+      "cleared": true,
+      "external_source_id": "pay_fixture_1002",
+      "received_at": "2026-07-05",
+      "allocations": [
+        {
+          "id": "da_bob_hw",
+          "allocation_id": "alloc_community_hardware",
+          "amount": "500.00"
+        }
+      ]
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp_soldering_842",
+      "vendor": "Example Vendor LLC",
+      "amount": "842.17",
+      "currency": "USD",
+      "purchase_date": "2026-08-18",
+      "category": "CLASSROOM_HARDWARE",
+      "description": "Soldering stations and safety equipment",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_9001",
+      "allocation_id": "alloc_community_hardware",
+      "evidence": [
+        {
+          "id": "ev_inv_9001",
+          "kind": "invoice",
+          "summary": "Invoice INV-9001 for soldering stations and safety equipment ($842.17)",
+          "donor_visible": true
+        }
+      ]
+    }
+  ],
+  "publish": [
+    {
+      "donor_id": "donor_alice",
+      "donation_id": "don_1000_alice",
+      "expense_id": "exp_soldering_842",
+      "allocation_id": "alloc_community_hardware",
+      "attribution_method": "DIRECT_RESTRICTED",
+      "attributed_amount": "842.17",
+      "created_at": "2026-08-20T12:00:00+00:00"
+    }
+  ]
+}
