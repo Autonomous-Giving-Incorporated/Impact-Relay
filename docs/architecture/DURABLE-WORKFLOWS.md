@@ -102,7 +102,7 @@ Pain points:
 | K7 | **`WorkflowState` + `WorkflowRunStatus` dual axes** | Business vs scheduler. |
 | K8 | **Simulation is instance-scoped via `executor_factory(instance)`** | No process-global simulation flag; mixed workloads safe. |
 | K9 | **Outbox deferred** | Phase 2 after API consumers. |
-| K10 | **`run_expense_approval_slice` façade** | Default flag `legacy` until parity checklist green; then dedicated flip PR. |
+| K10 | **`run_expense_approval_slice` façade** | Default **`runtime`** after PR-M6 parity; rollback with `WORKFLOW_SLICE_FACADE=legacy`. |
 | K11 | **Durability boundary: orchestration alone ≠ money restart safety** | True cross-process resume of L3 money commands requires co-durable ledger (minimal snapshot/event log or full PG repos). v0.6 memory runtime does not claim process-death money recovery. |
 | K12 | **L3 signal handling is one atomic advance step** | Validate approval + execute (or reject path) + state transition in one step. No durable park on intermediate `APPROVED` waiting for a second claim. |
 | K13 | **Approval timeout = 7 days → `NEEDS_INFORMATION` + alert** | Sweeper moves overdue `WAITING_SIGNAL` rows; not indefinite silent wait. |
@@ -263,7 +263,7 @@ If process dies during local demo: rebuild ledger from fixture (`build_ledger_fr
 | `WORKFLOW_ENGINE` | `memory` \| `postgres` | Store backend |
 | `LEDGER_DURABILITY` | `none` \| `command_log` \| `snapshot` \| `repos` | Must not be `none` if postgres engine + non-sim worker |
 | `WORKFLOW_WORKER_ENABLED` | bool | Claim loop |
-| `WORKFLOW_SLICE_FACADE` | `legacy` \| `runtime` | **Default `legacy`** until parity checklist |
+| `WORKFLOW_SLICE_FACADE` | `legacy` \| `runtime` | **Default `runtime`** (PR-M6); set `legacy` to force linear driver |
 
 Startup guard:
 
@@ -1228,17 +1228,16 @@ Log counters (parseable): `workflow.dead_letter`, `workflow.approval_timeout`, `
 | `WORKFLOW_ENGINE` | `memory` | Store |
 | `LEDGER_DURABILITY` | `none` | K11 |
 | `WORKFLOW_WORKER_ENABLED` | `false` | Claim loop |
-| `WORKFLOW_SLICE_FACADE` | **`legacy`** | Flip only after parity checklist CI job green (dedicated PR) |
+| `WORKFLOW_SLICE_FACADE` | **`runtime`** | Rollback: `export WORKFLOW_SLICE_FACADE=legacy` |
 
-### Parity checklist (required before `facade=runtime` default)
+### Parity checklist (PR-M6 — complete)
 
-- [ ] All `tests/test_expense_approval_slice.py` pass on runtime façade
-- [ ] Replay after each wait state (memory)
-- [ ] Duplicate business_key
-- [ ] Simulation non-mutation
-- [ ] Contradictory → BLOCKED
-- [ ] Signal invalid / agent approver rejected
-- [ ] Import boundary including workflows/
+- [x] All `tests/test_expense_approval_slice.py` pass on runtime façade
+- [x] Parity suite `tests/test_workflow_facade_parity.py` (legacy vs runtime)
+- [x] Simulation non-mutation
+- [x] Contradictory → BLOCKED
+- [x] Signal invalid / agent approver rejected
+- [x] Import boundary including workflows/
 
 ### Rollback
 

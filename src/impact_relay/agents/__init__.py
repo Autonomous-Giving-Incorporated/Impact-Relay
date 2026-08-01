@@ -15,6 +15,7 @@ from impact_relay.agents.expense_workflow import (
     FinanceReviewPacket,
     NormalizedExpenseImport,
     run_expense_approval_slice,
+    run_expense_approval_slice_legacy,
 )
 from impact_relay.agents.notification_composer import (
     EmailPreview,
@@ -64,5 +65,6 @@ __all__ = [
     "compose_email_from_uof",
     "requires_human_approval",
     "run_expense_approval_slice",
+    "run_expense_approval_slice_legacy",
     "scan_public_payload",
 ]

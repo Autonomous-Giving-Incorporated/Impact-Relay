@@ -473,9 +473,45 @@ def run_expense_approval_slice(
     communications_approver_id: str | None = None,
     tenant_policy: TenantPolicy | None = None,
 ) -> ExpenseSliceResult:
-    """Run intake → classify → evidence → review → (optional human approve) → ledger.
+    """Public entry: dispatches via WORKFLOW_SLICE_FACADE (default runtime, PR-M6).
 
-    Linear driver over ``workflows.expense_to_receipt`` step handlers (PR-M2).
+    Set ``WORKFLOW_SLICE_FACADE=legacy`` to force the linear driver.
+    """
+    from impact_relay.workflows.facade import (
+        run_expense_approval_slice as _facade_run_expense_approval_slice,
+    )
+
+    return _facade_run_expense_approval_slice(
+        ledger,
+        expense_rows=expense_rows,
+        human_approver_id=human_approver_id,
+        human_approver_role=human_approver_role,
+        approve=approve,
+        simulation=simulation,
+        publish_specs=publish_specs,
+        evidence_flags=evidence_flags,
+        send_email=send_email,
+        communications_approver_id=communications_approver_id,
+        tenant_policy=tenant_policy,
+    )
+
+
+def run_expense_approval_slice_legacy(
+    ledger: Ledger,
+    *,
+    expense_rows: list[dict[str, Any]],
+    human_approver_id: str,
+    human_approver_role: str = "finance_approver",
+    approve: bool = True,
+    simulation: bool = False,
+    publish_specs: list[dict[str, Any]] | None = None,
+    evidence_flags: dict[str, Any] | None = None,
+    send_email: bool = False,
+    communications_approver_id: str | None = None,
+    tenant_policy: TenantPolicy | None = None,
+) -> ExpenseSliceResult:
+    """Linear driver over step handlers (T0/legacy path).
+
     When ``approve`` is False, stops at REVIEW_PENDING with a packet and L3 proposal.
     When ``simulation`` is True, CommandExecutor never mutates the ledger.
     When ``send_email`` is True (after publish), composes an email preview and

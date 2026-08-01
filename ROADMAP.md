@@ -53,9 +53,9 @@ Deferred:
 - [x] Build finance review packets.
 - [x] Add approval / rejection gates via `ApprovalReceipt` (authN UI still deferred).
 - [x] Record approval receipts on the run.
-- [ ] Add durable retry and blocked-case handling.
+- [x] Add durable retry and blocked-case handling (MVP M1–M6 memory runtime, worker, ops CLI, façade default runtime).
 
-**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture path met; live OIDC still deferred.**
+**Exit gate:** an imported expense can reach ledger approval only through an independently authenticated human decision. **Fixture + memory workflow path met; live OIDC and PG pilot still deferred.**
 
 ## v0.7 — Donor Receipt Engine
 
