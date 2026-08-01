@@ -43,7 +43,7 @@ from impact_relay.reconcile import (
 
 
 def _run_durable(args: argparse.Namespace) -> int:
-    """Pilot P1: file-backed durable seed / list / approve / status / check."""
+    """Pilot P1–P3: durable seed / list / approve / status / check / worker."""
     from impact_relay.workflows.durable import (
         DEFAULT_DATA_DIR,
         HOWTO,
@@ -52,6 +52,7 @@ def _run_durable(args: argparse.Namespace) -> int:
         durable_rehydrate_check,
         durable_seed,
         durable_status,
+        durable_worker,
     )
 
     data_dir = args.data_dir or DEFAULT_DATA_DIR
@@ -87,6 +88,21 @@ def _run_durable(args: argparse.Namespace) -> int:
     if cmd == "check":
         try:
             out = durable_rehydrate_check(data_dir)
+        except FileNotFoundError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+            return 2
+        print(json.dumps(out, indent=2))
+        return 0 if out.get("ok") else 1
+    if cmd == "worker":
+        try:
+            out = durable_worker(
+                data_dir,
+                once=bool(getattr(args, "once", False)),
+                max_ticks=getattr(args, "max_ticks", None),
+                poll_interval=float(getattr(args, "poll_interval", 1.0) or 1.0),
+                worker_id=getattr(args, "worker_id", None),
+                force=bool(getattr(args, "force_worker", False)),
+            )
         except FileNotFoundError as exc:
             print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
             return 2
@@ -442,12 +458,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--durable",
-        choices=["seed", "list", "approve", "status", "check", "help"],
+        choices=["seed", "list", "approve", "status", "check", "worker", "help"],
         default=None,
         help=(
             "Easy durable pilot (SQLite workflows.db + ledger_commands.jsonl; "
             "optional Postgres via IMPACT_RELAY_DATABASE_URL). "
-            "seed → list → approve. Survives restart in --data-dir."
+            "seed → list → approve; worker --once drains PENDING after restart."
         ),
     )
     parser.add_argument(
@@ -455,6 +471,28 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Durable workspace directory (default: .impact-relay/durable)",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="With --durable worker: run until idle then exit (no env flag needed)",
+    )
+    parser.add_argument(
+        "--max-ticks",
+        type=int,
+        default=None,
+        help="With --durable worker: max claim loops",
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=1.0,
+        help="With --durable worker: seconds between polls when continuous",
+    )
+    parser.add_argument(
+        "--force-worker",
+        action="store_true",
+        help="With --durable worker: allow continuous loop without WORKFLOW_WORKER_ENABLED",
     )
     parser.add_argument(
         "--workflow-ops",

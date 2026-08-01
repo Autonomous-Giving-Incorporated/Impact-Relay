@@ -1,16 +1,24 @@
-"""In-process workflow worker (PR-M4).
+"""Workflow worker claim loop (PR-M4 + pilot P3).
 
-Claim loop + retry/DLQ + approval timeout sweeper. No PostgreSQL.
+In-process: tick / run against any WorkflowStore.
+Durable pilot entrypoint: ``python -m impact_relay.workflows.worker``
+or ``python -m impact_relay --durable worker --once``.
+
+Claim + retry/DLQ + approval timeout sweeper. SQL store when data-dir is set.
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import logging
 import random
+import sys
 import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from impact_relay.workflows.exceptions import classify_error
@@ -56,7 +64,7 @@ class TickResult:
 
 
 class WorkflowWorker:
-    """Single-threaded claim-and-advance worker for the memory store."""
+    """Single-threaded claim-and-advance worker (memory or SQL store)."""
 
     def __init__(
         self,
@@ -71,6 +79,7 @@ class WorkflowWorker:
         """One poll: claim batch → advance each → optional timeout sweep."""
         now = now or datetime.now(timezone.utc)
         result = TickResult()
+        t0 = time.perf_counter()
 
         claimed = self.store.claim(
             worker_id=self.config.worker_id,
@@ -98,6 +107,18 @@ class WorkflowWorker:
                     wid,
                 )
 
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "workflow.worker.tick worker_id=%s claimed=%s advanced=%s "
+            "dead_lettered=%s timed_out=%s errors=%s elapsed_ms=%s",
+            self.config.worker_id,
+            result.claimed,
+            result.advanced,
+            result.dead_lettered,
+            result.timed_out,
+            len(result.errors),
+            elapsed_ms,
+        )
         return result
 
     def run(
@@ -204,3 +225,92 @@ class WorkflowWorker:
             reason,
             inst.attempt_count,
         )
+
+
+def _configure_logging(verbose: bool = False) -> None:
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI: ``python -m impact_relay.workflows.worker --data-dir DIR --once``."""
+    parser = argparse.ArgumentParser(
+        prog="python -m impact_relay.workflows.worker",
+        description=(
+            "Durable workflow worker (pilot P3). Opens a durable data-dir, "
+            "rehydrates the ledger command log (K17), then claim/advance."
+        ),
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=None,
+        help="Durable workspace (default: .impact-relay/durable)",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Run until idle (or --max-ticks), then exit (no WORKFLOW_WORKER_ENABLED needed)",
+    )
+    parser.add_argument(
+        "--max-ticks",
+        type=int,
+        default=None,
+        help="Cap number of poll loops (implies finite run)",
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=1.0,
+        help="Seconds between polls when not idle (default 1.0; 0 for tests)",
+    )
+    parser.add_argument(
+        "--worker-id",
+        default=None,
+        help="Lease owner id (default: durable-worker_<random>)",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow continuous loop without WORKFLOW_WORKER_ENABLED=1",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Debug logging",
+    )
+    args = parser.parse_args(argv)
+    _configure_logging(args.verbose)
+
+    from impact_relay.workflows.durable import durable_worker
+
+    try:
+        out = durable_worker(
+            args.data_dir,
+            once=args.once,
+            max_ticks=args.max_ticks,
+            poll_interval=args.poll_interval,
+            worker_id=args.worker_id,
+            force=args.force,
+        )
+    except FileNotFoundError as exc:
+        print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        from impact_relay.workflows.guards import DurabilityGuardError
+
+        if isinstance(exc, DurabilityGuardError):
+            print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
+            return 2
+        raise
+    print(json.dumps(out, indent=2))
+    return 0 if out.get("ok") else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

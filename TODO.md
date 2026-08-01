@@ -41,7 +41,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [ ] Add correction and retraction workflow.
 - [x] Pilot P1: file ledger command log rehydrate + durable CLI (seed/list/approve/check).
 - [x] Pilot P2: SQL WorkflowStore (SQLite default, Postgres + SKIP LOCKED optional).
-- [ ] Pilot P3: multi-process durable worker entrypoint and restart runbook.
+- [x] Pilot P3: durable worker entrypoint (`--durable worker` / `python -m impact_relay.workflows.worker`) + restart runbook + K11 guard.
 
 ## P1 — Storage and service boundaries
 
