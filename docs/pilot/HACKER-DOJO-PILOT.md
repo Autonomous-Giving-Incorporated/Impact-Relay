@@ -65,5 +65,6 @@ python -m impact_relay --all-phases  # multi-stage pilot with donor dashboard
 
 ## Findings
 
-_Record sign-off here when pilot completes._
+Structured log: **[FINDINGS.md](./FINDINGS.md)**  
+Live cohort procedure (host): Hacker-Dojo `docs/IMPACT-RELAY-LIVE-COHORT.md`
 
