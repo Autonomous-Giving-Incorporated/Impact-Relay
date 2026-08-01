@@ -64,16 +64,16 @@ Deferred:
 
 **Goal:** make verified fund use visible to affected donors.
 
-- [ ] Add canonical use-of-funds receipt schema.
-- [ ] Add direct, pro-rata pool, FIFO pool, cohort, and no-individual-attribution policies.
-- [ ] Add donor-readable attribution explanations.
-- [ ] Add receipt preview and publication approval.
-- [ ] Add remaining designated-balance projection.
+- [x] Add canonical use-of-funds receipt schema.
+- [x] Add direct, pro-rata pool, FIFO pool, cohort, and no-individual-attribution policies (domain methods + policy pack).
+- [x] Add donor-readable attribution explanations (`DonorExperienceAPI` / `ATTRIBUTION_EXPLANATIONS`).
+- [x] Add receipt preview and publication approval (agent slice + L3 gates).
+- [x] Add remaining designated-balance projection.
 - [x] Add correction, reversal, and supersession **ledger + workflow** path (communication/UI still deferred).
-- [ ] Add evidence-safe donor attachments.
-- [ ] Add authenticated donor receipt API.
+- [x] Add evidence-safe donor attachments.
+- [x] Add authenticated donor receipt API (`impact_relay.donor` + optional Principal).
 
-**Exit gate:** a donor can see what approved funds were spent on, how attribution was calculated, and any later correction.
+**Exit gate:** a donor can see what approved funds were spent on, how attribution was calculated, and any later correction. **Library path met; host UI still in Hacker-Dojo app.**
 
 ## v0.8 — Program and Impact Engine
 

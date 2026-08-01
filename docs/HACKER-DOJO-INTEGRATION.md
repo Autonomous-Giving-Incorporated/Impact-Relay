@@ -169,8 +169,29 @@ Prefer **library integration tests** that:
 
 Host-only UI tests can mock Impact Relay; money truth tests should call the real package.
 
+## Donor experience API (v0.7)
+
+```python
+from impact_relay.pilot import run_pilot
+from impact_relay.domain.tenant import TenantWorkspace
+from impact_relay.donor import open_donor_api
+
+ledger, receipts = run_pilot()
+api = open_donor_api(TenantWorkspace(ledger.organization, ledger=ledger))
+donor_id = receipts[0].donor_id
+print(api.get_receipt(donor_id, receipts[0].receipt_id))
+print(api.fund_timeline(donor_id))
+print(api.allocation_balances(donor_id))
+api.set_notification_preference(donor_id, channel="EMAIL", enabled=True, topics=["MONEY_USED"])
+```
+
+Or via host session after durable runs: `session.donor_api()`.
+
 ## Related
 
 - `docs/DURABLE-QUICKSTART.md` — operator durable CLI  
 - `docs/architecture/STORAGE.md` — storage ports and schema  
 - `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith boundary  
+- `docs/pilot/HACKER-DOJO-PILOT.md` — pilot process  
+- `docs/ops/` — threat model, incident response, runbooks  
+

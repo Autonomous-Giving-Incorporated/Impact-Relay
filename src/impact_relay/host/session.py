@@ -240,6 +240,24 @@ class HostSession:
         """Advanced: full DurableWorkspace (workflows + binding + storage)."""
         return open_workspace(self.data_dir, create=create)
 
+    def donor_api(self) -> Any:
+        """Donor experience API bound to the in-process workspace for this data-dir.
+
+        Loads ledger from entity snapshot when present, else rehydrates command log.
+        """
+        from impact_relay.donor import open_donor_api
+        from impact_relay.domain.tenant import TenantWorkspace
+
+        ws_store = open_workspace(self.data_dir, create=False)
+        ledger = ws_store.binding.for_tenant(self.tenant_id)
+        # Prefer entity snapshot if available
+        if ws_store.storage is not None:
+            snap = ws_store.storage.ledger.load_ledger(tenant_id=self.tenant_id)
+            if snap is not None:
+                ledger = snap
+        tw = TenantWorkspace(ledger.organization, ledger=ledger)
+        return open_donor_api(tw)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "data_dir": str(self.data_dir.resolve()),

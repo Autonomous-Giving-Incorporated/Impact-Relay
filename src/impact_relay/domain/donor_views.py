@@ -180,18 +180,118 @@ class DonorReadService:
         return out
 
     def get_receipt_detail(self, donor_id: str, receipt_id: str) -> dict[str, Any]:
+        """Full donor-facing UOF (or impact) receipt with explanations + lineage."""
         self._require_donor(donor_id)
         if receipt_id in self.ledger.receipts:
             r = self.ledger.receipts[receipt_id]
             if r.donor_id != donor_id:
                 raise NotFoundError(f"receipt not found: {receipt_id}")
-            return r.to_dict()
+            detail = r.to_dict()
+            detail["attribution_explanation"] = attribution_explanation(
+                r.attribution_method
+            )
+            detail["remaining_designated_balance"] = str(r.remaining_designated_balance)
+            detail["correction_history"] = self.correction_history(donor_id, receipt_id)
+            detail["evidence_attachments"] = self.evidence_safe_attachments(
+                donor_id, receipt_id
+            )
+            detail["balances_for_allocation"] = [
+                b.to_dict()
+                for b in self.allocation_balances(donor_id)
+                if b.allocation_id == r.allocation_id
+            ]
+            return detail
         if receipt_id in self.ws.impact_receipts:
             ir = self.ws.impact_receipts[receipt_id]
             if ir.donor_id != donor_id:
                 raise NotFoundError(f"receipt not found: {receipt_id}")
-            return ir.to_dict()
+            detail = ir.to_dict()
+            detail["attribution_explanation"] = attribution_explanation(
+                ir.attribution_method
+            )
+            detail["correction_history"] = []
+            detail["evidence_attachments"] = []
+            return detail
         raise NotFoundError(f"receipt not found: {receipt_id}")
+
+    def correction_history(self, donor_id: str, receipt_id: str) -> list[dict[str, Any]]:
+        """Chain of correction receipts that correct this receipt (or are prior)."""
+        self._require_donor(donor_id)
+        chain: list[dict[str, Any]] = []
+        # Corrections that point at this receipt
+        for r in self.ledger.receipts.values():
+            if r.donor_id != donor_id:
+                continue
+            if r.corrects_receipt_id == receipt_id or (
+                r.corrected and r.receipt_id == receipt_id
+            ):
+                chain.append(
+                    {
+                        "receipt_id": r.receipt_id,
+                        "correction_kind": r.correction_kind,
+                        "corrects_receipt_id": r.corrects_receipt_id,
+                        "attributed_amount": str(r.attributed_amount),
+                        "created_at": r.created_at,
+                        "verification_state": r.verification_state,
+                        "receipt_hash": r.receipt_hash,
+                    }
+                )
+        # If this is itself a correction, include the prior receipt pointer
+        root = self.ledger.receipts.get(receipt_id)
+        if root and root.corrects_receipt_id:
+            prior = self.ledger.receipts.get(root.corrects_receipt_id)
+            if prior and prior.donor_id == donor_id:
+                chain.insert(
+                    0,
+                    {
+                        "receipt_id": prior.receipt_id,
+                        "correction_kind": None,
+                        "corrects_receipt_id": None,
+                        "attributed_amount": str(prior.attributed_amount),
+                        "created_at": prior.created_at,
+                        "verification_state": prior.verification_state,
+                        "receipt_hash": prior.receipt_hash,
+                        "role": "original",
+                    },
+                )
+        chain.sort(key=lambda d: d.get("created_at") or "")
+        return chain
+
+    def evidence_safe_attachments(
+        self, donor_id: str, receipt_id: str
+    ) -> list[dict[str, Any]]:
+        """Donor-visible evidence refs only — no internal paths or non-visible items."""
+        self._require_donor(donor_id)
+        r = self.ledger.receipts.get(receipt_id)
+        if r is None or r.donor_id != donor_id:
+            return []
+        out: list[dict[str, Any]] = []
+        for ev in self.ledger.evidence.values():
+            if ev.expense_id != r.expenditure_expense_id:
+                continue
+            if not ev.donor_visible:
+                continue
+            out.append(
+                {
+                    "id": ev.id,
+                    "kind": ev.kind,
+                    "summary": ev.summary,
+                    "donor_visible": True,
+                    # Host may resolve object storage key: evidence/{id}
+                    "object_key": f"evidence/{ev.id}",
+                }
+            )
+        if r.evidence_summary and not out:
+            out.append(
+                {
+                    "id": None,
+                    "kind": "summary",
+                    "summary": r.evidence_summary,
+                    "donor_visible": True,
+                    "object_key": None,
+                }
+            )
+        return out
 
     def donor_dashboard(self, donor_id: str) -> dict[str, Any]:
         """Composite Phase 2 read model."""
@@ -203,4 +303,44 @@ class DonorReadService:
             "allocations": [b.to_dict() for b in balances],
             "timeline": [e.to_dict() for e in self.fund_timeline(donor_id)],
             "receipts": self.list_receipts(donor_id),
+            "attribution_methods_explained": ATTRIBUTION_EXPLANATIONS,
         }
+
+
+# Human-readable attribution copy (v0.7 donor experience)
+ATTRIBUTION_EXPLANATIONS: dict[str, str] = {
+    "DIRECT_RESTRICTED": (
+        "Your gift was restricted to this fund and this purchase used that designation "
+        "directly."
+    ),
+    "PRO_RATA_POOL": (
+        "Your gift shared a pool with other donors. The amount shown is your proportional "
+        "share of the pool used for this purchase."
+    ),
+    "FIFO_ALLOCATION": (
+        "Gifts to this fund are used first-in, first-out. This purchase drew from the "
+        "oldest remaining designated balance, including yours as applicable."
+    ),
+    "COHORT_ALLOCATION": (
+        "Your gift was part of a cohort that jointly funded this activity. The amount "
+        "reflects the cohort allocation rules."
+    ),
+    "ASSET_SPONSORSHIP": (
+        "Your gift is linked to a funded asset (equipment or facility). This receipt "
+        "shows use associated with that asset."
+    ),
+    "EXPENSE_BACKED": (
+        "This amount is backed by a verified expense recorded in the organization ledger."
+    ),
+    "MANUAL_APPROVED": (
+        "Finance staff approved a manual attribution under organization policy."
+    ),
+    "NONE": "No individual donor attribution applies to this item.",
+}
+
+
+def attribution_explanation(method: str) -> str:
+    return ATTRIBUTION_EXPLANATIONS.get(
+        method,
+        f"Attributed using method {method} under organization policy.",
+    )
