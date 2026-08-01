@@ -10,13 +10,14 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from impact_relay.storage.command_log import SqlLedgerCommandLog
+from impact_relay.storage.ledger_repo import LedgerEntityRepository
 from impact_relay.storage.objects import LocalObjectStorage
 from impact_relay.storage.outbox import SqlOutboxStore
 from impact_relay.storage.tenants import SqlTenantRepository
 
 
 class StorageBundle:
-    """Opened storage root: tenants + outbox + command log + object dir."""
+    """Opened storage root: tenants + ledger entities + outbox + objects."""
 
     def __init__(
         self,
@@ -33,6 +34,7 @@ class StorageBundle:
         self.tenants = SqlTenantRepository(self._engine)
         self.outbox = SqlOutboxStore(self._engine)
         self.command_log = SqlLedgerCommandLog(self._engine)
+        self.ledger = LedgerEntityRepository(self._engine)
         self.objects = LocalObjectStorage(objects_dir or (self.data_dir / "objects"))
 
     @property
@@ -172,6 +174,25 @@ CREATE INDEX IF NOT EXISTS outbox_unpublished_idx
   ON outbox_events (created_at) WHERE published_at IS NULL;
 CREATE INDEX IF NOT EXISTS outbox_tenant_idx
   ON outbox_events (tenant_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ledger_entity (
+  tenant_id TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  body_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, entity_type, entity_id)
+);
+CREATE INDEX IF NOT EXISTS ledger_entity_type_idx
+  ON ledger_entity (tenant_id, entity_type);
+
+CREATE TABLE IF NOT EXISTS ledger_meta (
+  tenant_id TEXT PRIMARY KEY,
+  organization_json TEXT NOT NULL,
+  expense_receipts_json TEXT NOT NULL DEFAULT '{}',
+  receipt_snapshots_json TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL
+);
 """
 
 _POSTGRES_SCHEMA = """
@@ -214,6 +235,25 @@ CREATE INDEX IF NOT EXISTS outbox_unpublished_idx
   WHERE published_at IS NULL;
 CREATE INDEX IF NOT EXISTS outbox_tenant_idx
   ON outbox_events (tenant_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ledger_entity (
+  tenant_id TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  body_json JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, entity_type, entity_id)
+);
+CREATE INDEX IF NOT EXISTS ledger_entity_type_idx
+  ON ledger_entity (tenant_id, entity_type);
+
+CREATE TABLE IF NOT EXISTS ledger_meta (
+  tenant_id TEXT PRIMARY KEY,
+  organization_json JSONB NOT NULL,
+  expense_receipts_json JSONB NOT NULL DEFAULT '{}',
+  receipt_snapshots_json JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 """
 
 

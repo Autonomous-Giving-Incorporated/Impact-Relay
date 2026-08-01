@@ -43,11 +43,12 @@ Cross-tenant access is a hard error at repository and object-storage boundaries.
 |---|---|---|
 | Tenant registry | SQLite `tenants` table | Postgres DSN |
 | Ledger command log | SQLite `ledger_command_log` **or** existing file `ledger_commands.jsonl` | Postgres |
+| Ledger entities | SQLite `ledger_entity` + `ledger_meta` (donors/expenses/receipts maps) | Postgres |
 | Workflow store | `workflows.db` / Postgres (P2 already) | — |
 | Evidence objects | Local dir `{data_dir}/objects/{tenant_id}/…` | S3-compatible later (same `ObjectStorage` port) |
 | Outbox | SQLite `outbox_events` | Postgres |
 
-Full entity repos (donors, expenses as tables) remain **next** — Option A command_log rehydrate (K17) stays the money durability path until domain tables land.
+**Money durability:** command log (K17 fold) remains the authoritative append-only path for mutations. **Entity repo** is a queryable snapshot for host apps (list expenses/receipts) after pilot/runtime save.
 
 ## Hacker Dojo as template
 

@@ -52,7 +52,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Object storage port (local FS pilot; S3 later) — tenant-scoped keys.
 - [x] Structured event outbox skeleton.
 - [x] Hacker-Dojo integration + template guide — `docs/HACKER-DOJO-INTEGRATION.md`.
-- [ ] Full domain entity SQL repos (donors/expenses/receipts tables) beyond command_log.
+- [x] Ledger entity SQL repo (`ledger_entity` / `ledger_meta`) — save/load + list expenses/receipts for host apps.
 - [ ] Encrypted / S3-compatible object backend.
 - [ ] OIDC identity boundary.
 - [ ] Add RBAC roles: donor, finance reviewer, finance approver, program verifier, communications approver, auditor, tenant admin.
