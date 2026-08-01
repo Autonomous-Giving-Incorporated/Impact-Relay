@@ -140,6 +140,74 @@ function renderUseOfFunds(exportDoc) {
     </article>`).join('') || '<p class="note">No public use-of-funds receipts published yet.</p>';
 }
 
+function renderPublicEvidence(doc) {
+  if (!doc) {
+    text('evidenceContributions', '—');
+    document.getElementById('evidence990').innerHTML =
+      '<p class="note">No public evidence package published yet.</p>';
+    document.getElementById('evidenceHistorical').innerHTML = '';
+    return;
+  }
+  if (doc.privacy?.piiAllowed || doc.privacy?.donorNamesAllowed) {
+    throw new Error('Public evidence privacy contract violation.');
+  }
+
+  text(
+    'evidenceContributions',
+    money.format(Number(doc.summary?.form990ContributionsTotal || 0))
+  );
+  text(
+    'evidenceNote',
+    [
+      doc.sourcePage ? `Source: ${doc.sourcePage}` : null,
+      doc.researchCutoff ? `Research cutoff ${doc.researchCutoff}` : null,
+      doc.campaignTargets?.liveRaisedState
+        ? `Live campaign raised: ${doc.campaignTargets.liveRaisedState}`
+        : null,
+      doc.note || null,
+    ].filter(Boolean).join(' · ')
+  );
+
+  const rows = doc.form990Contributions || [];
+  document.getElementById('evidence990').innerHTML = `
+    <table class="workspace-table">
+      <thead>
+        <tr>
+          <th>FY</th>
+          <th>Contributions</th>
+          <th>Total revenue</th>
+          <th>Net assets</th>
+          <th>Label</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => `
+          <tr>
+            <td>${escapeHtml(r.fiscalYear)}</td>
+            <td>${money.format(Number(r.contributions || 0))}</td>
+            <td>${money.format(Number(r.totalRevenue || 0))}</td>
+            <td>${money.format(Number(r.netAssets || 0))}</td>
+            <td>${escapeHtml(r.claimLabel)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  const historical = doc.historicalCampaigns || [];
+  document.getElementById('evidenceHistorical').innerHTML = historical.map(h => `
+    <article class="digest-card">
+      <div class="meta">
+        <span>${escapeHtml(h.claimLabel)}</span>
+        <span>${escapeHtml(h.id)}</span>
+      </div>
+      <h3>${escapeHtml(h.label)}</h3>
+      <p>${escapeHtml(h.useOfFundsSummary || '')}</p>
+      <div class="uof-facts">
+        <div><span class="metric-label">Raised (approx.)</span><strong>${money.format(Number(h.raisedApproximate || 0))}</strong></div>
+        <div><span class="metric-label">Backers (approx.)</span><strong>${escapeHtml(h.backerCountApproximate ?? '—')}</strong></div>
+      </div>
+    </article>`).join('');
+}
+
 function renderDigests(doc) {
   if (!doc) {
     text('digestAttendance', '—');
@@ -191,6 +259,9 @@ async function boot() {
 
     const digests = await loadJson('data/impact-digests-public.json');
     renderDigests(digests);
+
+    const evidence = await loadJson('data/public-evidence.json');
+    renderPublicEvidence(evidence);
   } catch (error) {
     console.error(error);
     text('campaignName', 'Unable to load impact state');

@@ -8,6 +8,7 @@ This repository has related surfaces:
 2. **Domain core (Python)** — HD-IR-001 ledger + Phases 2–6 fixture-backed product capabilities (donor reads, notifications, impact, multi-tenant pilot).
 3. **HD-IR-003 Pages bridge** — aggregate reconciliation into `impact-state.json` + public digests export.
 4. **HD-IR-004** — domain ImpactService digests + Every.org aggregate adapter + `--publish-pages`.
+5. **HD-IR-005** — Notion Public EvidencePack aggregates (Form 990 + 2012 campaign) on Pages.
 
 Live public site:
 
@@ -226,7 +227,16 @@ python -m impact_relay \
   --write-impact-state data/impact-state.json
 ```
 
-See [docs/HD-IR-003.md](docs/HD-IR-003.md) and [docs/HD-IR-004.md](docs/HD-IR-004.md).
+See [docs/HD-IR-003.md](docs/HD-IR-003.md), [docs/HD-IR-004.md](docs/HD-IR-004.md), and
+[docs/HD-IR-005-notion-public-evidence.md](docs/HD-IR-005-notion-public-evidence.md).
+
+### Notion public evidence
+
+```bash
+python -m impact_relay \
+  --notion-public-evidence fixtures/notion_public_evidence_v1.json \
+  --write-public-evidence data/public-evidence.json
+```
 
 ---
 

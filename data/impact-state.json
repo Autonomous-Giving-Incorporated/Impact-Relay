@@ -14,8 +14,8 @@
     "name": "SupperHappyFundHouse Campaign",
     "eventDate": "2026-08-21",
     "currency": "USD",
-    "minimumTarget": 420000,
-    "stretchTarget": 2000000,
+    "minimumTarget": 420000.0,
+    "stretchTarget": 2000000.0,
     "raisedPublic": 12840.0,
     "committedPublic": 2500.0,
     "donorCountPublic": 37,
@@ -80,6 +80,13 @@
       "title": "Public donation aggregates updated",
       "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: every.org/aggregate:hacker-dojo. Raised $12,840; committed $2,500; public donor count 37.",
       "publishedAt": "2026-08-01T15:00:00Z"
+    },
+    {
+      "id": "notion-public-evidence",
+      "severity": "info",
+      "title": "Notion public evidence baseline loaded",
+      "body": "Notion Public EvidencePack loaded: Form 990 contribution history and 2012 campaign aggregate are OBSERVED; live SupperHappyFundHouse raised remains NOT_COMPUTABLE until authorized processor aggregates arrive.",
+      "publishedAt": "2026-08-01T16:00:00Z"
     }
   ],
   "privacy": {
