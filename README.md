@@ -1,111 +1,229 @@
 # Impact Relay
 
-Donation fund-use transparency and impact notification platform.
+**Donation fund-use transparency and impact notification infrastructure.**
 
-This repository has related surfaces:
+Impact Relay connects a donation to its approved allocation, connects that allocation to actual expenditures, and connects those expenditures to verified programs and outcomes. Donors receive clear, consent-aware receipts explaining both **what their money was used for** and **what that use subsequently enabled**.
 
-1. **Public tracker (GitHub Pages)** — aggregate campaign progress, use-of-funds receipts, and event digests (no donor PII).
-2. **Domain core (Python)** — HD-IR-001 ledger + Phases 2–6 fixture-backed product capabilities (donor reads, notifications, impact, multi-tenant pilot).
-3. **HD-IR-003 Pages bridge** — aggregate reconciliation into `impact-state.json` + public digests export.
-4. **HD-IR-004** — domain ImpactService digests + Every.org aggregate adapter + `--publish-pages`.
-5. **HD-IR-005** — Notion Public EvidencePack aggregates (Form 990 + 2012 campaign) on Pages.
-6. **HD-IR-006** — public IMPACT outcomes (no donor ids) + raised provenance + Every.org runbook.
+> AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-Live public site:
-
-https://scrimshawlife-ctrl.github.io/Impact-Relay/
+[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
 ---
 
-## Public tracker
+## Why Impact Relay
 
-Publishes **aggregate campaign progress only**. It does not store donor names, emails, individual gift amounts, private notes, or contact lists.
+Most donation products stop at payment confirmation. Accounting systems know what was purchased, program systems know what occurred, and communication systems send updates—but donors rarely receive a trustworthy, attributable explanation of the complete chain.
 
-### What it does
+Impact Relay produces two linked artifacts:
 
-- shows public raised / committed / donor-count aggregates
-- tracks funding milestones and impact statements
-- publishes a notification feed for campaign events
-- links to the donation processor (Every.org) without handling card data
-- validates the public data contract in CI before deploy
+1. **Use-of-funds receipt** — what was purchased or paid for, the approved amount, allocation, attribution method, date, vendor, evidence, and remaining designated balance.
+2. **Impact receipt** — what the approved expenditure or funded asset later enabled, such as a verified community class, equipment deployment, or program milestone.
 
-### Repository map (public)
+### Example
 
 ```text
-index.html                         Public tracker UI
-styles.css                         Visual system
-app.js                             Client renderer
-data/impact-state.json             Canonical public aggregate state
-schemas/impact-state.schema.json   JSON Schema contract
-SECURITY.md                        Data boundary
-.github/workflows/                 Validate + GitHub Pages deploy
+$1,000 donation
+→ Community Hardware Fund
+→ $720 robotics-kit purchase approved by finance
+→ donor receives use-of-funds receipt
+→ kits used in a verified community class
+→ donor receives impact receipt
+→ later refund produces a visible correction receipt
 ```
 
-### Local preview
-
-```bash
-python3 -m http.server 8080
-```
-
-Open `http://localhost:8080`.
-
-### Validate public state
-
-```bash
-npx --yes \
-  --package ajv-cli@5 \
-  --package ajv-formats@3 \
-  ajv validate \
-  --spec=draft2020 \
-  -c ajv-formats \
-  -s schemas/impact-state.schema.json \
-  -d data/impact-state.json
-```
-
-### Updating totals
-
-1. Reconcile an authorized donation export outside this repo.
-2. Update only aggregate fields in `data/impact-state.json`.
-3. Never commit donor names, emails, or itemized gifts.
-4. Open a PR; CI must pass schema validation before Pages deploy.
-
-### Privacy rules
-
-| Allowed | Prohibited |
-|---|---|
-| Aggregate raised amount | Donor names |
-| Aggregate committed amount | Emails / phones / addresses |
-| Public donor count | Individual gift amounts |
-| Milestone copy | Private notes / CRM fields |
-| Processor deep-link | Service credentials |
+For pooled funds, Impact Relay explains that a donation **contributed to the fund** supporting an expenditure. It never claims that specific dollars purchased a specific item unless direct restricted attribution is verifiable.
 
 ---
 
-## Domain core (HD-IR-001 + Phases 2–6)
+## Product principles
 
-**Status:** fixture-backed product capabilities. Live provider delivery, native HD app, and human finance cohort sign-off remain deferred.
+- Financial truth is append-only after approval.
+- Donation allocations cannot exceed cleared funds.
+- Restricted allocation balances cannot become negative.
+- Attribution is explicit, versioned, and reproducible.
+- AI may collect evidence and propose actions; it may not approve financial claims.
+- Use-of-funds and impact receipts remain distinct but linked.
+- Published corrections preserve the original receipt and full lineage.
+- Public exports contain no donor PII or individual gift records.
+- Synthetic and fixture data can never be labeled `OBSERVED`.
 
-### Capability map
+See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
-| Phase | Capability | Module / entry |
-|-------|------------|----------------|
-| 1 / HD-IR-001 | Use-of-funds ledger, attribution, append-only corrections | `domain/ledger.py` |
-| 2 | Donor balances, fund timeline, receipt detail (read-only) | `domain/donor_views.py` |
-| 3 | Consent, preferences, policy dedup, in-process delivery adapters | `domain/notifications.py` |
-| 4 | Programs, funded assets, impact verify/publish IMPACT receipts | `domain/impact.py` |
-| 5–6 | Multi-org isolation + multi-stage HD fixture pilot | `domain/tenant.py`, `pilot.run_all_phases_pilot` |
+---
 
-### Money invariants (regression bar)
+## Current maturity
 
-- Donation allocations never exceed the cleared donation amount
-- Approved expense allocations sum to the expense amount
-- Restricted allocation remaining balance cannot go negative on approval
-- Verified use-of-funds receipts only from `APPROVED` or `RECONCILED` expenses
-- Attribution method required; donor attributions cannot exceed donation allocation
-- Single live UOF receipt per donation+expense+allocation
-- Corrections are append-only; prior receipts are never rewritten
+**Version:** `0.4.0`
 
-### Setup
+**Current state:** fixture-backed product capabilities with privacy-safe public projections. Live accounting ingestion, production notification delivery, authenticated finance workflows, and native Hacker Dojo application screens remain pending.
+
+### Shipped capabilities
+
+| Capability | Module / surface |
+|---|---|
+| Donation, allocation, expense, and attribution ledger | `src/impact_relay/domain/ledger.py` |
+| Append-only correction and receipt lineage | `src/impact_relay/domain/ledger.py` |
+| Donor balances, fund timeline, and receipt detail | `src/impact_relay/domain/donor_views.py` |
+| Consent, policy deduplication, and fixture delivery adapters | `src/impact_relay/domain/notifications.py` |
+| Programs, impact events, and impact receipts | `src/impact_relay/domain/impact.py` |
+| Multi-organization domain isolation | `src/impact_relay/domain/tenant.py` |
+| Pilot runners and fixture loaders | `src/impact_relay/pilot.py` |
+| Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
+| Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
+
+### Deferred production capabilities
+
+- live accounting provider adapter;
+- production Every.org donation ingestion;
+- durable workflow runtime;
+- authenticated finance review and approval console;
+- email, push, and SMS provider delivery;
+- Hacker Dojo donor timeline and receipt screens;
+- human finance cohort validation;
+- reusable nonprofit onboarding.
+
+---
+
+## Governed agentic architecture
+
+Agents operate above the deterministic domain. They prepare evidence and proposals; they do not become an alternate ledger.
+
+```text
+Donation and accounting providers
+        │
+        ▼
+Provider adapters
+        │ normalized records
+        ▼
+Agent workflow layer
+        │ proposals, evidence checks, review packets
+        ▼
+Human approval gates
+        │ approved commands
+        ▼
+Deterministic domain services
+        │ ledger events and canonical receipts
+        ▼
+Donor projections and notification adapters
+```
+
+### Initial agent topology
+
+- Orchestrator
+- Donation Intake
+- Expense Intake
+- Allocation Classifier
+- Evidence Validator
+- Finance Review
+- Attribution
+- Use-of-Funds Receipt
+- Asset and Program Linkage
+- Impact Verification
+- Impact Receipt
+- Consent and Preference
+- Notification Composer
+- Delivery
+- Correction and Retraction
+- Privacy Sentinel
+- Audit and Provenance
+
+Consequential actions require independently authenticated human approval. Full contracts and authority rules are defined in [AGENTS.md](AGENTS.md).
+
+---
+
+## First production workflow
+
+The next engineering campaign implements one complete vertical slice:
+
+```text
+fixture or accounting expense
+→ allocation proposal
+→ evidence validation
+→ finance approval
+→ ledger commit
+→ donor attribution
+→ use-of-funds receipt
+→ email preview
+→ independent send approval
+→ fixture delivery receipt
+```
+
+No autonomous impact inference, SMS delivery, generalized onboarding, or multiple accounting providers should be introduced until this slice passes adversarial and finance-review testing.
+
+---
+
+## Money invariants
+
+The existing domain enforces the regression bar:
+
+- donation allocations never exceed the cleared donation amount;
+- approved expense allocations sum to the expense amount;
+- restricted allocation remaining balance cannot go negative on approval;
+- verified use-of-funds receipts originate only from approved or reconciled expenses;
+- an attribution method is required and donor attribution cannot exceed the donation allocation;
+- only one live use-of-funds receipt exists per donation, expense, and allocation tuple;
+- corrections are append-only and prior receipts are never rewritten.
+
+These rules outrank model output, operator convenience, and provider data.
+
+---
+
+## Public tracker and privacy boundary
+
+The GitHub Pages surface publishes aggregate campaign progress, public use-of-funds receipts, public impact outcomes, and event digests. It does not store donor names, emails, phone numbers, addresses, private notes, or individual gift records.
+
+| Allowed publicly | Prohibited publicly |
+|---|---|
+| Aggregate raised and committed amounts | Donor names |
+| Aggregate donor count | Emails, phones, or addresses |
+| Approved public expenditure summaries | Individual gift amounts |
+| Public impact events | Private CRM or finance notes |
+| Campaign milestones and processor deep links | Service credentials or raw invoices |
+
+Canonical aggregate state is stored in `data/impact-state.json` and validated against `schemas/impact-state.schema.json` in CI.
+
+---
+
+## Repository map
+
+```text
+Impact-Relay/
+├── README.md
+├── VISION.md
+├── AGENTS.md
+├── ENGINEERING_PRINCIPLES.md
+├── ROADMAP.md
+├── TODO.md
+├── SECURITY.md
+├── docs/
+│   ├── architecture/
+│   │   └── AGENTIC-SYSTEM.md
+│   ├── HD-IR-003.md
+│   ├── HD-IR-004.md
+│   ├── HD-IR-005-notion-public-evidence.md
+│   ├── HD-IR-006.md
+│   ├── EVERYORG-AGGREGATE-RUNBOOK.md
+│   └── pilot-systems-of-record.md
+├── src/impact_relay/
+│   ├── domain/
+│   ├── public_export.py
+│   ├── pilot.py
+│   └── cli.py
+├── fixtures/
+├── schemas/
+├── data/
+├── tests/
+├── index.html
+├── app.js
+├── styles.css
+└── .github/workflows/
+```
+
+The target agentic repository shape is specified in [docs/architecture/AGENTIC-SYSTEM.md](docs/architecture/AGENTIC-SYSTEM.md).
+
+---
+
+## Setup
 
 Requires Python 3.11+.
 
@@ -113,31 +231,24 @@ Requires Python 3.11+.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-```
-
-### Run tests
-
-```bash
 pytest
 ```
 
-### Pilot entry paths
+## Pilot commands
 
-**HD-IR-001 (use-of-funds only):**
+Use-of-funds pilot:
 
 ```bash
 python -m impact_relay
 python -m impact_relay --fixture fixtures/pilot_hd_ir_001.json
 ```
 
-**All phases (UOF → impact → notify → donor read, multi-tenant):**
+All fixture-backed phases:
 
 ```bash
 python -m impact_relay --all-phases
 python -m impact_relay --all-phases --fixture fixtures/pilot_all_phases.json
 ```
-
-`--all-phases` prints JSON including `primary.use_of_funds_receipts`, `primary.impact_receipts`, `primary.notification_intents`, `primary.notification_deliveries`, and `primary.donor_dashboard_alice`.
 
 Library API:
 
@@ -148,125 +259,63 @@ ledger, receipts = run_pilot()
 platform, payload = run_all_phases_pilot()
 ```
 
-### Package layout (domain)
-
-```text
-src/impact_relay/
-  domain/types.py           # entities, states, receipts, notify models
-  domain/ledger.py          # money ledger + UOF + corrections
-  domain/donor_views.py     # Phase 2 read projections
-  domain/notifications.py   # Phase 3 policy + in-process adapters
-  domain/impact.py          # Phase 4 impact layer
-  domain/tenant.py          # multi-tenant Platform / TenantWorkspace
-  pilot.py                  # fixture loaders + multi-stage runner
-  cli.py                    # documented CLI entry
-fixtures/pilot_hd_ir_001.json
-fixtures/pilot_all_phases.json
-tests/
-docs/pilot-systems-of-record.md
-```
-
-### Fixture vs live
-
-| Fixture-backed (shipped) | Live-integration deferred |
-|--------------------------|---------------------------|
-| Normalized donation/expense import | Payment processor / accounting product adapters |
-| In-process push/email/SMS adapters | APNs / FCM / Twilio / SendGrid production |
-| Multi-org isolation in domain | SaaS billing, white-label onboarding |
-| Hacker Dojo fixture pilot path | Native app screens, TestFlight finance sign-off |
-
-See [docs/pilot-systems-of-record.md](docs/pilot-systems-of-record.md).
-
----
-
-## HD-IR-002 public use-of-funds export
-
-**Status:** privacy-safe Pages export from the pilot ledger.
-
-### What it ships
-
-```text
-pilot ledger receipts
-  → public_export.receipt_to_public (strip donor/operator identity)
-  → data/use-of-funds-public.json
-  → GitHub Pages “Use of funds” section
-```
-
-Commands:
+## Public exports
 
 ```bash
-# Write Pages-safe export from the pilot fixture
+# Privacy-safe public use-of-funds export
 python -m impact_relay --write-public data/use-of-funds-public.json
 
-# Print only the public payload
-python -m impact_relay --public-only
-```
-
-Public export never includes:
-
-- donor ids or display names
-- donation references
-- operator emails / approved_by actors
-
-CI runs the domain suite, regenerates the public export, and fails if the committed file drifts.
-
----
-
-## HD-IR-003 / HD-IR-004 Pages pipelines
-
-```bash
-# One-shot Pages publish (CI default)
+# One-shot public Pages regeneration
 python -m impact_relay --publish-pages
 
-# Domain verified impact events → digests (+ optional fixture merge)
-python -m impact_relay --all-phases --digests-from-domain --merge-fixture-digests \
+# Domain impact events to public digests
+python -m impact_relay --all-phases --digests-from-domain \
+  --merge-fixture-digests \
   --write-digests data/impact-digests-public.json
 
-# Every.org-style aggregate summary → impact-state
+# Every.org-style aggregate summary
 python -m impact_relay \
   --every-org-aggregate fixtures/every_org_aggregate_v1.json \
   --write-impact-state data/impact-state.json
-```
 
-See [docs/HD-IR-003.md](docs/HD-IR-003.md), [docs/HD-IR-004.md](docs/HD-IR-004.md), and
-[docs/HD-IR-005-notion-public-evidence.md](docs/HD-IR-005-notion-public-evidence.md).
-
-### Notion public evidence
-
-```bash
+# Notion public evidence
 python -m impact_relay \
   --notion-public-evidence fixtures/notion_public_evidence_v1.json \
   --write-public-evidence data/public-evidence.json
 ```
 
-### Public IMPACT outcomes + Every.org runbook
+## Applying authorized live aggregates
+
+Published totals remain `raisedSource: pilot_synthetic` and `PILOT` until finance provides an authorized aggregate file.
 
 ```bash
-python -m impact_relay --publish-pages
-# writes data/public-impact.json (event-level outcomes, no donor ids)
-```
-
-Operator guide for live aggregates: [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md) · [docs/HD-IR-006.md](docs/HD-IR-006.md)
-
-### Live raised (OBSERVED) — operator required
-
-Published Pages numbers stay **`raisedSource: pilot_synthetic` / `PILOT`** until finance supplies an authorized aggregate file. Fixtures cannot be labeled OBSERVED.
-
-```bash
-# 1. Copy template, fill authorized totals only (no donor lists)
 cp fixtures/templates/every_org_live_aggregate.template.json ~/private/every_org_live.json
-# edit ~/private/every_org_live.json
-
-# 2. Apply with hard provenance gate
+# edit the private file with authorized aggregate totals only
 ./scripts/apply_live_every_org_aggregate.sh ~/private/every_org_live.json
-# sets raisedSource=processor_aggregate, raisedClaimLabel=OBSERVED
-
-# 3. PR data/impact-state.json after review
 ```
 
-`python -m impact_relay --every-org-aggregate … --require-observed` fails on `fixture://` / pilot sources.
+The hard provenance gate rejects fixture or pilot sources when `--require-observed` is enabled.
 
 ---
+
+## Roadmap
+
+- **v0.5:** agent contracts, authority enforcement, policies, simulation, Privacy Sentinel.
+- **v0.6:** expense ingestion, evidence validation, and human finance review.
+- **v0.7:** canonical donor use-of-funds receipts and correction history.
+- **v0.8:** funded assets, program verification, and impact receipts.
+- **v0.9:** controlled Hacker Dojo pilot.
+- **v1.0:** production Hacker Dojo deployment.
+- **v1.1:** reusable multi-tenant nonprofit platform.
+- **v2.0:** general impact infrastructure.
+
+See [ROADMAP.md](ROADMAP.md) and [TODO.md](TODO.md).
+
+---
+
+## Security and contribution
+
+Review [SECURITY.md](SECURITY.md) before changing donor, evidence, provider, or public-export boundaries. Agent, policy, attribution, evidence, receipt-schema, and notification-gate changes require independent review.
 
 ## License
 
