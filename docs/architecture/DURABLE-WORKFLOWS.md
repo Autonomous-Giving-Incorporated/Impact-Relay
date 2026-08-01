@@ -5,9 +5,9 @@
 | **Document** | Durable Workflow Runtime (expense → receipt → notify) |
 | **Author** | Impact Relay maintainers (design decisions owned by engineering lead + finance stakeholder for human-timeout policy) |
 | **Date** | 2026-08-01 |
-| **Status** | Draft (rev 3 — pilot rehydrate + polish) |
-| **Target version** | **v0.6 MVP** (memory runtime, pause/resume, retry/DLQ, blocked cases) → **Pilot** (PG workflow + durable ledger co-req) → **v1.0** (hardening, observability stack) |
-| **Related** | HD-IR-007, `docs/architecture/AGENTIC-SYSTEM.md`, `AGENTS.md`, `TODO.md` P1 Durable workflows |
+| **Status** | **Implemented** (rev 4 — MVP M1–M6 + pilot P1–P3 + later L1 correction + L2 digest skeleton on main) |
+| **Target version** | **v0.6 MVP** ✓ → **Pilot** ✓ (SQLite/Postgres store + command log + worker) → **v1.0** (hardening, observability stack) |
+| **Related** | HD-IR-007, `docs/architecture/AGENTIC-SYSTEM.md`, `docs/DURABLE-QUICKSTART.md`, `AGENTS.md`, `TODO.md` P1 Durable workflows |
 
 ---
 
@@ -1424,20 +1424,20 @@ Split into **MVP (v0.6)**, **Pilot**, and **Later**. Each PR independently revie
 
 ### Later track
 
-#### PR-L1 — Correction workflow + L3 command types
+#### PR-L1 — Correction workflow + L3 command types — **done**
 
 - **Title:** `workflows: correction workflow; L3 reverse_expense/supersede_expense`
 - **Files:** `types.py` L3 set, `executor.py` dispatch, `corrections.py`, tests vs `test_receipts_and_corrections.py`
 - **Dependencies:** PR-M3 minimum; ideally PR-M5 for operator signal
-- **Description:** K15 security fix for corrections; not in v0.6 exit gate.
+- **Description:** K15 security fix for corrections; not in v0.6 exit gate. **Landed** (PR #19).
 
-#### PR-L2 — Scheduled digest skeleton
+#### PR-L2 — Scheduled digest skeleton — **done**
 
 - **Title:** `workflows: scheduled digest run skeleton`
 - **Dependencies:** Pilot worker useful for timers
-- **Description:** Minimal assemble → privacy → complete.
+- **Description:** Minimal assemble → privacy → optional ack → complete. **Landed** (PR #20).
 
-#### PR-L3 — Docs alignment
+#### PR-L3 — Docs alignment — **this rev**
 
 - **Title:** `docs: align AGENTIC-SYSTEM step order; mark ROADMAP/TODO items`
 - **Files:** `AGENTIC-SYSTEM.md` evidence-before-classify; `TODO.md` / `ROADMAP.md` checkboxes; this doc status
@@ -1459,3 +1459,4 @@ Split into **MVP (v0.6)**, **Pilot**, and **Later**. Each PR independently revie
 | 2026-08-01 | Initial draft |
 | 2026-08-01 | Rev 2: design review — durability tiers K11, signal wake, atomic L3, payload binding, claim/timeout, L3 corrections, PR re-cut, taxonomy, import split, façade batch, store list APIs, obs MVP scope, Temporal adapter notes |
 | 2026-08-01 | Rev 3: K17 deterministic result_json fold rehydrate; sweeper clears wait_deadline; human-gate repark rules; K18 last-row façade; LedgerBinding protocol; single canonical claim SQL |
+| 2026-08-01 | Rev 4: status → Implemented; pilot P1–P3 + PR-L1 correction + PR-L2 scheduled digest landed; docs alignment (PR-L3) |

@@ -42,6 +42,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Pilot P1: file ledger command log rehydrate + durable CLI (seed/list/approve/check).
 - [x] Pilot P2: SQL WorkflowStore (SQLite default, Postgres + SKIP LOCKED optional).
 - [x] Pilot P3: durable worker entrypoint (`--durable worker` / `python -m impact_relay.workflows.worker`) + restart runbook + K11 guard.
+- [x] Docs alignment (PR-L3): evidence-before-classify; ROADMAP / DURABLE-WORKFLOWS status.
 
 ## P1 — Storage and service boundaries
 
