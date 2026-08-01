@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://impact-relay.local/schemas/agents/agent-proposal.schema.json",
+  "title": "AgentProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_id",
+    "tenant_id",
+    "agent_name",
+    "agent_version",
+    "policy_version",
+    "input_refs",
+    "input_hash",
+    "proposed_commands",
+    "evidence_refs",
+    "warnings",
+    "contradictions",
+    "required_authority",
+    "expires_at",
+    "idempotency_key"
+  ],
+  "properties": {
+    "proposal_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "agent_name": { "type": "string", "minLength": 1 },
+    "agent_version": { "type": "string", "minLength": 1 },
+    "policy_version": { "type": "string", "minLength": 1 },
+    "prompt_version": { "type": ["string", "null"] },
+    "input_refs": { "type": "array", "items": { "type": "string" } },
+    "input_hash": { "type": "string", "minLength": 8 },
+    "proposed_commands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/agentCommand" }
+    },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "contradictions": { "type": "array", "items": { "type": "string" } },
+    "required_authority": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "L3"]
+    },
+    "expires_at": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "notes": { "type": "string" },
+    "created_at": { "type": "string" }
+  },
+  "$defs": {
+    "agentCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command_type",
+        "tenant_id",
+        "payload",
+        "required_authority",
+        "idempotency_key"
+      ],
+      "properties": {
+        "command_type": { "type": "string", "minLength": 1 },
+        "tenant_id": { "type": "string", "minLength": 1 },
+        "payload": { "type": "object" },
+        "required_authority": {
+          "type": "string",
+          "enum": ["L0", "L1", "L2", "L3"]
+        },
+        "idempotency_key": { "type": "string", "minLength": 1 },
+        "expires_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

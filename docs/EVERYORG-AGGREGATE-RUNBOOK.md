@@ -52,7 +52,15 @@ Copy `fixtures/templates/every_org_live_aggregate.template.json` and fill:
 
 1. Export or view authorized totals for the campaign period from Every.org or finance.
 2. Manually write only the aggregate JSON above (private path, e.g. `~/private/every_org_live.json`).
-3. Apply with hard gate:
+3. **Dry-run validate** (no write; refuses fixture/template paths):
+
+```bash
+python -m impact_relay --validate-every-org-aggregate ~/private/every_org_live.json
+# or
+./scripts/apply_live_every_org_aggregate.sh --dry-run ~/private/every_org_live.json
+```
+
+4. Apply with hard gate:
 
 ```bash
 chmod +x scripts/apply_live_every_org_aggregate.sh

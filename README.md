@@ -53,9 +53,9 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 ## Current maturity
 
-**Version:** `0.4.0`
+**Version:** `0.5.0`
 
-**Current state:** fixture-backed product capabilities with privacy-safe public projections. Live accounting ingestion, production notification delivery, authenticated finance workflows, and native Hacker Dojo application screens remain pending.
+**Current state:** fixture-backed product capabilities with privacy-safe public projections, bounded agent contracts, and a fixture expense→approval→ledger vertical slice (HD-IR-007). Live accounting ingestion, production notification delivery, authenticated finance UI, and native Hacker Dojo application screens remain pending.
 
 ### Shipped capabilities
 
@@ -68,6 +68,8 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Programs, impact events, and impact receipts | `src/impact_relay/domain/impact.py` |
 | Multi-organization domain isolation | `src/impact_relay/domain/tenant.py` |
 | Pilot runners and fixture loaders | `src/impact_relay/pilot.py` |
+| Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
+| Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
 | Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
 
@@ -133,22 +135,35 @@ Consequential actions require independently authenticated human approval. Full c
 
 ## First production workflow
 
-The next engineering campaign implements one complete vertical slice:
+HD-IR-007 ships the fixture-backed core of the vertical slice (through ledger commit + optional UOF publish). Remaining before pilot:
 
 ```text
-fixture or accounting expense
-→ allocation proposal
-→ evidence validation
-→ finance approval
-→ ledger commit
-→ donor attribution
-→ use-of-funds receipt
-→ email preview
-→ independent send approval
-→ fixture delivery receipt
+fixture or accounting expense          ✅
+→ allocation proposal                  ✅
+→ evidence validation                  ✅
+→ finance approval (ApprovalReceipt)   ✅ fixture human gate
+→ ledger commit                        ✅
+→ donor attribution + UOF receipt      ✅
+→ email preview                        ✅
+→ independent send approval            ✅
+→ fixture delivery receipt             ✅
 ```
 
-No autonomous impact inference, SMS delivery, generalized onboarding, or multiple accounting providers should be introduced until this slice passes adversarial and finance-review testing.
+```bash
+# Demo the agent vertical slice
+python -m impact_relay --expense-approval-slice
+python -m impact_relay --expense-approval-slice --no-approve
+python -m impact_relay --expense-approval-slice --simulate-agents
+python -m impact_relay --expense-approval-slice --send-email
+
+# Validate a live Every.org aggregate without writing (path must not be under fixtures/)
+python -m impact_relay --validate-every-org-aggregate ~/private/every_org_live.json
+./scripts/apply_live_every_org_aggregate.sh --dry-run ~/private/every_org_live.json
+```
+
+See [docs/HD-IR-007.md](docs/HD-IR-007.md) and [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md).
+
+No autonomous impact inference, production SMS delivery, generalized onboarding, or multiple accounting providers should be introduced until finance-review testing and a live pilot pass.
 
 ---
 

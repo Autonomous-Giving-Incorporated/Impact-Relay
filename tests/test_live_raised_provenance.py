@@ -113,6 +113,59 @@ def test_cli_require_observed_rejects_fixture(tmp_path: Path, monkeypatch) -> No
     )
 
 
+def test_validate_live_aggregate_rejects_fixture_path() -> None:
+    from impact_relay.every_org import validate_live_aggregate_file
+    from impact_relay.reconcile import ReconcileError
+
+    root = Path(__file__).resolve().parents[1]
+    with pytest.raises(ReconcileError, match="refusing path|fixture"):
+        validate_live_aggregate_file(
+            root / "fixtures" / "every_org_aggregate_v1.json",
+            require_observed=True,
+        )
+
+
+def test_validate_live_aggregate_accepts_temp_live(tmp_path: Path) -> None:
+    from impact_relay.every_org import validate_live_aggregate_file
+
+    live = tmp_path / "every_org_live.json"
+    live.write_text(
+        json.dumps(
+            {
+                "processor": "every.org",
+                "exportKind": "aggregate_summary",
+                "nonprofitSlug": "hacker-dojo",
+                "exportedAt": "2026-08-01T18:30:00Z",
+                "currency": "USD",
+                "campaignStatus": "active",
+                "claimLevel": "OBSERVED",
+                "source": "every.org/aggregate:hacker-dojo",
+                "totals": {"raised": 12000, "committed": 0, "donorCount": 40},
+                "note": "Authorized operator aggregate",
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = validate_live_aggregate_file(live, require_observed=True)
+    assert report["ok"] is True
+    assert report["raisedSource"] == "processor_aggregate"
+    assert report["raisedClaimLabel"] == "OBSERVED"
+
+    code = main(["--validate-every-org-aggregate", str(live)])
+    assert code == 0
+
+
+def test_cli_validate_rejects_fixture() -> None:
+    root = Path(__file__).resolve().parents[1]
+    code = main(
+        [
+            "--validate-every-org-aggregate",
+            str(root / "fixtures" / "every_org_aggregate_v1.json"),
+        ]
+    )
+    assert code == 2
+
+
 def test_cli_require_observed_accepts_live_shaped(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[1]
     state_dst = tmp_path / "impact-state.json"

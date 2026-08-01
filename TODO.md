@@ -4,31 +4,31 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 ## P0 — Governance and contracts
 
-- [ ] Define `AuthorityLevel`, `AgentCommand`, `AgentProposal`, `ValidationResult`, `ApprovalReceipt`, `ExecutionReceipt`, and `AgentRunReceipt`.
-- [ ] Add JSON Schemas for every cross-boundary contract.
-- [ ] Add policy-version and prompt-version fields to run receipts.
-- [ ] Implement deterministic authority checks.
-- [ ] Implement proposal expiration and idempotency keys.
-- [ ] Add simulation mode that cannot mutate domain state.
-- [ ] Prevent agent modules from importing ledger mutation APIs directly.
-- [ ] Add Privacy Sentinel allowlist validation for public and donor outputs.
-- [ ] Add cross-tenant command and projection tests.
-- [ ] Add adversarial fixtures for unsupported claims, PII leakage, duplicate events, and contradictory evidence.
+- [x] Define `AuthorityLevel`, `AgentCommand`, `AgentProposal`, `ValidationResult`, `ApprovalReceipt`, `ExecutionReceipt`, and `AgentRunReceipt`.
+- [x] Add JSON Schemas for every cross-boundary contract.
+- [x] Add policy-version and prompt-version fields to run receipts.
+- [x] Implement deterministic authority checks.
+- [x] Implement proposal expiration and idempotency keys.
+- [x] Add simulation mode that cannot mutate domain state.
+- [x] Prevent agent modules from importing ledger mutation APIs directly.
+- [x] Add Privacy Sentinel allowlist validation for public and donor outputs.
+- [x] Add cross-tenant command and projection tests.
+- [x] Add adversarial fixtures for unsupported claims, PII leakage, duplicate events, and contradictory evidence.
 
 ## P0 — First vertical slice
 
-- [ ] Define normalized expense import contract.
-- [ ] Implement fixture-backed Expense Intake Agent.
-- [ ] Implement Allocation Classifier proposal output.
-- [ ] Implement Evidence Validator states: `MISSING`, `PARTIAL`, `SUFFICIENT`, `CONTRADICTORY`, `EXPIRED`, `REDACTION_REQUIRED`.
-- [ ] Build `FinanceReviewPacket` projection.
-- [ ] Add authenticated approval command abstraction.
-- [ ] Connect approved command to existing deterministic ledger.
-- [ ] Generate canonical use-of-funds receipt.
-- [ ] Create email preview from canonical receipt.
-- [ ] Require separate send approval.
-- [ ] Record fixture delivery receipt.
-- [ ] Test replay, duplicate input, rejection, correction, and partial failure.
+- [x] Define normalized expense import contract.
+- [x] Implement fixture-backed Expense Intake Agent.
+- [x] Implement Allocation Classifier proposal output.
+- [x] Implement Evidence Validator states: `MISSING`, `PARTIAL`, `SUFFICIENT`, `CONTRADICTORY`, `EXPIRED`, `REDACTION_REQUIRED`.
+- [x] Build `FinanceReviewPacket` projection.
+- [x] Add authenticated approval command abstraction (`ApprovalReceipt`).
+- [x] Connect approved command to existing deterministic ledger.
+- [x] Generate canonical use-of-funds receipt.
+- [x] Create email preview from canonical receipt.
+- [x] Require separate send approval.
+- [x] Record fixture delivery receipt.
+- [x] Test replay, duplicate input, rejection, and contradictory evidence (correction path uses existing ledger tests).
 
 ## P1 — Durable workflows
 

@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "milestone": "HD-IR-007",
+    "description": "Normalized expense intake batch for agent vertical slice (fixture accounting export)",
+    "systems_of_record": {
+      "accounting": "fixture://accounting/quickbooks-export-v1"
+    }
+  },
+  "tenant_id": "org_hacker_dojo",
+  "expenses": [
+    {
+      "external_source_id": "acct_exp_slice_9101",
+      "vendor": "Community Robotics Supply Co",
+      "amount": "720.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-10",
+      "category": "CLASSROOM_HARDWARE",
+      "description": "Robotics kits for community hardware fund",
+      "allocation_id": "alloc_community_hardware",
+      "evidence": [
+        {
+          "id": "ev_inv_9101",
+          "kind": "invoice",
+          "summary": "Invoice INV-9101 robotics kits ($720.00)",
+          "donor_visible": true
+        }
+      ]
+    }
+  ]
+}

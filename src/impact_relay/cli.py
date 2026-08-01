@@ -21,7 +21,10 @@ from impact_relay.digest import (
     load_events_fixture,
     write_public_digests,
 )
-from impact_relay.every_org import load_every_org_as_reconcile_aggregate
+from impact_relay.every_org import (
+    load_every_org_as_reconcile_aggregate,
+    validate_live_aggregate_file,
+)
 from impact_relay.notion_public import (
     build_public_evidence_document,
     load_notion_public_evidence,
@@ -111,6 +114,47 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--validate-every-org-aggregate",
+        type=Path,
+        default=None,
+        help=(
+            "Dry-run: validate a live Every.org aggregate JSON (no write). "
+            "Exit 0 if OBSERVED-ready; exit 2 otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--expense-approval-slice",
+        action="store_true",
+        help=(
+            "Run fixture-backed expense→approval vertical slice "
+            "(agent contracts + human gate). Prints JSON summary."
+        ),
+    )
+    parser.add_argument(
+        "--expense-batch",
+        type=Path,
+        default=None,
+        help="Expense intake batch JSON (default: fixtures/expense_intake_batch_v1.json)",
+    )
+    parser.add_argument(
+        "--simulate-agents",
+        action="store_true",
+        help="With --expense-approval-slice: simulation mode (no ledger mutation)",
+    )
+    parser.add_argument(
+        "--no-approve",
+        action="store_true",
+        help="With --expense-approval-slice: stop at REVIEW_PENDING (no human approve)",
+    )
+    parser.add_argument(
+        "--send-email",
+        action="store_true",
+        help=(
+            "With --expense-approval-slice: after UOF publish, compose email preview "
+            "and require separate send approval (fixture delivery)"
+        ),
+    )
+    parser.add_argument(
         "--write-impact-state",
         type=Path,
         default=None,
@@ -155,6 +199,64 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     import os
+
+    # --- Dry-run live aggregate validation (C: operator path) ---
+    if args.validate_every_org_aggregate is not None:
+        try:
+            report = validate_live_aggregate_file(
+                args.validate_every_org_aggregate,
+                require_observed=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(
+                json.dumps(
+                    {"ok": False, "error": str(exc), "path": str(args.validate_every_org_aggregate)},
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        print(json.dumps(report, indent=2))
+        return 0
+
+    # --- Agent vertical slice (A/B) ---
+    if args.expense_approval_slice:
+        import copy
+
+        from impact_relay.agents.expense_workflow import run_expense_approval_slice
+        from impact_relay.agents.types import to_jsonable
+        from impact_relay.pilot import build_ledger_from_fixture, load_fixture
+
+        batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")
+        with batch_path.open(encoding="utf-8") as f:
+            batch = json.load(f)
+        data = load_fixture(args.fixture)
+        data = copy.deepcopy(data)
+        data["expenses"] = []
+        data["publish"] = []
+        ledger = build_ledger_from_fixture(data)
+        result = run_expense_approval_slice(
+            ledger,
+            expense_rows=batch.get("expenses") or [],
+            human_approver_id=args.actor,
+            approve=not args.no_approve,
+            simulation=args.simulate_agents,
+            publish_specs=None if args.no_approve or args.simulate_agents else [
+                {
+                    "donor_id": "donor_alice",
+                    "donation_id": "don_1000_alice",
+                    "allocation_id": "alloc_community_hardware",
+                    "attribution_method": "DIRECT_RESTRICTED",
+                    "attributed_amount": str(
+                        (batch.get("expenses") or [{}])[0].get("amount", "0")
+                    ),
+                }
+            ],
+            send_email=bool(args.send_email and not args.no_approve and not args.simulate_agents),
+            communications_approver_id="comms.approver@hackersdojo.example",
+        )
+        print(json.dumps(to_jsonable(result.to_dict()), indent=2, default=str))
+        return 0 if result.workflow_state.value not in ("BLOCKED", "REJECTED") else 1
 
     if args.every_org_aggregate is None:
         env_agg = os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE", "").strip()
