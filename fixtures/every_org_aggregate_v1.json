@@ -10,5 +10,6 @@
     "committed": 2500,
     "donorCount": 37
   },
-  "note": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here."
+  "note": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here.",
+  "source": "fixture://every.org/aggregate:hacker-dojo"
 }

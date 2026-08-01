@@ -20,7 +20,9 @@
     "committedPublic": 2500.0,
     "donorCountPublic": 37,
     "lastReconciledAt": "2026-08-01T15:00:00Z",
-    "status": "active"
+    "status": "active",
+    "raisedSource": "pilot_synthetic",
+    "raisedClaimLabel": "PILOT"
   },
   "milestones": [
     {
@@ -78,7 +80,7 @@
       "id": "reconcile-2026-08-01",
       "severity": "success",
       "title": "Public donation aggregates updated",
-      "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: every.org/aggregate:hacker-dojo. Raised $12,840; committed $2,500; public donor count 37.",
+      "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: fixture://every.org/aggregate:hacker-dojo. Raised $12,840; committed $2,500; public donor count 37.",
       "publishedAt": "2026-08-01T15:00:00Z"
     },
     {

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scrimshawlife-ctrl.github.io/Impact-Relay/schemas/public-impact.schema.json",
+  "title": "Impact Relay public IMPACT outcomes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "source", "authority", "privacy", "summary", "outcomes"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "updatedAt": { "type": "string", "format": "date" },
+    "source": { "type": "string" },
+    "authority": { "type": "string", "const": "public_aggregate_only" },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "piiAllowed",
+        "donorNamesAllowed",
+        "individualDonorAttributionAllowed",
+        "operatorIdentityAllowed"
+      ],
+      "properties": {
+        "classification": { "type": "string", "const": "public_aggregate_only" },
+        "piiAllowed": { "type": "boolean", "const": false },
+        "donorNamesAllowed": { "type": "boolean", "const": false },
+        "individualDonorAttributionAllowed": { "type": "boolean", "const": false },
+        "operatorIdentityAllowed": { "type": "boolean", "const": false }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["outcomeCount", "totalParticipantsPublic"],
+      "properties": {
+        "outcomeCount": { "type": "integer", "minimum": 0 },
+        "totalParticipantsPublic": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "publicId",
+          "impactEventId",
+          "organizationName",
+          "programName",
+          "allocationName",
+          "eventType",
+          "eventDate",
+          "participantsPublic",
+          "evidenceState",
+          "attributionMethod",
+          "receiptHash",
+          "createdAt"
+        ],
+        "properties": {
+          "publicId": { "type": "string" },
+          "impactEventId": { "type": "string" },
+          "organizationName": { "type": "string" },
+          "programName": { "type": "string" },
+          "allocationName": { "type": "string" },
+          "eventType": { "type": "string" },
+          "eventDate": { "type": "string" },
+          "participantsPublic": { "type": "integer", "minimum": 0 },
+          "evidenceState": { "type": "string" },
+          "description": { "type": "string" },
+          "attributionMethod": { "type": "string" },
+          "receiptHash": { "type": "string" },
+          "createdAt": { "type": "string" }
+        }
+      }
+    }
+  }
+}
