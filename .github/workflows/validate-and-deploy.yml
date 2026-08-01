@@ -26,27 +26,49 @@ jobs:
           python-version: '3.12'
       - name: Install package and dev tools
         run: pip install -e ".[dev]"
-      - name: Run domain and public-export tests
+      - name: Run domain suite
         run: pytest
-      - name: Refresh public use-of-funds export
-        run: python -m impact_relay --write-public data/use-of-funds-public.json
-      - name: Assert public export is committed and stable
+      - name: Refresh public Pages artifacts
         run: |
           set -euo pipefail
-          git diff --exit-code -- data/use-of-funds-public.json
-      - name: Assert public export has no donor residue
+          python -m impact_relay \
+            --reconcile-from fixtures/reconcile_aggregate_v1.json \
+            --write-impact-state data/impact-state.json \
+            --write-public data/use-of-funds-public.json \
+            --write-digests data/impact-digests-public.json
+      - name: Assert public artifacts are committed and stable
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- \
+            data/use-of-funds-public.json \
+            data/impact-digests-public.json \
+            data/impact-state.json
+      - name: Assert public artifacts have no personal residue
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json
           from pathlib import Path
-          doc = json.loads(Path('data/use-of-funds-public.json').read_text())
-          blob = json.dumps(doc)
-          for bad in ('donor_alice', 'Alice Patron', 'donor_id', 'donation_reference', 'finance.operator'):
-              if bad in blob:
-                  raise SystemExit(f'forbidden residue in public export: {bad}')
-          print('public export privacy ok')
+          paths = [
+              'data/use-of-funds-public.json',
+              'data/impact-digests-public.json',
+              'data/impact-state.json',
+          ]
+          banned = (
+              'donor_alice',
+              'Alice Patron',
+              '"donor_id"',
+              'donation_reference',
+              'finance.operator',
+              '"attendeeNames"',
+              '"attendee_names"',
+          )
+          for path in paths:
+              blob = Path(path).read_text(encoding='utf-8')
+              for bad in banned:
+                  if bad in blob:
+                      raise SystemExit(f'forbidden residue in {path}: {bad}')
+          print('public artifact privacy ok')
           PY
 
   validate:
@@ -73,6 +95,14 @@ jobs:
           -c ajv-formats
           -s schemas/use-of-funds-public.schema.json
           -d data/use-of-funds-public.json
+      - name: Validate public digests schema
+        run: >-
+          npx --yes --package=ajv-cli@5 --package=ajv-formats@3
+          ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s schemas/impact-digests-public.schema.json
+          -d data/impact-digests-public.json
       - name: Enforce privacy contract flags
         shell: bash
         run: |
@@ -80,15 +110,18 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-          for path in ('data/impact-state.json', 'data/use-of-funds-public.json'):
-              state = json.loads(Path(path).read_text())
-              privacy = state.get('privacy') or {}
-              if privacy.get('piiAllowed') is not False:
-                  raise SystemExit(f'{path}: piiAllowed must be false')
-              if privacy.get('donorNamesAllowed') is not False:
-                  raise SystemExit(f'{path}: donorNamesAllowed must be false')
+          checks = [
+              ('data/impact-state.json', ['piiAllowed', 'donorNamesAllowed']),
+              ('data/use-of-funds-public.json', ['piiAllowed', 'donorNamesAllowed']),
+              ('data/impact-digests-public.json', ['piiAllowed', 'attendeeNamesAllowed']),
+          ]
+          for path, keys in checks:
+              privacy = json.loads(Path(path).read_text()).get('privacy') or {}
               if privacy.get('classification') != 'public_aggregate_only':
                   raise SystemExit(f'{path}: classification must be public_aggregate_only')
+              for key in keys:
+                  if privacy.get(key) is not False:
+                      raise SystemExit(f'{path}: {key} must be false')
           print('privacy contract ok')
           PY
       - name: Prohibit sensitive export files
@@ -110,6 +143,7 @@ jobs:
           test -f app.js
           test -f data/impact-state.json
           test -f data/use-of-funds-public.json
+          test -f data/impact-digests-public.json
 
   deploy:
     if: github.event_name != 'pull_request'

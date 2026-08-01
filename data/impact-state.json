@@ -16,11 +16,11 @@
     "currency": "USD",
     "minimumTarget": 420000,
     "stretchTarget": 2000000,
-    "raisedPublic": 0,
-    "committedPublic": 0,
-    "donorCountPublic": 0,
-    "lastReconciledAt": null,
-    "status": "awaiting_live_reconciliation"
+    "raisedPublic": 12840.0,
+    "committedPublic": 2500.0,
+    "donorCountPublic": 37,
+    "lastReconciledAt": "2026-08-01T15:00:00Z",
+    "status": "active"
   },
   "milestones": [
     {
@@ -73,6 +73,13 @@
       "title": "Use-of-funds pilot receipts published",
       "body": "HD-IR-002 published privacy-safe use-of-funds receipts from the verified pilot fixture. Donor identity is not included.",
       "publishedAt": "2026-08-01T14:30:00Z"
+    },
+    {
+      "id": "reconcile-2026-08-01",
+      "severity": "success",
+      "title": "Public donation aggregates updated",
+      "body": "Synthetic aggregate-only pilot reconciliation. Not live processor data. Source: fixture://everyorg/aggregate-export-v1. Raised $12,840; committed $2,500; public donor count 37.",
+      "publishedAt": "2026-08-01T15:00:00Z"
     }
   ],
   "privacy": {
