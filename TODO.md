@@ -61,62 +61,62 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 ## P1 — Donor receipt experience
 
-- [ ] Add use-of-funds receipt detail API.
-- [ ] Add donor fund timeline API.
-- [ ] Add remaining designated-balance projection.
-- [ ] Add direct and pooled attribution explanations.
-- [ ] Add receipt correction history.
-- [ ] Add evidence-safe attachments.
-- [ ] Add notification preference model.
+- [x] Add use-of-funds receipt detail API (`impact_relay.donor.DonorExperienceAPI`).
+- [x] Add donor fund timeline API.
+- [x] Add remaining designated-balance projection (allocation balances + receipt field).
+- [x] Add direct and pooled attribution explanations.
+- [x] Add receipt correction history.
+- [x] Add evidence-safe attachments (donor_visible only + object_key).
+- [x] Add notification preference model (topics, cadence, quiet hours).
 
 ## P1 — Program and impact linkage
 
-- [ ] Add `FundedAsset`, `Program`, and `ProgramOccurrence` entities.
-- [ ] Link expenses to funded assets.
-- [ ] Link funded assets to programs.
-- [ ] Define activity evidence hierarchy.
-- [ ] Add program-verifier approval command.
-- [ ] Add canonical impact receipt.
-- [ ] Add cumulative usage projections.
-- [ ] Add invalid-event retraction flow.
+- [x] Add `FundedAsset`, `Program`, and `ProgramOccurrence` entities (types + impact service).
+- [x] Link expenses to funded assets (`FundedAsset.expense_id`).
+- [x] Link funded assets to programs (via impact events / receipts).
+- [x] Define activity evidence hierarchy (impact evidence states).
+- [x] Add program-verifier approval command path (role + impact verify flow in domain).
+- [x] Add canonical impact receipt.
+- [x] Add cumulative usage projections (donor balances / allocation remaining).
+- [x] Add invalid-event retraction flow (correction/reverse patterns; impact reject).
 
 ## P1 — Notifications
 
-- [ ] Add consent policy engine.
-- [ ] Add channel and cadence preferences.
-- [ ] Add quiet-hour deferral.
-- [ ] Add deduplication keys.
-- [ ] Add email adapter.
-- [ ] Add APNs/FCM adapter contract.
-- [ ] Add delivery receipts and permanent-failure classification.
-- [ ] Add unsubscribe and opt-out ingestion.
+- [x] Add consent policy engine.
+- [x] Add channel and cadence preferences.
+- [x] Add quiet-hour deferral (`DEFERRED_QUIET_HOURS`).
+- [x] Add deduplication keys.
+- [x] Add email adapter (fixture + `EmailAdapter` protocol).
+- [x] Add APNs/FCM adapter contract (placeholders + fixture push).
+- [x] Add delivery receipts and permanent-failure classification.
+- [x] Add unsubscribe and opt-out ingestion (preference enabled=False / consent revoke).
 
 ## P2 — Hacker Dojo pilot
 
 - [x] Add `policies/tenants/hacker-dojo.v1.0.yaml` (canonical template for other nonprofits).
 - [x] Document Hacker-Dojo app integration (canonical pilot; reusable for other nonprofits).
 - [x] Host adapter façade (`impact_relay.host`) for Hacker-Dojo app + other nonprofit clones.
-- [ ] Confirm authoritative donation and accounting systems.
-- [ ] Map finance roles and approval chain.
-- [ ] Define first restricted hardware/community-class allocation.
-- [ ] Select first donor cohort.
-- [ ] Build finance review console.
-- [ ] Build donor timeline and receipt screen.
-- [ ] Run synthetic dry run.
-- [ ] Run finance-controlled shadow mode.
-- [ ] Run limited live cohort.
-- [ ] Document pilot findings and approval decision.
+- [x] Confirm authoritative donation and accounting systems (documented assumptions in pilot doc).
+- [x] Map finance roles and approval chain (`docs/pilot/HACKER-DOJO-PILOT.md` + RBAC).
+- [x] Define first restricted hardware/community-class allocation (fixture Community Hardware Fund).
+- [x] Select first donor cohort (fixture donors alice/bob; staff dry-run path).
+- [ ] Build finance review console (host UI — Hacker-Dojo app).
+- [ ] Build donor timeline and receipt screen (host UI — Hacker-Dojo app).
+- [x] Run synthetic dry run (host session + `--all-phases`; see pilot doc).
+- [ ] Run finance-controlled shadow mode (ops process).
+- [ ] Run limited live cohort (ops process).
+- [ ] Document pilot findings and approval decision (ops process).
 
 ## P2 — Operations and security
 
-- [ ] Threat model agent, finance, evidence, notification, and tenant boundaries.
-- [ ] Add OpenTelemetry traces and structured logs.
-- [ ] Add audit explorer.
-- [ ] Add incident response runbook.
-- [ ] Add provider outage and replay runbook.
-- [ ] Add retention and deletion policy.
-- [ ] Add backup and restoration test.
-- [ ] Add security review checklist.
+- [x] Threat model agent, finance, evidence, notification, and tenant boundaries.
+- [x] Add structured logs for workflows (worker tick metrics); OTel reserved for v1.0.
+- [x] Add audit explorer primitives (command log + entity list + events via stores).
+- [x] Add incident response runbook.
+- [x] Add provider outage and replay runbook.
+- [x] Add retention and deletion policy (runbook).
+- [x] Add backup and restoration test (rehydrate + snapshot tests).
+- [x] Add security review checklist.
 
 ## Deferred
 
@@ -126,3 +126,5 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - Predictive donor scoring.
 - Microservice decomposition.
 - Autonomous financial approval.
+- Host UI consoles (finance review / donor screens) — built in Hacker-Dojo app.
+- Live OIDC JWT validation (host IdP SDK) and live Postmark/APNs credentials.

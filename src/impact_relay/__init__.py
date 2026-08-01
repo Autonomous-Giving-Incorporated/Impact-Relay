@@ -16,6 +16,7 @@ from impact_relay.storage.template import (
     CANONICAL_POLICY_SLUG,
 )
 from impact_relay.host import open_hacker_dojo_session, open_host_session
+from impact_relay.donor import open_donor_api
 from impact_relay.domain.types import (
     Allocation,
     AttributionMethod,
@@ -34,6 +35,7 @@ __all__ = [
     "CANONICAL_POLICY_SLUG",
     "open_hacker_dojo_session",
     "open_host_session",
+    "open_donor_api",
     "Ledger",
     "Platform",
     "TenantWorkspace",

@@ -178,6 +178,26 @@ class NotificationService:
             self.ws.intents_by_dedup[dedup_key] = intent
             return intent
 
+        if self._in_quiet_hours(donor_id, channel, created):
+            intent = NotificationIntent(
+                id=intent_id,
+                organization_id=self.ledger.organization.id,
+                donor_id=donor_id,
+                channel=channel,
+                message_class=message_class,
+                source_type=source_type,
+                source_id=source_id,
+                dedup_key=dedup_key,
+                policy_version=self.ledger.organization.policy_version,
+                status=NotificationIntentStatus.DEFERRED_QUIET_HOURS,
+                template_version=template_version,
+                payload={**payload, "deferred_reason": "quiet_hours"},
+                created_at=created,
+            )
+            self.ws.intents[intent_id] = intent
+            self.ws.intents_by_dedup[dedup_key] = intent
+            return intent
+
         intent = NotificationIntent(
             id=intent_id,
             organization_id=self.ledger.organization.id,
@@ -200,6 +220,47 @@ class NotificationService:
             self._deliver(intent)
             intent = self.ws.intents[intent_id]
         return intent
+
+    def _in_quiet_hours(
+        self, donor_id: str, channel: NotificationChannel, now_iso: str
+    ) -> bool:
+        pref = self.ws.preferences.get((donor_id, channel.value))
+        if pref is None or not pref.quiet_hours_start or not pref.quiet_hours_end:
+            return False
+        try:
+            # Use time portion of ISO timestamp (UTC)
+            if "T" in now_iso:
+                tpart = now_iso.split("T", 1)[1][:5]
+            else:
+                tpart = "12:00"
+            start, end = pref.quiet_hours_start, pref.quiet_hours_end
+            if start <= end:
+                return start <= tpart < end
+            # wraps midnight
+            return tpart >= start or tpart < end
+        except Exception:  # noqa: BLE001
+            return False
+
+    def get_preferences(self, donor_id: str) -> list[dict[str, Any]]:
+        if donor_id not in self.ledger.donors:
+            raise NotFoundError(f"donor not found: {donor_id}")
+        out: list[dict[str, Any]] = []
+        for (did, _ch), pref in self.ws.preferences.items():
+            if did != donor_id:
+                continue
+            out.append(
+                {
+                    "donor_id": pref.donor_id,
+                    "organization_id": pref.organization_id,
+                    "channel": pref.channel.value,
+                    "enabled": pref.enabled,
+                    "topics": list(pref.topics),
+                    "cadence": pref.cadence,
+                    "quiet_hours_start": pref.quiet_hours_start,
+                    "quiet_hours_end": pref.quiet_hours_end,
+                }
+            )
+        return out
 
     def _deliver(self, intent: NotificationIntent) -> NotificationDelivery:
         adapter = self.adapters.get(intent.channel)
@@ -227,11 +288,12 @@ class NotificationService:
         success, provider_receipt, detail = adapter.deliver(intent)
         from dataclasses import replace
 
-        status = (
-            NotificationIntentStatus.DELIVERED
-            if success
-            else NotificationIntentStatus.FAILED
-        )
+        if success:
+            status = NotificationIntentStatus.DELIVERED
+        elif "permanent" in (detail or "").lower() or "bounce" in (detail or "").lower():
+            status = NotificationIntentStatus.PERMANENT_FAILURE
+        else:
+            status = NotificationIntentStatus.FAILED
         updated = replace(intent, status=status)
         self.ws.intents[intent.id] = updated
         self.ws.intents_by_dedup[intent.dedup_key] = updated

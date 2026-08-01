@@ -436,9 +436,11 @@ class NotificationIntentStatus(str, Enum):
     CREATED = "CREATED"
     BLOCKED_NO_CONSENT = "BLOCKED_NO_CONSENT"
     BLOCKED_PREFERENCE = "BLOCKED_PREFERENCE"
+    DEFERRED_QUIET_HOURS = "DEFERRED_QUIET_HOURS"
     DELIVERED = "DELIVERED"
     FAILED = "FAILED"
     SUPERSEDED = "SUPERSEDED"
+    PERMANENT_FAILURE = "PERMANENT_FAILURE"
 
 
 @dataclass(frozen=True)
@@ -449,6 +451,9 @@ class NotificationPreference:
     enabled: bool
     topics: tuple[str, ...] = ()
     cadence: str = "immediate"  # immediate | weekly | monthly
+    # Quiet hours in UTC "HH:MM" (inclusive start, exclusive end; wraps midnight)
+    quiet_hours_start: str | None = None
+    quiet_hours_end: str | None = None
 
 
 @dataclass(frozen=True)
