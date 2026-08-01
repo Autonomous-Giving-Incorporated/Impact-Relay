@@ -6,161 +6,183 @@
   <meta name="description" content="Impact Relay — public donation progress and impact milestone notifications. Aggregate totals only.">
   <meta name="robots" content="index,follow">
   <title>Impact Relay · Donation Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <div>
-      <p class="eyebrow">Impact Relay</p>
-      <h1 id="orgName">Donation Tracker</h1>
-      <p id="orgTagline" class="lede">Public aggregate progress and impact notifications.</p>
-    </div>
-    <div class="header-actions">
-      <a id="donateLink" class="button" href="#" target="_blank" rel="noreferrer">Donate</a>
-      <a class="button secondary" href="#digests">Impact digests</a>
-      <a class="button secondary" href="#notifications">Notifications</a>
-    </div>
-  </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <main>
-    <section class="section hero">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Campaign progress</p>
-          <h2 id="campaignName">Loading…</h2>
-          <p id="campaignMeta" class="note">Fetching public aggregate state.</p>
-        </div>
-        <span id="campaignStatus" class="status-pill">…</span>
+  <div class="page">
+    <header class="site-header">
+      <div>
+        <p class="brand-mark">Impact Relay</p>
+        <h1 id="orgName">Hacker Dojo</h1>
+        <p id="orgTagline" class="lede">Keep the room where builders become possible.</p>
       </div>
+      <nav class="header-actions" aria-label="Page">
+        <a class="nav-link" href="#public-evidence">Evidence</a>
+        <a class="nav-link" href="#digests">Digests</a>
+        <a class="nav-link" href="#use-of-funds">Funds</a>
+        <a class="nav-link" href="#notifications">Feed</a>
+        <a id="donateLink" class="button" href="https://www.every.org/hacker-dojo" target="_blank" rel="noreferrer">Donate</a>
+      </nav>
+    </header>
 
-      <div class="metric-grid" aria-label="Public donation metrics">
-        <article class="metric-card">
-          <span class="metric-label">Raised (public)</span>
-          <strong id="raisedValue">—</strong>
-        </article>
-        <article class="metric-card">
-          <span class="metric-label">Committed (public)</span>
-          <strong id="committedValue">—</strong>
-        </article>
-        <article class="metric-card">
-          <span class="metric-label">Public donor count</span>
-          <strong id="donorCount">—</strong>
-        </article>
-        <article class="metric-card">
-          <span class="metric-label">Minimum target</span>
-          <strong id="minimumTarget">—</strong>
-        </article>
+    <div id="errorBanner" class="error-banner" role="alert"></div>
+
+    <main id="main">
+      <section class="section hero" aria-labelledby="campaignName">
+        <div class="hero-top">
+          <div>
+            <h2 id="campaignName">Loading campaign…</h2>
+            <p id="campaignMeta" class="note">Fetching public aggregate state.</p>
+          </div>
+          <span id="campaignStatus" class="status-pill">…</span>
+        </div>
+
+        <div id="emptyBanner" class="empty-banner" role="status">
+          Public raised and committed totals stay at zero (or pilot-marked) until an authorized processor export is reconciled. Use-of-funds and impact sections may still show verified pilot fixtures.
+        </div>
+
+        <div id="statPrimary" class="stat-primary">
+          <span class="metric-label">Raised (public aggregate)</span>
+          <strong id="raisedValue" class="stat-figure nums">—</strong>
+        </div>
+
+        <div id="progressBlock" class="progress-block">
+          <div class="progress-head">
+            <h3>Toward minimum target</h3>
+            <span id="progressPct" class="progress-pct nums">0%</span>
+          </div>
+          <div
+            class="progress-track"
+            role="progressbar"
+            id="progressBar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="0"
+            aria-labelledby="progressCaption"
+          >
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <p id="progressCaption" class="note">Progress uses public aggregate raised amount only.</p>
+        </div>
+
+        <div class="metric-row" aria-label="Supporting public metrics">
+          <div class="metric-item">
+            <span class="metric-label">Committed</span>
+            <strong id="committedValue" class="nums">—</strong>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Public donors</span>
+            <strong id="donorCount" class="nums">—</strong>
+          </div>
+          <div class="metric-item">
+            <span class="metric-label">Minimum target</span>
+            <strong id="minimumTarget" class="nums">—</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="milestones" aria-labelledby="milestonesHeading">
+        <div class="section-head">
+          <h2 id="milestonesHeading">Milestones</h2>
+          <p class="note">Impact ladder by public raised threshold. Reached only when aggregate totals clear the bar.</p>
+        </div>
+        <ol id="milestoneGrid" class="milestone-ladder"></ol>
+      </section>
+
+      <section class="section" id="public-evidence" aria-labelledby="evidenceHeading">
+        <div class="uof-head">
+          <div class="section-head">
+            <h2 id="evidenceHeading">Form 990 &amp; historical aggregates</h2>
+            <p class="note">OBSERVED public totals from IRS filings and press — not live campaign cash.</p>
+          </div>
+          <div class="uof-summary">
+            <span class="metric-label">FY contributions total</span>
+            <strong id="evidenceContributions" class="nums">—</strong>
+          </div>
+        </div>
+        <p id="evidenceNote" class="note"></p>
+        <div id="evidence990" class="table-wrap"></div>
+        <div id="evidenceHistorical" class="record-list"></div>
+      </section>
+
+      <section class="section" id="digests" aria-labelledby="digestsHeading">
+        <div class="uof-head">
+          <div class="section-head">
+            <h2 id="digestsHeading">Event digests</h2>
+            <p class="note">Class and community outcomes with public attendance counts only.</p>
+          </div>
+          <div class="uof-summary">
+            <span class="metric-label">Public attendance</span>
+            <strong id="digestAttendance" class="nums">—</strong>
+          </div>
+        </div>
+        <div id="digestList" class="record-list"></div>
+      </section>
+
+      <section class="section" id="impact-outcomes" aria-labelledby="impactHeading">
+        <div class="uof-head">
+          <div class="section-head">
+            <h2 id="impactHeading">Impact outcomes</h2>
+            <p class="note">Program results from domain IMPACT receipts — no donor identity.</p>
+          </div>
+          <div class="uof-summary">
+            <span class="metric-label">Participants (public)</span>
+            <strong id="impactParticipants" class="nums">—</strong>
+          </div>
+        </div>
+        <div id="impactOutcomeList" class="record-list"></div>
+      </section>
+
+      <section class="section" id="use-of-funds" aria-labelledby="uofHeading">
+        <div class="uof-head">
+          <div class="section-head">
+            <h2 id="uofHeading">Verified public receipts</h2>
+            <p class="note">Allocation and expenditure transparency without donor identity.</p>
+          </div>
+          <div class="uof-summary">
+            <span class="metric-label">Attributed (public)</span>
+            <strong id="uofTotal" class="nums">—</strong>
+          </div>
+        </div>
+        <div id="uofList" class="uof-list"></div>
+      </section>
+
+      <section class="section" id="notifications" aria-labelledby="feedHeading">
+        <div class="section-head">
+          <h2 id="feedHeading">Impact notifications</h2>
+          <p class="note">Public relay feed. No personal donor messages appear here.</p>
+        </div>
+        <div id="notificationList" class="notification-list"></div>
+      </section>
+
+      <section class="section" aria-labelledby="privacyHeading">
+        <div class="privacy-panel">
+          <h2 id="privacyHeading">Privacy boundary</h2>
+          <p id="privacyCopy">
+            This site publishes aggregate campaign totals and milestone notifications only.
+            It must never contain donor names, emails, individual gift amounts, or private notes.
+          </p>
+          <p id="privacyMeta" class="privacy-meta"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-row">
+        <span>Impact Relay · public aggregate surface</span>
+        <span id="updatedAt">Updated —</span>
       </div>
-
-      <div class="panel progress-panel">
-        <div class="panel-heading">
-          <h3>Minimum campaign progress</h3>
-          <span id="progressPct" class="tag">0%</span>
-        </div>
-        <div class="progress-track" aria-hidden="true">
-          <div id="progressFill" style="width:0%"></div>
-        </div>
-        <p id="progressCaption" class="note">Progress uses public aggregate raised amount only.</p>
+      <div class="footer-row">
+        <span>Source: processor aggregates · Form 990 evidence · verified fixtures</span>
+        <a href="https://github.com/scrimshawlife-ctrl/Impact-Relay">Repository</a>
       </div>
-    </section>
-
-    <section class="section" id="milestones">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Impact ladder</p>
-          <h2>Milestones</h2>
-        </div>
-      </div>
-      <div id="milestoneGrid" class="milestone-grid"></div>
-    </section>
-
-    <section class="section" id="public-evidence">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Public evidence</p>
-          <h2>Form 990 &amp; historical campaign aggregates</h2>
-          <p class="note">OBSERVED public totals from IRS filings and press — not live campaign cash.</p>
-        </div>
-        <div class="uof-summary">
-          <span class="metric-label">FY contributions total</span>
-          <strong id="evidenceContributions">—</strong>
-        </div>
-      </div>
-      <p id="evidenceNote" class="note"></p>
-      <div id="evidence990" class="table-wrap"></div>
-      <div id="evidenceHistorical" class="digest-list"></div>
-    </section>
-
-    <section class="section" id="digests">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Program impact</p>
-          <h2>Event digests</h2>
-          <p class="note">Class and community outcomes with public attendance counts only.</p>
-        </div>
-        <div class="uof-summary">
-          <span class="metric-label">Public attendance</span>
-          <strong id="digestAttendance">—</strong>
-        </div>
-      </div>
-      <div id="digestList" class="digest-list"></div>
-    </section>
-
-    <section class="section" id="impact-outcomes">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Verified outcomes</p>
-          <h2>Impact outcomes</h2>
-          <p class="note">Program results from domain IMPACT receipts — no donor identity.</p>
-        </div>
-        <div class="uof-summary">
-          <span class="metric-label">Participants (public)</span>
-          <strong id="impactParticipants">—</strong>
-        </div>
-      </div>
-      <div id="impactOutcomeList" class="digest-list"></div>
-    </section>
-
-    <section class="section" id="use-of-funds">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Use of funds</p>
-          <h2>Verified public receipts</h2>
-          <p class="note">Allocation and expenditure transparency without donor identity.</p>
-        </div>
-        <div class="uof-summary">
-          <span class="metric-label">Attributed (public)</span>
-          <strong id="uofTotal">—</strong>
-        </div>
-      </div>
-      <div id="uofList" class="uof-list"></div>
-    </section>
-
-    <section class="section" id="notifications">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Relay feed</p>
-          <h2>Impact notifications</h2>
-        </div>
-      </div>
-      <div id="notificationList" class="notification-list"></div>
-    </section>
-
-    <section class="section">
-      <div class="panel privacy-callout">
-        <h2>Privacy boundary</h2>
-        <p id="privacyCopy">
-          This site publishes aggregate campaign totals and milestone notifications only.
-          It must never contain donor names, emails, individual gift amounts, or private notes.
-        </p>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <span>Impact Relay · public aggregate surface</span>
-    <span id="updatedAt">Updated —</span>
-  </footer>
+    </footer>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

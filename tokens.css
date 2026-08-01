@@ -1,0 +1,56 @@
+/* Hallmark · macrostructure: Stat-Led · tone: utilitarian ledger · anchor hue: forest
+ * genre: modern-minimal · nav: N1a · footer: Ft4 · enrichment: none
+ * theme: custom (vibe: "reconciled ledger, daylight paper, one forest mark")
+ * axes: light / grotesk-sans / chromatic-other (green)
+ */
+:root {
+  --color-paper: oklch(98% 0.008 145);
+  --color-paper-2: oklch(95.5% 0.01 145);
+  --color-paper-3: oklch(92% 0.014 145);
+  --color-ink: oklch(22% 0.02 145);
+  --color-ink-2: oklch(42% 0.018 145);
+  --color-muted: oklch(52% 0.02 145);
+  --color-rule: oklch(86% 0.012 145);
+  --color-accent: oklch(42% 0.1 155);
+  --color-accent-ink: oklch(98% 0.008 145);
+  --color-focus: oklch(48% 0.12 155);
+  --color-success: oklch(45% 0.11 155);
+  --color-warning: oklch(55% 0.12 75);
+  --color-danger: oklch(48% 0.16 25);
+  --color-waiting-bg: oklch(96% 0.03 85);
+  --color-empty-bg: oklch(96.5% 0.012 145);
+
+  --font-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+  --space-3xl: 6rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-display: clamp(2.75rem, 8vw, 4.75rem);
+  --text-display-s: clamp(1.75rem, 4vw, 2.5rem);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-short: 180ms;
+  --dur-med: 280ms;
+
+  --measure: 38rem;
+  --page-max: 68rem;
+}

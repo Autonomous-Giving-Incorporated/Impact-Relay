@@ -1,7 +1,14 @@
-const money = new Intl.NumberFormat('en-US', {
+const moneyWhole = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   maximumFractionDigits: 0
+});
+
+const moneyExact = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
 function text(id, value) {
@@ -37,12 +44,26 @@ function progressPercent(raised, target) {
   return Math.max(0, Math.min(100, Math.round((raised / target) * 100)));
 }
 
+function setEmptyState(isEmpty) {
+  document.getElementById('emptyBanner')?.classList.toggle('is-visible', isEmpty);
+  document.getElementById('statPrimary')?.classList.toggle('is-empty', isEmpty);
+  document.getElementById('progressBlock')?.classList.toggle('is-empty', isEmpty);
+}
+
+function showError(message) {
+  const el = document.getElementById('errorBanner');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add('is-visible');
+}
+
 function render(state) {
   const { organization, campaign, milestones, notifications, privacy, updatedAt } = state;
 
   text('orgName', organization.name);
   text('orgTagline', organization.tagline);
   text('campaignName', campaign.name);
+
   const raisedLabel = campaign.raisedClaimLabel || 'PILOT';
   const raisedSource = campaign.raisedSource || 'pilot_synthetic';
   text('campaignMeta', [
@@ -56,20 +77,38 @@ function render(state) {
 
   const status = document.getElementById('campaignStatus');
   status.textContent = campaign.status.replaceAll('_', ' ');
-  status.classList.toggle('is-active', campaign.status === 'active' && raisedSource === 'processor_aggregate');
-  status.classList.toggle('is-waiting', campaign.status === 'awaiting_live_reconciliation' || raisedSource === 'pilot_synthetic');
+  status.classList.toggle(
+    'is-active',
+    campaign.status === 'active' && raisedSource === 'processor_aggregate'
+  );
+  status.classList.toggle(
+    'is-waiting',
+    campaign.status === 'awaiting_live_reconciliation' || raisedSource === 'pilot_synthetic'
+  );
 
-  text('raisedValue', money.format(campaign.raisedPublic || 0));
-  text('committedValue', money.format(campaign.committedPublic || 0));
+  const raised = campaign.raisedPublic || 0;
+  const target = campaign.minimumTarget || 0;
+  const isEmpty =
+    (raised === 0 && (campaign.committedPublic || 0) === 0) ||
+    raisedSource === 'pilot_synthetic' ||
+    raisedSource === 'not_available';
+
+  setEmptyState(isEmpty);
+
+  text('raisedValue', moneyWhole.format(raised));
+  text('committedValue', moneyWhole.format(campaign.committedPublic || 0));
   text('donorCount', String(campaign.donorCountPublic || 0));
-  text('minimumTarget', money.format(campaign.minimumTarget || 0));
+  text('minimumTarget', moneyWhole.format(target));
 
-  const pct = progressPercent(campaign.raisedPublic || 0, campaign.minimumTarget || 0);
+  const pct = progressPercent(raised, target);
   text('progressPct', `${pct}%`);
-  document.getElementById('progressFill').style.width = `${pct}%`;
+  const fill = document.getElementById('progressFill');
+  if (fill) fill.style.width = `${pct}%`;
+  document.getElementById('progressBar')?.setAttribute('aria-valuenow', String(pct));
+
   text(
     'progressCaption',
-    `Public raised toward ${money.format(campaign.minimumTarget)} minimum · stretch ${money.format(campaign.stretchTarget)}` +
+    `Public raised toward ${moneyWhole.format(target)} minimum · stretch ${moneyWhole.format(campaign.stretchTarget)}` +
       (raisedSource === 'pilot_synthetic'
         ? ' · demo pilot totals (not live processor cash)'
         : raisedSource === 'not_available'
@@ -78,18 +117,20 @@ function render(state) {
   );
 
   const donate = document.getElementById('donateLink');
-  donate.href = organization.donationUrl;
+  if (organization.donationUrl) donate.href = organization.donationUrl;
   donate.textContent = `Donate via ${organization.processor}`;
 
   document.getElementById('milestoneGrid').innerHTML = milestones.map(m => {
-    const reached = m.state === 'reached' || (campaign.raisedPublic || 0) >= m.threshold;
+    const reached = m.state === 'reached' || raised >= m.threshold;
     return `
-      <article class="milestone-card ${reached ? 'reached' : ''}">
-        <span>${escapeHtml(m.state)}</span>
-        <h3>${escapeHtml(m.label)}</h3>
-        <p>${escapeHtml(m.impact)}</p>
-        <strong>${money.format(m.threshold)}</strong>
-      </article>`;
+      <li class="milestone-row ${reached ? 'reached' : ''}">
+        <span class="threshold nums">${moneyWhole.format(m.threshold)}</span>
+        <div>
+          <h3>${escapeHtml(m.label)}</h3>
+          <p>${escapeHtml(m.impact)}</p>
+        </div>
+        <span class="milestone-state">${escapeHtml(reached ? 'reached' : m.state)}</span>
+      </li>`;
   }).join('');
 
   document.getElementById('notificationList').innerHTML = (notifications || [])
@@ -98,7 +139,7 @@ function render(state) {
     .map(n => `
       <article class="notification-card ${escapeHtml(n.severity)}">
         <div class="meta">
-          <span>${escapeHtml(n.severity)}</span>
+          <span><span class="severity-dot" aria-hidden="true"></span>${escapeHtml(n.severity)}</span>
           <span>${escapeHtml(formatWhen(n.publishedAt))}</span>
         </div>
         <h3>${escapeHtml(n.title)}</h3>
@@ -108,7 +149,11 @@ function render(state) {
 
   text(
     'privacyCopy',
-    `Classification: ${privacy.classification}. PII allowed: ${privacy.piiAllowed}. Donor names allowed: ${privacy.donorNamesAllowed}. Individual amounts allowed: ${privacy.individualAmountsAllowed}.`
+    'This site publishes aggregate campaign totals and milestone notifications only. It must never contain donor names, emails, individual gift amounts, or private notes.'
+  );
+  text(
+    'privacyMeta',
+    `Classification ${privacy.classification} · PII ${privacy.piiAllowed ? 'allowed' : 'forbidden'} · donor names ${privacy.donorNamesAllowed ? 'allowed' : 'forbidden'} · individual amounts ${privacy.individualAmountsAllowed ? 'allowed' : 'forbidden'}`
   );
   text('updatedAt', `Updated ${updatedAt}`);
   document.title = `Impact Relay · ${organization.name}`;
@@ -121,14 +166,10 @@ function renderUseOfFunds(exportDoc) {
       '<p class="note">No public use-of-funds receipts published yet.</p>';
     return;
   }
-
   if (exportDoc.privacy?.piiAllowed || exportDoc.privacy?.donorNamesAllowed) {
     throw new Error('Use-of-funds privacy contract violation.');
   }
-
-  const total = Number(exportDoc.summary?.totalAttributed || 0);
-  text('uofTotal', money.format(total));
-
+  text('uofTotal', moneyExact.format(Number(exportDoc.summary?.totalAttributed || 0)));
   const rows = exportDoc.receipts || [];
   document.getElementById('uofList').innerHTML = rows.map(r => `
     <article class="uof-card">
@@ -139,12 +180,12 @@ function renderUseOfFunds(exportDoc) {
       <h3>${escapeHtml(r.allocationName)}</h3>
       <p>${escapeHtml(r.description)}</p>
       <div class="uof-facts">
-        <div><span class="metric-label">Attributed</span><strong>${money.format(Number(r.attributedAmount || 0))}</strong></div>
+        <div><span class="metric-label">Attributed</span><strong class="nums">${moneyExact.format(Number(r.attributedAmount || 0))}</strong></div>
         <div><span class="metric-label">Category</span><strong>${escapeHtml(r.category)}</strong></div>
         <div><span class="metric-label">Method</span><strong>${escapeHtml(r.attributionMethod)}</strong></div>
-        <div><span class="metric-label">Remaining fund</span><strong>${money.format(Number(r.remainingDesignatedBalance || 0))}</strong></div>
+        <div><span class="metric-label">Remaining fund</span><strong class="nums">${moneyExact.format(Number(r.remainingDesignatedBalance || 0))}</strong></div>
       </div>
-      <p class="note">Vendor: ${escapeHtml(r.vendor)} · Receipt ${escapeHtml(r.receiptId)}</p>
+      <p class="uof-tech">Vendor ${escapeHtml(r.vendor)} · Receipt ${escapeHtml(r.receiptId)}</p>
     </article>`).join('') || '<p class="note">No public use-of-funds receipts published yet.</p>';
 }
 
@@ -161,19 +202,19 @@ function renderImpactOutcomes(doc) {
   text('impactParticipants', String(doc.summary?.totalParticipantsPublic ?? 0));
   const rows = doc.outcomes || [];
   document.getElementById('impactOutcomeList').innerHTML = rows.map(o => `
-    <article class="digest-card">
+    <article class="record-card">
       <div class="meta">
         <span>${escapeHtml(o.evidenceState)}</span>
         <span>${escapeHtml(o.eventDate)}</span>
       </div>
       <h3>${escapeHtml(o.programName)} — ${escapeHtml(o.eventType)}</h3>
       <p>${escapeHtml(o.description || '')}</p>
-      <div class="uof-facts">
-        <div><span class="metric-label">Participants</span><strong>${escapeHtml(o.participantsPublic)}</strong></div>
+      <div class="uof-facts cols-3">
+        <div><span class="metric-label">Participants</span><strong class="nums">${escapeHtml(o.participantsPublic)}</strong></div>
         <div><span class="metric-label">Fund</span><strong>${escapeHtml(o.allocationName)}</strong></div>
         <div><span class="metric-label">Method</span><strong>${escapeHtml(o.attributionMethod)}</strong></div>
       </div>
-      <p class="note">Outcome ${escapeHtml(o.publicId)}</p>
+      <p class="uof-tech">Outcome ${escapeHtml(o.publicId)}</p>
     </article>`).join('') || '<p class="note">No public impact outcomes published yet.</p>';
 }
 
@@ -191,7 +232,7 @@ function renderPublicEvidence(doc) {
 
   text(
     'evidenceContributions',
-    money.format(Number(doc.summary?.form990ContributionsTotal || 0))
+    moneyWhole.format(Number(doc.summary?.form990ContributionsTotal || 0))
   );
   text(
     'evidenceNote',
@@ -201,12 +242,12 @@ function renderPublicEvidence(doc) {
       doc.campaignTargets?.liveRaisedState
         ? `Live campaign raised: ${doc.campaignTargets.liveRaisedState}`
         : null,
-      doc.note || null,
+      doc.note || null
     ].filter(Boolean).join(' · ')
   );
 
   const rows = doc.form990Contributions || [];
-  document.getElementById('evidence990').innerHTML = `
+  document.getElementById('evidence990').innerHTML = rows.length ? `
     <table class="workspace-table">
       <thead>
         <tr>
@@ -221,26 +262,26 @@ function renderPublicEvidence(doc) {
         ${rows.map(r => `
           <tr>
             <td>${escapeHtml(r.fiscalYear)}</td>
-            <td>${money.format(Number(r.contributions || 0))}</td>
-            <td>${money.format(Number(r.totalRevenue || 0))}</td>
-            <td>${money.format(Number(r.netAssets || 0))}</td>
+            <td class="nums">${moneyWhole.format(Number(r.contributions || 0))}</td>
+            <td class="nums">${moneyWhole.format(Number(r.totalRevenue || 0))}</td>
+            <td class="nums">${moneyWhole.format(Number(r.netAssets || 0))}</td>
             <td>${escapeHtml(r.claimLabel)}</td>
           </tr>`).join('')}
       </tbody>
-    </table>`;
+    </table>` : '<p class="note">No Form 990 contribution rows.</p>';
 
   const historical = doc.historicalCampaigns || [];
   document.getElementById('evidenceHistorical').innerHTML = historical.map(h => `
-    <article class="digest-card">
+    <article class="record-card">
       <div class="meta">
         <span>${escapeHtml(h.claimLabel)}</span>
         <span>${escapeHtml(h.id)}</span>
       </div>
       <h3>${escapeHtml(h.label)}</h3>
       <p>${escapeHtml(h.useOfFundsSummary || '')}</p>
-      <div class="uof-facts">
-        <div><span class="metric-label">Raised (approx.)</span><strong>${money.format(Number(h.raisedApproximate || 0))}</strong></div>
-        <div><span class="metric-label">Backers (approx.)</span><strong>${escapeHtml(h.backerCountApproximate ?? '—')}</strong></div>
+      <div class="uof-facts cols-2">
+        <div><span class="metric-label">Raised (approx.)</span><strong class="nums">${moneyWhole.format(Number(h.raisedApproximate || 0))}</strong></div>
+        <div><span class="metric-label">Backers (approx.)</span><strong class="nums">${escapeHtml(h.backerCountApproximate ?? '—')}</strong></div>
       </div>
     </article>`).join('');
 }
@@ -258,15 +299,15 @@ function renderDigests(doc) {
   text('digestAttendance', String(doc.summary?.totalAttendancePublic ?? 0));
   const events = doc.events || [];
   document.getElementById('digestList').innerHTML = events.map(e => `
-    <article class="digest-card">
+    <article class="record-card">
       <div class="meta">
         <span>${escapeHtml(e.class)}</span>
         <span>${escapeHtml(e.occurredOn)}</span>
       </div>
       <h3>${escapeHtml(e.title)}</h3>
       <p>${escapeHtml(e.impactSummary)}</p>
-      <div class="uof-facts">
-        <div><span class="metric-label">Attendance</span><strong>${escapeHtml(e.attendeeCountPublic)}</strong></div>
+      <div class="uof-facts cols-3">
+        <div><span class="metric-label">Attendance</span><strong class="nums">${escapeHtml(e.attendeeCountPublic)}</strong></div>
         <div><span class="metric-label">Location</span><strong>${escapeHtml(e.locationLabel || '—')}</strong></div>
         <div><span class="metric-label">Linked fund</span><strong>${escapeHtml(e.linkedAllocationName || '—')}</strong></div>
       </div>
@@ -304,6 +345,7 @@ async function boot() {
     renderImpactOutcomes(impactOutcomes);
   } catch (error) {
     console.error(error);
+    showError(error.message || String(error));
     text('campaignName', 'Unable to load impact state');
     text('campaignMeta', error.message || String(error));
   }
