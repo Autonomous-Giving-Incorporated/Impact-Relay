@@ -32,39 +32,51 @@ assert CANONICAL_POLICY_SLUG == "hacker-dojo"
 ```text
 Hacker-Dojo App (template for other nonprofits)
   ├── Auth (OIDC) — maps humans → finance_approver / … roles
-  ├── Impact Relay library
-  │     ├── policy: load_tenant_policy("org_hacker_dojo")
-  │     ├── durable: --data-dir per env (dev/staging/prod)
-  │     ├── storage: open_storage(data_dir)  # tenants, objects, outbox
-  │     └── workflows: expense / correction / digest
+  ├── impact_relay.host  ← prefer this façade
+  │     open_hacker_dojo_session(data_dir)
+  │       seed / list_waiting / approve / list_expenses
   └── Public Pages (optional) — publish digests / UOF aggregates
 ```
 
-### Easy local pilot (Impact Relay alone)
-
-```bash
-python -m impact_relay --durable seed --data-dir .impact-relay/hd-pilot
-python -m impact_relay --durable list --data-dir .impact-relay/hd-pilot
-python -m impact_relay --durable approve --data-dir .impact-relay/hd-pilot
-```
-
-### Register HD in durable storage (library)
+### Preferred API (Hacker-Dojo app)
 
 ```python
-from pathlib import Path
-from impact_relay.storage import open_storage
-from impact_relay.storage.template import ensure_canonical_hacker_dojo_tenant
-from impact_relay.pilot import run_pilot
+from impact_relay.host import open_hacker_dojo_session
 
-store = open_storage(Path(".impact-relay/storage"))
-tenant = ensure_canonical_hacker_dojo_tenant(store)
-assert tenant.tenant_id == "org_hacker_dojo"
+with open_hacker_dojo_session("./data/hd-pilot") as session:
+    session.seed()
+    waiting = session.list_waiting()
+    session.approve(
+        workflow_id=waiting["cases"][0]["workflow_id"],
+        approver_id="finance@hackersdojo.org",  # human only
+    )
+    for exp in session.list_expenses():
+        print(exp["id"], exp["state"])
+```
 
-# After a pilot / durable approve: persist queryable entity snapshot
-ledger, _ = run_pilot()
-store.ledger.save_ledger(ledger)
-expenses = store.ledger.list_expenses("org_hacker_dojo")
-loaded = store.ledger.load_ledger(tenant_id="org_hacker_dojo")
+Default data dir: `.impact-relay/hacker-dojo`  
+Identity helpers: `from impact_relay.host.hacker_dojo import hacker_dojo_identity`
+
+### Easy local pilot (CLI alone)
+
+```bash
+python -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo
+python -m impact_relay --durable list --data-dir .impact-relay/hacker-dojo
+python -m impact_relay --durable approve --data-dir .impact-relay/hacker-dojo
+```
+
+### Other nonprofit host (same session class)
+
+```python
+from impact_relay.host import open_host_session
+
+with open_host_session(
+    "./data/other-makerspace",
+    tenant_id="org_other_makerspace",
+    display_name="Other Makerspace",
+) as session:
+    session.ensure_registered()  # clones policy shape from Hacker Dojo template
+    # session.seed / approve / list_expenses — same API
 ```
 
 ## Onboarding another nonprofit (template pattern)
