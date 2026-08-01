@@ -100,8 +100,8 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Map finance roles and approval chain (`docs/pilot/HACKER-DOJO-PILOT.md` + RBAC).
 - [x] Define first restricted hardware/community-class allocation (fixture Community Hardware Fund).
 - [x] Select first donor cohort (fixture donors alice/bob; staff dry-run path).
-- [ ] Build finance review console (host UI — Hacker-Dojo app).
-- [ ] Build donor timeline and receipt screen (host UI — Hacker-Dojo app).
+- [x] Finance review console **API** (`FinanceConsole` + `console_server`); host UI pages in Hacker-Dojo app.
+- [x] Donor timeline/receipt **API** (`DonorConsole` + donor routes); host UI pages in Hacker-Dojo app.
 - [x] Run synthetic dry run (host session + `--all-phases`; see pilot doc).
 - [ ] Run finance-controlled shadow mode (ops process).
 - [ ] Run limited live cohort (ops process).
