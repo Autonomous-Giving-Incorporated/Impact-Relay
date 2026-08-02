@@ -126,12 +126,12 @@ class SqlWorkflowStore:
                 raise RuntimeError(
                     "PostgreSQL support requires: pip install 'impact-relay[db]'"
                 ) from exc
-            with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
+            with psycopg.connect(self._dsn, row_factory=dict_row) as pg_conn:
                 try:
-                    yield conn
-                    conn.commit()
+                    yield pg_conn
+                    pg_conn.commit()
                 except Exception:
-                    conn.rollback()
+                    pg_conn.rollback()
                     raise
 
     def migrate(self) -> None:
