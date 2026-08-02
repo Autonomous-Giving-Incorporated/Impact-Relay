@@ -74,9 +74,11 @@ def _j(obj: Any) -> str:
     return json.dumps(obj if obj is not None else {}, default=str, sort_keys=True)
 
 
-def _loads(raw: str | None, default: Any = None) -> Any:
+def _loads(raw: Any, default: Any = None) -> Any:
     if raw is None or raw == "":
         return default if default is not None else {}
+    if isinstance(raw, (dict, list, int, float, bool)):
+        return raw
     return json.loads(raw)
 
 
@@ -124,12 +126,12 @@ class SqlWorkflowStore:
                 raise RuntimeError(
                     "PostgreSQL support requires: pip install 'impact-relay[db]'"
                 ) from exc
-            with psycopg.connect(self._dsn, row_factory=dict_row) as conn:
+            with psycopg.connect(self._dsn, row_factory=dict_row) as pg_conn:
                 try:
-                    yield conn
-                    conn.commit()
+                    yield pg_conn
+                    pg_conn.commit()
                 except Exception:
-                    conn.rollback()
+                    pg_conn.rollback()
                     raise
 
     def migrate(self) -> None:
@@ -203,7 +205,7 @@ class SqlWorkflowStore:
                         instance.business_key,
                         instance.workflow_state.value,
                         instance.run_status.value,
-                        1 if instance.simulation else 0,
+                        instance.simulation if self._is_postgres else int(instance.simulation),
                         instance.policy_version,
                         _j(instance.context),
                         _j(instance.wait_descriptor) if instance.wait_descriptor else None,
@@ -370,7 +372,7 @@ class SqlWorkflowStore:
                     instance.updated_at or utc_now_iso(),
                     instance.event_seq,
                     instance.policy_version,
-                    1 if instance.simulation else 0,
+                    instance.simulation if self._is_postgres else int(instance.simulation),
                     instance.workflow_id,
                     instance.tenant_id,
                 ),

@@ -121,12 +121,12 @@ class SqlEngine:
                     raise RuntimeError(
                         "PostgreSQL storage requires: pip install 'impact-relay[db]'"
                     ) from exc
-                with psycopg.connect(self._dsn, row_factory=dict_row) as c:
+                with psycopg.connect(self._dsn, row_factory=dict_row) as pg_conn:
                     try:
-                        yield c
-                        c.commit()
+                        yield pg_conn
+                        pg_conn.commit()
                     except Exception:
-                        c.rollback()
+                        pg_conn.rollback()
                         raise
 
     def sql(self, statement: str) -> str:

@@ -62,12 +62,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pytest tests/test_workflow_sql_store.py -v --no-header | tee /tmp/pg.log
+          pytest -o addopts='' tests/test_workflow_sql_store.py -v --no-header | tee /tmp/pg.log
       - name: Assert the Postgres SKIP LOCKED test was not skipped
         shell: bash
         run: |
           set -euo pipefail
           grep -q "test_postgres_store_claim_skip_locked PASSED" /tmp/pg.log
+
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser acceptance dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run responsive accessibility acceptance
+        run: npm run test:browser
 
   ledger-tests:
     runs-on: ubuntu-latest
@@ -125,7 +139,7 @@ jobs:
 
   validate:
     runs-on: ubuntu-latest
-    needs: [quality, ledger-tests, postgres-store]
+    needs: [quality, ledger-tests, postgres-store, browser-acceptance]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
