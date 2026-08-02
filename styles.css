@@ -58,6 +58,7 @@ a:hover { text-decoration-thickness: 2px; }
   gap: var(--space-md);
   padding-block: var(--space-lg) var(--space-md);
   border-bottom: 1px solid var(--color-rule);
+  border-top: 5px solid var(--color-accent);
 }
 
 .brand-mark {
@@ -122,12 +123,12 @@ a:hover { text-decoration-thickness: 2px; }
   font-size: var(--text-sm);
   font-weight: 600;
   padding: 0.65rem 1.1rem;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--color-accent);
   color: var(--color-accent-ink);
   transition: background-color var(--dur-short) var(--ease-out);
 }
-.button:hover { background: oklch(36% 0.09 155); }
+.button:hover { background: #c90046; }
 .button:active { transform: translateY(1px); }
 
 main { padding-bottom: var(--space-2xl); }
@@ -135,6 +136,13 @@ main { padding-bottom: var(--space-2xl); }
 .section {
   padding-block: var(--space-xl);
   border-bottom: 1px solid var(--color-rule);
+}
+
+.metric-row,
+.milestone-ladder > *,
+.record-list > *,
+.uof-grid > * {
+  border-radius: var(--radius-md);
 }
 .section:last-of-type { border-bottom: 0; }
 

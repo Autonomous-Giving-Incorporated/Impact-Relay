@@ -150,6 +150,7 @@ def test_health_needs_no_auth_and_reports_posture(tmp_path: Path) -> None:
     assert res.json["auth"] == {
         "allow_unauthenticated_pilot": False,
         "trusted_proxy": False,
+        "jwt_validation": False,
     }
 
 

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import traceback
@@ -62,6 +63,7 @@ class ServerConfig:
     trusted_proxy: bool = False
     max_body_bytes: int = DEFAULT_MAX_BODY_BYTES
     allowed_origins: tuple[str, ...] = ()
+    identity_provider: Any = None
 
     def cors_origin_for(self, origin: str | None) -> str | None:
         """Resolve the ``Access-Control-Allow-Origin`` value for a request.
@@ -85,6 +87,7 @@ def resolve_principal_from_request(
     tenant_id: str,
     *,
     trusted_proxy: bool = False,
+    identity_provider: Any = None,
 ):
     """Resolve a Principal from request identity, or return ``None``.
 
@@ -116,6 +119,12 @@ def resolve_principal_from_request(
         except ValueError as exc:
             # Unmappable role is a misconfiguration, not an anonymous request.
             raise AuthorizationError(str(exc)) from exc
+
+    if auth and identity_provider is not None:
+        try:
+            return identity_provider.principal_for_token(auth)
+        except ValueError:
+            return None
 
     if auth:
         from impact_relay.auth.oidc import hacker_dojo_fixture_oidc
@@ -210,7 +219,10 @@ def make_handler(
 
         def _principal(self):
             return resolve_principal_from_request(
-                self, cfg.tenant_id, trusted_proxy=cfg.trusted_proxy
+                self,
+                cfg.tenant_id,
+                trusted_proxy=cfg.trusted_proxy,
+                identity_provider=cfg.identity_provider,
             )
 
         def _require_principal(self):
@@ -307,6 +319,7 @@ def make_handler(
                     "auth": {
                         "allow_unauthenticated_pilot": cfg.allow_unauthenticated_pilot,
                         "trusted_proxy": cfg.trusted_proxy,
+                        "jwt_validation": cfg.identity_provider is not None,
                     },
                 }
             if path == "/api/finance/metrics":
@@ -376,6 +389,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--tenant-id", default=CANONICAL_PILOT_TENANT_ID)
     p.add_argument(
+        "--supabase-url",
+        default=os.getenv("SUPABASE_URL"),
+        help="Supabase project URL. Enables JWKS access-token validation.",
+    )
+    p.add_argument(
+        "--supabase-audience",
+        default=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
+        help="Required Supabase JWT audience (default: authenticated).",
+    )
+    p.add_argument(
         "--trusted-proxy",
         action="store_true",
         help=(
@@ -406,6 +429,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = p.parse_args(argv)
     args.data_dir.mkdir(parents=True, exist_ok=True)
+    identity_provider = None
+    if args.supabase_url:
+        from impact_relay.auth.supabase import SupabaseJwksProvider
+
+        identity_provider = SupabaseJwksProvider(
+            supabase_url=args.supabase_url,
+            tenant_id=args.tenant_id,
+            audience=args.supabase_audience,
+        )
     cfg = ServerConfig(
         data_dir=args.data_dir,
         tenant_id=args.tenant_id,
@@ -413,6 +445,7 @@ def main(argv: list[str] | None = None) -> int:
         trusted_proxy=args.trusted_proxy,
         max_body_bytes=args.max_body_bytes,
         allowed_origins=tuple(args.allow_origin),
+        identity_provider=identity_provider,
     )
     handler = make_handler(args.data_dir, args.tenant_id, config=cfg)
     server = ThreadingHTTPServer((args.host, args.port), handler)
@@ -432,6 +465,7 @@ def main(argv: list[str] | None = None) -> int:
                 "auth": {
                     "allow_unauthenticated_pilot": cfg.allow_unauthenticated_pilot,
                     "trusted_proxy": cfg.trusted_proxy,
+                    "jwt_validation": cfg.identity_provider is not None,
                     "allowed_origins": list(cfg.allowed_origins),
                 },
             },
