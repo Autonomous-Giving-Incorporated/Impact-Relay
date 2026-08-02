@@ -5,7 +5,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 ## P0 — Governance and contracts
 
 - [x] Define `AuthorityLevel`, `AgentCommand`, `AgentProposal`, `ValidationResult`, `ApprovalReceipt`, `ExecutionReceipt`, and `AgentRunReceipt`.
-- [x] Add JSON Schemas for core cross-boundary contracts (agent-proposal, agent-run-receipt, approval-receipt; `agent-command` / `execution-receipt` / `validation-result` still missing — see ROADMAP v0.9.1 Track C).
+- [x] Add JSON Schemas for every cross-boundary contract (agent-command, agent-proposal, agent-run-receipt, approval-receipt, execution-receipt, validation-result), with dataclass parity enforced by `tests/test_agent_contract_schemas.py`.
 - [x] Add policy-version and prompt-version fields to run receipts.
 - [x] Implement deterministic authority checks.
 - [x] Implement proposal expiration and idempotency keys.
