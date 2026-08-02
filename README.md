@@ -250,7 +250,7 @@ Impact-Relay/
 │   ├── DURABLE-QUICKSTART.md
 │   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
-│   ├── HD-IR-00x.md                     # milestone notes
+│   ├── HD-IR-001.md … HD-IR-007.md      # milestone notes
 │   ├── architecture/
 │   │   ├── AGENTIC-SYSTEM.md
 │   │   ├── DURABLE-WORKFLOWS.md
@@ -259,16 +259,17 @@ Impact-Relay/
 │   └── pilot/                           # HD pilot + FINDINGS template
 ├── src/impact_relay/
 │   ├── domain/                          # ledger, impact, notifications, tenant
-│   ├── agents/                          # L0–L3 contracts + expense slice
+│   ├── agents/                          # L0–L3 contracts, executor, privacy sentinel
 │   ├── workflows/                       # durable runtime, worker, corrections
 │   ├── storage/                         # SQL store, objects, tenants, template
-│   ├── auth/                            # principal, RBAC, OIDC ports, role map
+│   ├── auth/                            # principal, RBAC, OIDC ports + JWKS, role map
 │   ├── host/                            # session façade, finance/donor console
 │   ├── donor/                           # donor experience API
 │   ├── notifications/                   # delivery adapters
 │   ├── console_server.py                # pilot HTTP API for host UIs
-│   ├── pilot.py · cli.py · public_export.py
-│   └── every_org.py · notion_public.py
+│   ├── pilot.py · cli.py · policy.py    # phases, CLI, versioned policy packs
+│   ├── public_export.py · public_impact.py · digest.py · reconcile.py
+│   └── every_org.py · notion_public.py  # aggregate + evidence bridges
 ├── policies/tenants/                    # e.g. hacker-dojo.v1.0.yaml
 ├── fixtures/ · schemas/ · data/
 ├── tests/ · scripts/

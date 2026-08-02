@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from impact_relay.agents.types import ExecutionReceipt, WorkflowState, to_jsonable, utc_now_iso
+from impact_relay.storage.sql import to_postgres_placeholders
 from impact_relay.workflows.exceptions import (
     WorkflowConflictError,
     WorkflowNotFoundError,
@@ -867,7 +868,7 @@ class SqlWorkflowStore:
         if self._is_postgres or postgres:
             # convert ? to %s when using postgres path
             if "?" in sql and "%s" not in sql:
-                return sql.replace("?", "%s")
+                return to_postgres_placeholders(sql)
             return sql
         return sql
 

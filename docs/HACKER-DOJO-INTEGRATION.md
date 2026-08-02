@@ -68,6 +68,28 @@ with open_hacker_dojo_session(
 Default data dir: `.impact-relay/hacker-dojo`  
 Identity: `impact_relay.auth` (roles, RBAC, OIDC ports) + `hacker_dojo_identity()`
 
+### Which identity provider, exactly
+
+Both "Supabase" and "OIDC" appear across these docs; they are different layers,
+not alternatives:
+
+| Layer | What it is | Where |
+|---|---|---|
+| **Supabase** | Hacker Dojo's *actual* IdP. Owns login, MFA, and the `profile.role` values (`director`, `campaign_lead`, `data_steward`, …). | Hacker-Dojo app (sibling repo) |
+| **Campaign-role bridge** | Maps a Supabase `profile.role` to Impact Relay RBAC roles. | `impact_relay.auth.role_map` |
+| **OIDC ports** | The generic, vendor-neutral boundary any nonprofit host implements. | `impact_relay.auth.oidc` |
+| **JWKS validation** | Optional in-library token validation for hosts that don't terminate auth at a gateway. | `impact_relay.auth.jwt_oidc` (`[oidc]` extra) |
+
+The host is responsible for authenticating the user and enforcing MFA. Impact
+Relay only maps an already-authenticated identity to roles — with one exception:
+if you use `JwksOidcProvider`, the library validates the token itself.
+
+`console_server` accepts `X-Impact-*` identity headers **only** when started with
+`--trusted-proxy`, and only a gateway that authenticates the user and strips
+client-supplied copies of those headers may set them. Without that flag the
+headers are ignored and requests are anonymous — which the default posture
+rejects.
+
 ### Roles (platform vocabulary)
 
 | Role | Can approve expenses | Notes |

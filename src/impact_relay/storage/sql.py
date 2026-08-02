@@ -50,6 +50,38 @@ class StorageBundle:
         return self._engine.is_postgres
 
 
+def to_postgres_placeholders(statement: str) -> str:
+    """Rewrite ``?`` placeholders as ``%s`` for psycopg.
+
+    A blanket ``str.replace`` would also rewrite a ``?`` inside a quoted
+    literal (``WHERE note = 'why?'``), silently corrupting the query, so
+    single-quoted literals are skipped. Doubled ``''`` is SQL's escaped quote
+    and stays inside the literal.
+
+    Callers must not mix ``?`` placeholders with literal ``%`` (e.g. ``LIKE
+    '%x%'``) in one statement: psycopg would read the ``%`` as a format spec.
+    No query in this package does.
+    """
+    out: list[str] = []
+    in_literal = False
+    i = 0
+    while i < len(statement):
+        ch = statement[i]
+        if ch == "'":
+            if in_literal and statement[i + 1 : i + 2] == "'":
+                out.append("''")
+                i += 2
+                continue
+            in_literal = not in_literal
+            out.append(ch)
+        elif ch == "?" and not in_literal:
+            out.append("%s")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 class SqlEngine:
     """Minimal connection helper shared by storage repositories."""
 
@@ -99,7 +131,7 @@ class SqlEngine:
 
     def sql(self, statement: str) -> str:
         if self.is_postgres and "?" in statement and "%s" not in statement:
-            return statement.replace("?", "%s")
+            return to_postgres_placeholders(statement)
         return statement
 
     def execute(self, conn: Any, sql: str, params: tuple[Any, ...] = ()) -> Any:

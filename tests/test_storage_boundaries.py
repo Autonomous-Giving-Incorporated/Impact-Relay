@@ -142,3 +142,18 @@ def test_outbox_append_claim_publish_tenant_scoped(tmp_path: Path) -> None:
     hd_only = store.outbox.list_for_tenant(CANONICAL_PILOT_TENANT_ID)
     assert all(e.tenant_id == CANONICAL_PILOT_TENANT_ID for e in hd_only)
     assert any(e.event_id == ev.event_id and e.published_at for e in hd_only)
+
+
+def test_postgres_placeholder_rewrite_skips_quoted_literals() -> None:
+    """A blanket ?->%s replace would corrupt a literal containing a question mark."""
+    from impact_relay.storage.sql import to_postgres_placeholders as convert
+
+    assert convert("SELECT * FROM t WHERE a=? AND b=?") == "SELECT * FROM t WHERE a=%s AND b=%s"
+    assert convert("SELECT 1") == "SELECT 1"
+    # ? inside a literal must survive untouched
+    assert (
+        convert("SELECT * FROM t WHERE note='why?' AND a=?")
+        == "SELECT * FROM t WHERE note='why?' AND a=%s"
+    )
+    # '' is an escaped quote and does not end the literal
+    assert convert("SELECT 'it''s ok?', ?") == "SELECT 'it''s ok?', %s"

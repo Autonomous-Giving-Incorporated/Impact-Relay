@@ -362,7 +362,7 @@ src/impact_relay/workflows/
   runtime.py            # start / signal_approval / advance / list
   worker.py             # claim loop, lease renewal, timeout sweeper
   store_memory.py
-  store_postgres.py     # pilot track
+  store_sql.py          # SQLite default + Postgres (SKIP LOCKED) — pilot track
   exceptions.py         # retryable vs terminal classification
   facade.py             # ExpenseSliceResult aggregation
   corrections.py        # later track
@@ -1304,11 +1304,11 @@ Skip MVP; consumers use `list` / events.
 
 | Test | Covers |
 |---|---|
-| `test_workflow_machine.py` | Transitions; atomic L3; no park on APPROVED |
-| `test_workflow_replay.py` | Crash injection between commit substeps (memory fault injector); resume |
-| `test_workflow_signals.py` | Wake PENDING; wrong tenant; agent approver; key mismatch; invalid consume; no matching signal → repark (no busy-loop); REJECTED_INVALID → WAITING_SIGNAL |
-| `test_workflow_retry.py` | Retryable vs terminal taxonomy; DLQ; FAILED not in receipt store |
-| `test_workflow_timeout.py` | wait_deadline cleared; sweeper idempotent (no re-fire); late APPROVE rejected; NEEDS_INFORMATION |
+| `test_workflow_machine_and_steps.py` | Transitions; atomic L3; no park on APPROVED |
+| `test_workflow_memory_runtime.py` | Crash injection between commit substeps (memory fault injector); resume |
+| `test_workflow_memory_runtime.py`, `test_workflow_sql_store.py` | Wake PENDING; wrong tenant; agent approver; key mismatch; invalid consume; no matching signal → repark (no busy-loop); REJECTED_INVALID → WAITING_SIGNAL |
+| `test_workflow_worker.py` | Retryable vs terminal taxonomy; DLQ; FAILED not in receipt store |
+| `test_workflow_sql_store.py` | wait_deadline cleared; sweeper idempotent (no re-fire); late APPROVE rejected; NEEDS_INFORMATION |
 | `test_expense_approval_slice.py` | Façade parity when flag runtime; last-row workflow_state (K18) |
 | `test_agent_import_boundaries.py` | executor.py gateway + workflows ban |
 | T2 integration | K17 fold rehydrate: same expense_id after kill; signal → LEDGER_COMMITTED; no duplicate entities |
@@ -1340,7 +1340,7 @@ flowchart LR
 
 ## References
 
-- `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith; Temporal preferred / PG OK; **note evidence/classify order drift vs this doc**
+- `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith; the bounded SQL worker is the pilot default (Temporal remains a later option). Evidence-before-classify ordering now agrees across AGENTS.md, AGENTIC-SYSTEM.md, and `workflows/machine.py`.
 - `AGENTS.md`, `ENGINEERING_PRINCIPLES.md`, `ROADMAP.md`, `TODO.md`
 - `src/impact_relay/agents/expense_workflow.py`, `types.py`, `base.py`, `authority.py`
 - `src/impact_relay/domain/ledger.py` — mutations and corrections
@@ -1417,7 +1417,7 @@ Split into **MVP (v0.6)**, **Pilot**, and **Later**. Each PR independently revie
 #### PR-P2 — PostgreSQL WorkflowStore + Alembic
 
 - **Title:** `workflows: PostgreSQL store, claim SQL, schema`
-- **Files:** `store_postgres.py`, migrations, optional `db` deps; skip tests without DSN
+- **Files:** `store_sql.py`, migrations, optional `db` deps; CI runs these against a Postgres service container
 - **Dependencies:** PR-M3 (protocol), PR-P1 for non-sim e2e
 - **Description:** SKIP LOCKED claim; `enqueue_signal_and_wake` TX; execution_receipts CHECK status; tenant isolation tests.
 
