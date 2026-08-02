@@ -8,16 +8,14 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 DEFAULT_AGGREGATE_FIXTURE = (
     Path(__file__).resolve().parents[2] / "fixtures" / "reconcile_aggregate_v1.json"
 )
-DEFAULT_IMPACT_STATE = (
-    Path(__file__).resolve().parents[2] / "data" / "impact-state.json"
-)
+DEFAULT_IMPACT_STATE = Path(__file__).resolve().parents[2] / "data" / "impact-state.json"
 
 FORBIDDEN_AGGREGATE_KEYS = frozenset(
     {
@@ -131,7 +129,7 @@ def load_impact_state(path: Path | str | None = None) -> dict[str, Any]:
 
 
 def _iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def apply_aggregate_reconciliation(
@@ -196,9 +194,7 @@ def apply_aggregate_reconciliation(
     # Replace same-day reconcile notification if re-run.
     notifications[:] = [n for n in notifications if n.get("id") != notification["id"]]
     # Drop stale "awaiting live reconciliation" once any aggregate reconcile ran.
-    notifications[:] = [
-        n for n in notifications if n.get("id") != "reconciliation-pending"
-    ]
+    notifications[:] = [n for n in notifications if n.get("id") != "reconciliation-pending"]
     notifications.append(notification)
 
     state["updatedAt"] = date.today().isoformat()

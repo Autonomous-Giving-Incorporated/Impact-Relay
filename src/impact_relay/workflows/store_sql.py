@@ -11,16 +11,18 @@ Claim never returns pure WAITING_SIGNAL. FAILED receipts never stored.
 
 from __future__ import annotations
 
+import builtins
 import json
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterator
-from urllib.parse import urlparse
+from typing import Any
 
 from impact_relay.agents.types import ExecutionReceipt, WorkflowState, to_jsonable, utc_now_iso
+from impact_relay.storage.sql import to_postgres_placeholders
 from impact_relay.workflows.exceptions import (
     WorkflowConflictError,
     WorkflowNotFoundError,
@@ -49,7 +51,7 @@ _TIMEOUT_GATE_STATES = frozenset(
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc).replace(microsecond=0)
+    return datetime.now(UTC).replace(microsecond=0)
 
 
 def _iso(dt: datetime | str | None) -> str | None:
@@ -57,14 +59,14 @@ def _iso(dt: datetime | str | None) -> str | None:
         return None
     if isinstance(dt, str):
         return dt
-    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+    return dt.astimezone(UTC).replace(microsecond=0).isoformat()
 
 
 def _parse_iso(value: str | datetime | None) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
@@ -84,15 +86,13 @@ class SqlWorkflowStore:
     def __init__(self, dsn_or_path: str | Path) -> None:
         self._dsn = str(dsn_or_path)
         self._lock = threading.RLock()
-        self._is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith(
-            "postgres:"
-        )
+        self._is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith("postgres:")
         self._is_sqlite = not self._is_postgres
         if self._is_sqlite:
             path = self._dsn
             if path.startswith("sqlite:///"):
                 path = path[len("sqlite:///") :]
-            self._sqlite_path = Path(path)
+            self._sqlite_path: Path | None = Path(path)
             self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             self._sqlite_path = None
@@ -239,11 +239,7 @@ class SqlWorkflowStore:
     def get_by_business_key(
         self, tenant_id: str, workflow_type: WorkflowType | str, business_key: str
     ) -> WorkflowInstance | None:
-        wt = (
-            workflow_type.value
-            if isinstance(workflow_type, WorkflowType)
-            else str(workflow_type)
-        )
+        wt = workflow_type.value if isinstance(workflow_type, WorkflowType) else str(workflow_type)
         with self._lock, self._conn() as conn:
             row = self._fetchone(
                 conn,
@@ -286,7 +282,7 @@ class SqlWorkflowStore:
         limit: int,
         now: datetime,
         lease_ttl: timedelta,
-    ) -> list[WorkflowInstance]:
+    ) -> builtins.list[WorkflowInstance]:
         now_iso = _iso(now) or utc_now_iso()
         lease_exp = _iso(now + lease_ttl)
         with self._lock, self._conn() as conn:
@@ -386,7 +382,7 @@ class SqlWorkflowStore:
         self,
         tenant_id: str,
         workflow_id: str,
-        events: list[WorkflowEventWrite] | list[WorkflowEvent],
+        events: builtins.list[WorkflowEventWrite] | builtins.list[WorkflowEvent],
     ) -> None:
         with self._lock, self._conn() as conn:
             row = self._fetchone(
@@ -450,7 +446,7 @@ class SqlWorkflowStore:
             ),
         )
 
-    def list_events(self, tenant_id: str, workflow_id: str) -> list[WorkflowEvent]:
+    def list_events(self, tenant_id: str, workflow_id: str) -> builtins.list[WorkflowEvent]:
         with self._lock, self._conn() as conn:
             rows = self._fetchall(
                 conn,
@@ -542,7 +538,7 @@ class SqlWorkflowStore:
 
     def take_unconsumed_signals(
         self, tenant_id: str, workflow_id: str
-    ) -> list[WorkflowSignal]:
+    ) -> builtins.list[WorkflowSignal]:
         with self._lock, self._conn() as conn:
             rows = self._fetchall(
                 conn,
@@ -574,9 +570,7 @@ class SqlWorkflowStore:
                 )
             return out
 
-    def mark_signal_consumed(
-        self, tenant_id: str, signal_id: str, result: str
-    ) -> None:
+    def mark_signal_consumed(self, tenant_id: str, signal_id: str, result: str) -> None:
         with self._lock, self._conn() as conn:
             self._exec(
                 conn,
@@ -587,9 +581,7 @@ class SqlWorkflowStore:
                 (utc_now_iso(), result, signal_id, tenant_id),
             )
 
-    def put_execution_receipt(
-        self, receipt: ExecutionReceipt, *, workflow_id: str
-    ) -> None:
+    def put_execution_receipt(self, receipt: ExecutionReceipt, *, workflow_id: str) -> None:
         if receipt.status not in ("SUCCEEDED", "SIMULATED", "SKIPPED"):
             raise WorkflowStateError(
                 f"must not store FAILED receipt for idempotency: {receipt.status}"
@@ -779,11 +771,7 @@ class SqlWorkflowStore:
                     )
 
             for signal_id, result in bundle.consume_signals:
-                res = (
-                    result.value
-                    if isinstance(result, SignalConsumeResult)
-                    else str(result)
-                )
+                res = result.value if isinstance(result, SignalConsumeResult) else str(result)
                 self._exec(
                     conn,
                     """
@@ -793,7 +781,7 @@ class SqlWorkflowStore:
                     (utc_now_iso(), res, signal_id, bundle.tenant_id),
                 )
 
-    def sweep_approval_timeouts(self, now: datetime | None = None) -> list[str]:
+    def sweep_approval_timeouts(self, now: datetime | None = None) -> builtins.list[str]:
         now = now or _now()
         now_iso = _iso(now) or utc_now_iso()
         timed: list[str] = []
@@ -806,7 +794,9 @@ class SqlWorkflowStore:
                   AND wait_deadline IS NOT NULL
                   AND wait_deadline < ?
                   AND timeout_applied_at IS NULL
-                  AND workflow_state IN ('REVIEW_PENDING','PUBLICATION_PENDING','NOTIFICATION_PENDING')
+                  AND workflow_state IN (
+                      'REVIEW_PENDING','PUBLICATION_PENDING','NOTIFICATION_PENDING'
+                  )
                 """,
                 (now_iso,),
             )
@@ -878,7 +868,7 @@ class SqlWorkflowStore:
         if self._is_postgres or postgres:
             # convert ? to %s when using postgres path
             if "?" in sql and "%s" not in sql:
-                return sql.replace("?", "%s")
+                return to_postgres_placeholders(sql)
             return sql
         return sql
 
@@ -900,7 +890,9 @@ class SqlWorkflowStore:
             cur.execute(sql, params)
             return cur.fetchone()
 
-    def _fetchall(self, conn: Any, sql: str, params: tuple[Any, ...] = (), *, postgres: bool = False) -> list[Any]:
+    def _fetchall(
+        self, conn: Any, sql: str, params: tuple[Any, ...] = (), *, postgres: bool = False
+    ) -> builtins.list[Any]:
         sql = self._sql(sql, postgres=postgres or self._is_postgres)
         if self._is_sqlite:
             return list(conn.execute(sql, params).fetchall())
@@ -1068,8 +1060,10 @@ def open_sql_store(
     """Open store: DATABASE_URL / env, else SQLite under data_dir/workflows.db."""
     import os
 
-    url = database_url or os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get(
-        "DATABASE_URL"
+    url = (
+        database_url
+        or os.environ.get("IMPACT_RELAY_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
     )
     if url:
         return SqlWorkflowStore(url)

@@ -22,7 +22,11 @@ from impact_relay.agents.notification_composer import (
     NotificationComposerAgent,
     compose_email_from_uof,
 )
-from impact_relay.agents.privacy import PrivacySentinelError, assert_public_safe, scan_public_payload
+from impact_relay.agents.privacy import (
+    PrivacySentinelError,
+    assert_public_safe,
+    scan_public_payload,
+)
 from impact_relay.agents.types import (
     AgentCommand,
     AgentProposal,
@@ -46,8 +50,8 @@ __all__ = [
     "AuthorityError",
     "AuthorityLevel",
     "CommandExecutor",
-    "EvidenceSufficiency",
     "EmailPreview",
+    "EvidenceSufficiency",
     "EvidenceValidatorAgent",
     "ExecutionReceipt",
     "ExpenseIntakeAgent",

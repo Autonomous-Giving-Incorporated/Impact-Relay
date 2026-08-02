@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from impact_relay.agents.authority import AuthorityError, assert_agent_may_propose
@@ -16,7 +16,6 @@ from impact_relay.agents.base import AgentContext, CommandExecutor, build_run_re
 from impact_relay.agents.executor import LedgerCommandExecutor
 from impact_relay.agents.notification_composer import (
     EmailPreview,
-    NotificationComposerAgent,
     assert_preview_matches_receipt,
     compose_email_from_uof,
 )
@@ -51,9 +50,7 @@ def _new_id(prefix: str) -> str:
 
 
 def _expires(hours: int = 24) -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -270,9 +267,7 @@ class EvidenceValidatorAgent:
             confidence=1.0 if state == EvidenceSufficiency.SUFFICIENT else 0.5,
             warnings=[] if state == EvidenceSufficiency.SUFFICIENT else [state.value],
             contradictions=(
-                ["contradictory evidence"]
-                if state == EvidenceSufficiency.CONTRADICTORY
-                else []
+                ["contradictory evidence"] if state == EvidenceSufficiency.CONTRADICTORY else []
             ),
             required_authority=AuthorityLevel.L0_OBSERVE,
             expires_at=_expires(48),
@@ -529,9 +524,7 @@ def run_expense_approval_slice_legacy(
 
     started = utc_now_iso()
     tenant_id = ledger.organization.id
-    policy = tenant_policy or default_policy(
-        tenant_id, ledger.organization.policy_version
-    )
+    policy = tenant_policy or default_policy(tenant_id, ledger.organization.policy_version)
     ctx = AgentContext(
         tenant_id=tenant_id,
         policy_version=policy.version,
@@ -543,9 +536,7 @@ def run_expense_approval_slice_legacy(
     )
     agents = HandlerBundle()
     workspace = TenantWorkspace(ledger.organization, ledger=ledger)
-    executor = LedgerCommandExecutor(
-        ledger, simulation=simulation, workspace=workspace
-    )
+    executor = LedgerCommandExecutor(ledger, simulation=simulation, workspace=workspace)
 
     proposals: list[AgentProposal] = []
     validations: list[ValidationResult] = []
@@ -657,12 +648,10 @@ def run_expense_approval_slice_legacy(
                     description=description,
                     proposed_allocation_id=allocation_id,
                     evidence_sufficiency=sufficiency.value,
-                    evidence_summaries=[e.get("summary", "") for e in evidence_items],
+                    evidence_summaries=[str(e.get("summary", "")) for e in evidence_items],
                     classifier_confidence=None,
                     warnings=ev_out.proposals[0].warnings if ev_out.proposals else [],
-                    contradictions=ev_out.proposals[0].contradictions
-                    if ev_out.proposals
-                    else [],
+                    contradictions=ev_out.proposals[0].contradictions if ev_out.proposals else [],
                     workflow_state=workflow.value,
                     policy_version=ctx.policy_version,
                 )
@@ -675,7 +664,7 @@ def run_expense_approval_slice_legacy(
             expense_id=expense_id,
             allocation_id=allocation_id,
             amount=amount,
-            evidence_refs=[e.get("id") for e in evidence_items if e.get("id")],
+            evidence_refs=[str(e.get("id")) for e in evidence_items if e.get("id")],
             agents=agents,
             current=WorkflowState.CLASSIFICATION_PENDING,
         )
@@ -701,7 +690,7 @@ def run_expense_approval_slice_legacy(
             description=description,
             allocation_id=allocation_id,
             evidence_sufficiency=sufficiency.value,
-            evidence_summaries=[e.get("summary", "") for e in evidence_items],
+            evidence_summaries=[str(e.get("summary", "")) for e in evidence_items],
             confidence=class_prop.confidence,
             warnings=list(class_prop.warnings)
             + list(ev_out.proposals[0].warnings if ev_out.proposals else []),

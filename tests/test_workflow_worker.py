@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import ApprovalReceipt, WorkflowState, utc_now_iso
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
-from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import (
@@ -20,7 +20,6 @@ from impact_relay.workflows.types import (
     WorkflowType,
 )
 from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -47,9 +46,7 @@ def _rt():
 
 def test_worker_tick_claims_and_advances_to_wait() -> None:
     rt, store, ledger = _rt()
-    inst = rt.start_expense_to_receipt(
-        tenant_id=ledger.organization.id, expense_row=_row()
-    )
+    inst = rt.start_expense_to_receipt(tenant_id=ledger.organization.id, expense_row=_row())
     worker = WorkflowWorker(rt, WorkerConfig(worker_id="t1", claim_batch_size=5))
     # Multiple ticks to get through auto steps to WAITING_SIGNAL
     for _ in range(10):
@@ -66,9 +63,7 @@ def test_worker_tick_claims_and_advances_to_wait() -> None:
 
 def test_worker_plus_signal_reaches_approved() -> None:
     rt, store, ledger = _rt()
-    inst = rt.start_expense_to_receipt(
-        tenant_id=ledger.organization.id, expense_row=_row()
-    )
+    inst = rt.start_expense_to_receipt(tenant_id=ledger.organization.id, expense_row=_row())
     worker = WorkflowWorker(rt, WorkerConfig(worker_id="t2"))
     for _ in range(10):
         worker.tick()
@@ -158,7 +153,7 @@ def test_dead_letter_after_max_attempts() -> None:
 
 def test_timeout_sweeper_idempotent() -> None:
     store = InMemoryWorkflowStore()
-    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     inst = WorkflowInstance(
         workflow_id="wf_to",
         tenant_id="org_x",
@@ -205,17 +200,13 @@ def test_timeout_sweeper_idempotent() -> None:
 
 def test_late_approve_after_timeout_rejected() -> None:
     rt, store, ledger = _rt()
-    inst = rt.start_expense_to_receipt(
-        tenant_id=ledger.organization.id, expense_row=_row()
-    )
+    inst = rt.start_expense_to_receipt(tenant_id=ledger.organization.id, expense_row=_row())
     # pump to wait
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     assert inst.run_status == WorkflowRunStatus.WAITING_SIGNAL
     key = inst.context["wait"]["frozen_command"]["idempotency_key"]
     # Force timeout
-    inst.wait_deadline = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    inst.wait_deadline = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
     store.update_instance(inst)
     timed = store.sweep_approval_timeouts()
     assert inst.workflow_id in timed
@@ -248,7 +239,7 @@ def test_late_approve_after_timeout_rejected() -> None:
 
 
 def test_worker_run_stop_when_idle() -> None:
-    rt, store, ledger = _rt()
+    rt, _store, _ledger = _rt()
     worker = WorkflowWorker(rt, WorkerConfig(worker_id="idle"))
     results = worker.run(max_ticks=5, stop_when_idle=True)
     assert len(results) >= 1

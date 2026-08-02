@@ -102,7 +102,10 @@ def assert_public_safe(payload: Any) -> None:
 
 
 def redacted_public_copy(payload: dict[str, Any]) -> dict[str, Any]:
-    """Shallow-safe copy that drops banned top-level keys (does not deep-mutate source)."""
+    """Return a copy with banned keys removed at every depth.
+
+    Recurses through nested dicts and lists; the source payload is never mutated.
+    """
     out: dict[str, Any] = {}
     for key, value in payload.items():
         if key in PUBLIC_BANNED_KEYS:
@@ -110,9 +113,7 @@ def redacted_public_copy(payload: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, dict):
             out[key] = redacted_public_copy(value)
         elif isinstance(value, list):
-            out[key] = [
-                redacted_public_copy(v) if isinstance(v, dict) else v for v in value
-            ]
+            out[key] = [redacted_public_copy(v) if isinstance(v, dict) else v for v in value]
         else:
             out[key] = value
     return out

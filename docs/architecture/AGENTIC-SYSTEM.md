@@ -59,6 +59,13 @@ Do not split into microservices until independently scaling or isolating a bound
 
 ## Recommended production stack
 
+> **Aspirational, not current.** This table describes what a host would deploy
+> at production scale. The shipped library is **stdlib-only with zero runtime
+> dependencies** (`http.server`, `sqlite3`, a restricted YAML-subset policy
+> loader) and requires Python ≥ 3.11. Postgres, S3, and JWKS validation are
+> opt-in extras (`[db]`, `[s3]`, `[oidc]`). Do not add a runtime dependency to
+> the library on the strength of this table — see `CLAUDE.md`.
+
 | Boundary | Recommendation |
 |---|---|
 | Language | Python 3.12 |
@@ -187,6 +194,15 @@ approved_at: datetime
 ```
 
 ### Execution receipt
+
+> **Design sketch.** The implemented contract is
+> `impact_relay.agents.types.ExecutionReceipt`, specified by
+> [`schemas/agents/execution-receipt.schema.json`](../../schemas/agents/execution-receipt.schema.json)
+> and kept in sync by `tests/test_agent_contract_schemas.py`. It differs from
+> the sketch below: it carries `tenant_id`, `idempotency_key`, `output_refs`,
+> and `simulated`; it has no `proposal_id`, `aggregate_refs`, or `event_refs`;
+> and its statuses are `SUCCEEDED | FAILED | SKIPPED | SIMULATED` (no
+> `PARTIAL`). Build against the schema, not this block.
 
 ```yaml
 execution_id: string

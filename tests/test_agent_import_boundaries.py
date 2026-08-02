@@ -68,9 +68,7 @@ def _imports_ledger_outside_type_checking(tree: ast.Module) -> list[str]:
     def visit(nodes: list[ast.stmt], *, under_tc: bool) -> None:
         for node in nodes:
             if isinstance(node, ast.If):
-                is_tc = (
-                    isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
-                )
+                is_tc = isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
                 visit(node.body, under_tc=under_tc or is_tc)
                 visit(node.orelse, under_tc=under_tc)
                 continue

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://impact-relay.local/schemas/agents/agent-command.schema.json",
+  "title": "AgentCommand",
+  "description": "A bounded action an agent proposes or a human authorizes. L3 command types always require human approval and must carry required_authority L3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "command_type",
+    "tenant_id",
+    "payload",
+    "required_authority",
+    "idempotency_key"
+  ],
+  "properties": {
+    "command_type": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "payload": { "type": "object" },
+    "required_authority": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "L3"]
+    },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "expires_at": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command_type": {
+            "enum": [
+              "approve_expense",
+              "reject_expense",
+              "publish_use_of_funds_receipt",
+              "send_notification",
+              "publish_public_evidence",
+              "change_attribution_policy",
+              "correct_published_amount",
+              "reverse_expense",
+              "supersede_expense"
+            ]
+          }
+        },
+        "required": ["command_type"]
+      },
+      "then": {
+        "properties": {
+          "required_authority": { "const": "L3" }
+        }
+      }
+    }
+  ]
+}

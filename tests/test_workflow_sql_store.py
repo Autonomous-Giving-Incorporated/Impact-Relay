@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -12,6 +12,15 @@ from impact_relay.agents.types import (
     ExecutionReceipt,
     WorkflowState,
     utc_now_iso,
+)
+from impact_relay.domain.types import ExpenseState
+from impact_relay.workflows.durable import (
+    durable_approve,
+    durable_list,
+    durable_rehydrate_check,
+    durable_seed,
+    durable_status,
+    open_workspace,
 )
 from impact_relay.workflows.exceptions import WorkflowConflictError, WorkflowStateError
 from impact_relay.workflows.store_sql import SqlWorkflowStore, open_sql_store
@@ -25,16 +34,6 @@ from impact_relay.workflows.types import (
     WorkflowSignal,
     WorkflowType,
 )
-from impact_relay.workflows.durable import (
-    durable_approve,
-    durable_list,
-    durable_rehydrate_check,
-    durable_seed,
-    durable_status,
-    open_workspace,
-)
-from impact_relay.domain.types import ExpenseState
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -42,7 +41,7 @@ PG_URL = os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get("DATABASE
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc).replace(microsecond=0)
+    return datetime.now(UTC).replace(microsecond=0)
 
 
 def _instance(
@@ -283,9 +282,7 @@ def test_postgres_store_claim_skip_locked() -> None:
     store = SqlWorkflowStore(PG_URL)
     now = _now()
     wid = f"wf_pg_{tenant}"
-    store.create(
-        _instance(wid, tenant=tenant, bk=f"bk_{tenant}", next_run=now)
-    )
+    store.create(_instance(wid, tenant=tenant, bk=f"bk_{tenant}", next_run=now))
     claimed = store.claim(
         worker_id="pg-worker",
         limit=50,

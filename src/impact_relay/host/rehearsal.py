@@ -9,7 +9,7 @@ See ``docs/pilot/FINDINGS.md`` and Hacker-Dojo ``docs/IMPACT-RELAY-SHADOW.md``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -89,8 +89,7 @@ def run_shadow_rehearsal(
                 detail=str(seed.get("error") or seed.get("message") or "seeded"),
                 evidence={
                     "waiting": seed.get("waiting"),
-                    "workflow_ids": seed.get("workflow_ids")
-                    or seed.get("started_workflows"),
+                    "workflow_ids": seed.get("workflow_ids") or seed.get("started_workflows"),
                 },
             )
         )
@@ -164,9 +163,7 @@ def run_shadow_rehearsal(
         # --- 5. Entity snapshot ---
         try:
             expenses = session.list_expenses()
-            has_exp = bool(expense_id) and any(
-                e.get("id") == expense_id for e in expenses
-            )
+            has_exp = bool(expense_id) and any(e.get("id") == expense_id for e in expenses)
             if not has_exp:
                 has_exp = len(expenses) > 0 and bool(approved.get("ok"))
             checks.append(
@@ -177,10 +174,8 @@ def run_shadow_rehearsal(
                     evidence={"expense_id": expense_id},
                 )
             )
-        except Exception as exc:  # pragma: no cover - defensive
-            checks.append(
-                _check("entity_expense_snapshot", False, detail=str(exc))
-            )
+        except Exception as exc:  # noqa: BLE001 - rehearsal records failures, never crashes
+            checks.append(_check("entity_expense_snapshot", False, detail=str(exc)))
 
         # --- 6. Donor API opens ---
         try:
@@ -190,12 +185,12 @@ def run_shadow_rehearsal(
             detail = "open"
             if donor_ok and hasattr(api, "list_donors"):
                 try:
-                    donors = api.list_donors()  # type: ignore[attr-defined]
+                    donors = api.list_donors()
                     detail = f"donors={len(donors) if donors is not None else 0}"
-                except Exception:
+                except Exception:  # noqa: BLE001 - optional probe
                     detail = "open (list_donors N/A)"
             checks.append(_check("donor_api_open", donor_ok, detail=detail))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - rehearsal records failures, never crashes
             checks.append(_check("donor_api_open", False, detail=str(exc)))
 
         status = session.status()
@@ -222,7 +217,7 @@ def run_shadow_rehearsal(
     )
 
     all_ok = all(c["ok"] for c in checks)
-    when = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    when = datetime.now(UTC).strftime("%Y-%m-%d")
     report = {
         "ok": all_ok,
         "mode": "shadow_rehearsal_synthetic",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -10,15 +10,14 @@ import pytest
 from impact_relay.agents.authority import AuthorityError
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import ApprovalReceipt, WorkflowState, utc_now_iso
+from impact_relay.digest import DigestError
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
-from impact_relay.workflows.ops import signal_approval_and_pump
 from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.scheduled_digest import assemble_digests
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import WorkflowRunStatus, WorkflowType
 from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
-
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "fixtures" / "impact_events_pilot.json"
@@ -54,7 +53,7 @@ def test_assemble_rejects_pii_events() -> None:
             }
         ],
     }
-    with pytest.raises(Exception):
+    with pytest.raises(DigestError, match="attendeeNames"):
         assemble_digests(events_doc=bad)
 
 
@@ -136,9 +135,7 @@ def test_scheduled_digest_require_approval_and_ack() -> None:
     )
     # signal_approval_and_pump uses expense human gate for generic signals;
     # for digests use runtime signal + worker
-    rt.signal_approval(
-        tenant_id=tenant, workflow_id=inst.workflow_id, approval=approval
-    )
+    rt.signal_approval(tenant_id=tenant, workflow_id=inst.workflow_id, approval=approval)
     for _ in range(10):
         worker.tick()
         cur = store.get(tenant, inst.workflow_id)
@@ -154,7 +151,7 @@ def test_scheduled_digest_require_approval_and_ack() -> None:
 def test_scheduled_digest_future_next_run_not_claimed_yet() -> None:
     rt, store, ledger = _rt()
     tenant = ledger.organization.id
-    future = datetime.now(timezone.utc) + timedelta(days=7)
+    future = datetime.now(UTC) + timedelta(days=7)
     inst = rt.start_scheduled_digest(
         tenant_id=tenant,
         period_key="future",

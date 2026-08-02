@@ -12,16 +12,12 @@ from typing import Any
 
 from impact_relay.auth.principal import Principal
 from impact_relay.auth.rbac import (
-    AuthorizationError,
     Permission,
     assert_permission,
 )
-from impact_relay.donor import open_donor_api
-from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.host.session import HostSession, open_host_session
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
 from impact_relay.workflows.durable import open_workspace
-from impact_relay.workflows.ops import list_operator_cases
 
 
 @dataclass
@@ -43,9 +39,7 @@ class FinanceConsole:
         self._gate_list()
         status = self.session.status()
         waiting = self.session.list_waiting(filters="waiting")
-        blocked = self.session.list_waiting(
-            filters="blocked,dead_letter,needs_information,failed"
-        )
+        blocked = self.session.list_waiting(filters="blocked,dead_letter,needs_information,failed")
         return {
             "tenant_id": self.session.tenant_id,
             "data_dir": str(self.session.data_dir),
@@ -54,9 +48,7 @@ class FinanceConsole:
             "ledger_commands": status.get("ledger_commands"),
             "entity_snapshot": status.get("entity_snapshot"),
             "expenses_in_ledger": len(status.get("expenses") or {}),
-            "principal": self.session.principal.to_dict()
-            if self.session.principal
-            else None,
+            "principal": self.session.principal.to_dict() if self.session.principal else None,
         }
 
     def queue(
@@ -174,29 +166,19 @@ class DonorConsole:
         return self.session.donor_api()
 
     def dashboard(self) -> dict[str, Any]:
-        return self._api().dashboard(
-            self.donor_id, principal=self.session.principal
-        )
+        return self._api().dashboard(self.donor_id, principal=self.session.principal)
 
     def timeline(self) -> list[dict[str, Any]]:
-        return self._api().fund_timeline(
-            self.donor_id, principal=self.session.principal
-        )
+        return self._api().fund_timeline(self.donor_id, principal=self.session.principal)
 
     def balances(self) -> list[dict[str, Any]]:
-        return self._api().allocation_balances(
-            self.donor_id, principal=self.session.principal
-        )
+        return self._api().allocation_balances(self.donor_id, principal=self.session.principal)
 
     def receipts(self) -> list[dict[str, Any]]:
-        return self._api().list_receipts(
-            self.donor_id, principal=self.session.principal
-        )
+        return self._api().list_receipts(self.donor_id, principal=self.session.principal)
 
     def receipt_detail(self, receipt_id: str) -> dict[str, Any]:
-        return self._api().get_receipt(
-            self.donor_id, receipt_id, principal=self.session.principal
-        )
+        return self._api().get_receipt(self.donor_id, receipt_id, principal=self.session.principal)
 
 
 def open_finance_console(
@@ -222,7 +204,5 @@ def open_donor_console(
     tenant_id: str = CANONICAL_PILOT_TENANT_ID,
     principal: Principal | None = None,
 ) -> DonorConsole:
-    session = open_host_session(
-        data_dir, tenant_id=tenant_id, principal=principal
-    )
+    session = open_host_session(data_dir, tenant_id=tenant_id, principal=principal)
     return DonorConsole(session=session, donor_id=donor_id)

@@ -85,16 +85,12 @@ class Platform:
         ws = self.get_workspace(organization_id)
         donor = ws.ledger.donors.get(donor_id)
         if donor is None or donor.organization_id != organization_id:
-            raise TenantIsolationError(
-                f"cross-tenant or unknown donor access denied: {donor_id}"
-            )
+            raise TenantIsolationError(f"cross-tenant or unknown donor access denied: {donor_id}")
         return ws.donor_reads().donor_dashboard(donor_id)
 
     def require_same_tenant(self, organization_id: str, donor_id: str) -> TenantWorkspace:
         ws = self.get_workspace(organization_id)
         donor = ws.ledger.donors.get(donor_id)
         if donor is None or donor.organization_id != organization_id:
-            raise TenantIsolationError(
-                f"cross-tenant or unknown donor access denied: {donor_id}"
-            )
+            raise TenantIsolationError(f"cross-tenant or unknown donor access denied: {donor_id}")
         return ws

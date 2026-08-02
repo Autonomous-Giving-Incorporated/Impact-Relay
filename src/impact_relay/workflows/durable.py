@@ -13,6 +13,7 @@ After kill/restart, the same data-dir resumes with the same expense_ids (K17).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from dataclasses import dataclass
@@ -33,7 +34,7 @@ from impact_relay.workflows.ops import (
     signal_approval_and_pump,
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
-from impact_relay.workflows.store_sql import SqlWorkflowStore, open_sql_store
+from impact_relay.workflows.store_sql import open_sql_store
 from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
 
 HOWTO = """# Impact Relay durable local data
@@ -146,9 +147,7 @@ class DurableWorkspace:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         howto = self.data_dir / "HOWTO.md"
         howto.write_text(HOWTO, encoding="utf-8")
-        db_url = os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get(
-            "DATABASE_URL"
-        )
+        db_url = os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get("DATABASE_URL")
         meta = {
             "tenant_id": self.tenant_id,
             "ledger_log": self.log_path.name,
@@ -177,11 +176,9 @@ def _logging_executor_factory(
     return factory
 
 
-def _wrap_executor_with_log(
-    ex: LedgerCommandExecutor, ledger_log: FileLedgerCommandLog
-) -> None:
+def _wrap_executor_with_log(ex: LedgerCommandExecutor, ledger_log: FileLedgerCommandLog) -> None:
     """Capture result_json after successful money commands."""
-    original = ex._dispatch  # noqa: SLF001
+    original = ex._dispatch
 
     def dispatch(command):
         refs, payload = original(command)
@@ -269,12 +266,10 @@ def open_workspace(
     )
     tenant_id = org.id
     if meta_path.is_file():
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             tenant_id = json.loads(meta_path.read_text(encoding="utf-8")).get(
                 "tenant_id", tenant_id
             )
-        except json.JSONDecodeError:
-            pass
 
     # Register tenant for host apps (HD is canonical pilot)
     if tenant_id == CANONICAL_PILOT_TENANT_ID:
@@ -497,9 +492,7 @@ def durable_status(data_dir: Path | str | None = None) -> dict[str, Any]:
 def durable_rehydrate_check(data_dir: Path | str | None = None) -> dict[str, Any]:
     """Simulate process restart: drop in-memory ledger, rehydrate from log, compare ids."""
     ws = open_workspace(data_dir)
-    before = {
-        e.id: e.state.value for e in ws.binding.for_tenant(ws.tenant_id).expenses.values()
-    }
+    before = {e.id: e.state.value for e in ws.binding.for_tenant(ws.tenant_id).expenses.values()}
     # Fresh binding from log only
     import copy
 
@@ -573,10 +566,7 @@ def durable_worker(
             "error": "durability_guard",
             "message": str(exc),
             "config": cfg.to_dict(),
-            "hint": (
-                "python -m impact_relay --durable worker --once --data-dir "
-                f"{data_dir}"
-            ),
+            "hint": (f"python -m impact_relay --durable worker --once --data-dir {data_dir}"),
         }
 
     wid = worker_id or f"durable-worker_{os.getpid()}"

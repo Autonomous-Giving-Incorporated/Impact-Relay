@@ -6,8 +6,9 @@ FAILED execution receipts are never stored in the idempotency index.
 
 from __future__ import annotations
 
+import builtins
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from impact_relay.agents.types import ExecutionReceipt, WorkflowState, utc_now_iso
@@ -43,7 +44,7 @@ def _parse_iso(value: str | datetime | None) -> datetime | None:
     if value is None:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     # Handle trailing Z
     s = value.replace("Z", "+00:00")
     return datetime.fromisoformat(s)
@@ -77,9 +78,7 @@ class InMemoryWorkflowStore:
     def create(self, instance: WorkflowInstance) -> None:
         with self._lock:
             if instance.workflow_id in self._instances:
-                raise WorkflowConflictError(
-                    f"workflow already exists: {instance.workflow_id}"
-                )
+                raise WorkflowConflictError(f"workflow already exists: {instance.workflow_id}")
             bkey = (
                 instance.tenant_id,
                 instance.workflow_type.value
@@ -88,9 +87,7 @@ class InMemoryWorkflowStore:
                 instance.business_key,
             )
             if bkey in self._by_business:
-                raise WorkflowConflictError(
-                    f"business_key already used: {instance.business_key}"
-                )
+                raise WorkflowConflictError(f"business_key already used: {instance.business_key}")
             self._instances[instance.workflow_id] = instance
             self._by_business[bkey] = instance.workflow_id
             self._events.setdefault(instance.workflow_id, [])
@@ -106,11 +103,7 @@ class InMemoryWorkflowStore:
     def get_by_business_key(
         self, tenant_id: str, workflow_type: WorkflowType | str, business_key: str
     ) -> WorkflowInstance | None:
-        wt = (
-            workflow_type.value
-            if isinstance(workflow_type, WorkflowType)
-            else str(workflow_type)
-        )
+        wt = workflow_type.value if isinstance(workflow_type, WorkflowType) else str(workflow_type)
         with self._lock:
             wid = self._by_business.get((tenant_id, wt, business_key))
             if not wid:
@@ -146,19 +139,17 @@ class InMemoryWorkflowStore:
         limit: int,
         now: datetime,
         lease_ttl: timedelta,
-    ) -> list[WorkflowInstance]:
+    ) -> builtins.list[WorkflowInstance]:
         """Canonical claim: PENDING | RETRY_SCHEDULED | expired RUNNING. Never WAITING_SIGNAL."""
         with self._lock:
             now_iso = now.replace(microsecond=0).isoformat()
             lease_exp = (now + lease_ttl).replace(microsecond=0).isoformat()
             candidates: list[WorkflowInstance] = []
             for inst in self._instances.values():
-                next_run = _parse_iso(inst.next_run_at) or datetime.min.replace(
-                    tzinfo=timezone.utc
-                )
+                next_run = _parse_iso(inst.next_run_at) or datetime.min.replace(tzinfo=UTC)
                 if next_run.tzinfo is None:
-                    next_run = next_run.replace(tzinfo=timezone.utc)
-                now_aware = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+                    next_run = next_run.replace(tzinfo=UTC)
+                now_aware = now if now.tzinfo else now.replace(tzinfo=UTC)
                 if next_run > now_aware:
                     continue
                 if inst.run_status in CLAIMABLE_RUN_STATUSES:
@@ -166,7 +157,7 @@ class InMemoryWorkflowStore:
                 elif inst.run_status == WorkflowRunStatus.RUNNING:
                     exp = _parse_iso(inst.lease_expires_at)
                     if exp is not None and exp.tzinfo is None:
-                        exp = exp.replace(tzinfo=timezone.utc)
+                        exp = exp.replace(tzinfo=UTC)
                     if exp is not None and exp < now_aware:
                         candidates.append(inst)
                 # WAITING_SIGNAL and terminals: never
@@ -191,7 +182,7 @@ class InMemoryWorkflowStore:
         self,
         tenant_id: str,
         workflow_id: str,
-        events: list[WorkflowEventWrite] | list[WorkflowEvent],
+        events: builtins.list[WorkflowEventWrite] | builtins.list[WorkflowEvent],
     ) -> None:
         with self._lock:
             inst = self._instances.get(workflow_id)
@@ -219,7 +210,7 @@ class InMemoryWorkflowStore:
                 )
             inst.touch()
 
-    def list_events(self, tenant_id: str, workflow_id: str) -> list[WorkflowEvent]:
+    def list_events(self, tenant_id: str, workflow_id: str) -> builtins.list[WorkflowEvent]:
         with self._lock:
             inst = self._instances.get(workflow_id)
             if inst is None or inst.tenant_id != tenant_id:
@@ -266,16 +257,14 @@ class InMemoryWorkflowStore:
 
     def take_unconsumed_signals(
         self, tenant_id: str, workflow_id: str
-    ) -> list[WorkflowSignal]:
+    ) -> builtins.list[WorkflowSignal]:
         with self._lock:
             inst = self._instances.get(workflow_id)
             if inst is None or inst.tenant_id != tenant_id:
                 return []
             return [s for s in self._signals.get(workflow_id, []) if not s.consumed]
 
-    def mark_signal_consumed(
-        self, tenant_id: str, signal_id: str, result: str
-    ) -> None:
+    def mark_signal_consumed(self, tenant_id: str, signal_id: str, result: str) -> None:
         with self._lock:
             for signals in self._signals.values():
                 for i, s in enumerate(signals):
@@ -292,9 +281,7 @@ class InMemoryWorkflowStore:
                         )
                         return
 
-    def put_execution_receipt(
-        self, receipt: ExecutionReceipt, *, workflow_id: str
-    ) -> None:
+    def put_execution_receipt(self, receipt: ExecutionReceipt, *, workflow_id: str) -> None:
         if receipt.status not in ("SUCCEEDED", "SIMULATED", "SKIPPED"):
             raise WorkflowStateError(
                 f"must not store FAILED receipt for idempotency: {receipt.status}"
@@ -353,11 +340,7 @@ class InMemoryWorkflowStore:
             self._instances[bundle.workflow_id] = cursor
 
             for signal_id, result in bundle.consume_signals:
-                res = (
-                    result.value
-                    if isinstance(result, SignalConsumeResult)
-                    else str(result)
-                )
+                res = result.value if isinstance(result, SignalConsumeResult) else str(result)
                 for i, s in enumerate(self._signals.get(bundle.workflow_id, [])):
                     if s.signal_id == signal_id:
                         self._signals[bundle.workflow_id][i] = WorkflowSignal(
@@ -371,7 +354,7 @@ class InMemoryWorkflowStore:
                             consume_result=res,
                         )
 
-    def sweep_approval_timeouts(self, now: datetime | None = None) -> list[str]:
+    def sweep_approval_timeouts(self, now: datetime | None = None) -> builtins.list[str]:
         """K13: overdue WAITING_SIGNAL human gates → NEEDS_INFORMATION.
 
         Idempotent: only rows with wait_deadline set and not yet timeout_applied_at.
@@ -380,8 +363,8 @@ class InMemoryWorkflowStore:
         so late APPROVE cannot bind the frozen L3 key.
         Returns list of workflow_ids timed out.
         """
-        now = now or datetime.now(timezone.utc)
-        now_aware = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+        now = now or datetime.now(UTC)
+        now_aware = now if now.tzinfo else now.replace(tzinfo=UTC)
         now_iso = now_aware.replace(microsecond=0).isoformat()
         timed_out: list[str] = []
 
@@ -399,7 +382,7 @@ class InMemoryWorkflowStore:
                 if deadline is None:
                     continue
                 if deadline.tzinfo is None:
-                    deadline = deadline.replace(tzinfo=timezone.utc)
+                    deadline = deadline.replace(tzinfo=UTC)
                 if deadline >= now_aware:
                     continue
 

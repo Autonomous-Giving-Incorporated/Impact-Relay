@@ -17,7 +17,7 @@ import sys
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ class WorkflowWorker:
 
     def tick(self, *, now: datetime | None = None) -> TickResult:
         """One poll: claim batch → advance each → optional timeout sweep."""
-        now = now or datetime.now(timezone.utc)
+        now = now or datetime.now(UTC)
         result = TickResult()
         t0 = time.perf_counter()
 
@@ -92,7 +92,7 @@ class WorkflowWorker:
         for inst in claimed:
             try:
                 self._process_one(inst, result)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 msg = f"{inst.workflow_id}: {exc}"
                 result.errors.append(msg)
                 logger.exception("worker tick failed for %s", inst.workflow_id)
@@ -136,9 +136,7 @@ class WorkflowWorker:
             ticks += 1
             if stop_when_idle and tick_result.claimed == 0 and tick_result.timed_out == 0:
                 break
-            if self.config.poll_interval_seconds > 0 and (
-                max_ticks is None or ticks < max_ticks
-            ):
+            if self.config.poll_interval_seconds > 0 and (max_ticks is None or ticks < max_ticks):
                 time.sleep(self.config.poll_interval_seconds)
         return results
 
@@ -168,12 +166,10 @@ class WorkflowWorker:
 
         # Apply backoff on RETRY_SCHEDULED if runtime used a coarse delay
         if refreshed.run_status == WorkflowRunStatus.RETRY_SCHEDULED:
-            delay = self.config.retry_policy.delay_for_attempt(
-                max(1, refreshed.attempt_count)
-            )
+            delay = self.config.retry_policy.delay_for_attempt(max(1, refreshed.attempt_count))
             if self.config.retry_policy.jitter:
                 delay = delay * (0.5 + random.random())
-            nxt = datetime.now(timezone.utc) + timedelta(seconds=delay)
+            nxt = datetime.now(UTC) + timedelta(seconds=delay)
             refreshed.next_run_at = nxt.replace(microsecond=0).isoformat()
             self.store.update_instance(refreshed)
 
@@ -192,7 +188,7 @@ class WorkflowWorker:
             return
         current.run_status = WorkflowRunStatus.RETRY_SCHEDULED
         delay = self.config.retry_policy.delay_for_attempt(current.attempt_count)
-        nxt = datetime.now(timezone.utc) + timedelta(seconds=delay)
+        nxt = datetime.now(UTC) + timedelta(seconds=delay)
         current.next_run_at = nxt.replace(microsecond=0).isoformat()
         current.lease_owner = None
         current.lease_expires_at = None
@@ -217,7 +213,7 @@ class WorkflowWorker:
                     )
                 ],
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("failed to append DEAD_LETTERED event for %s", inst.workflow_id)
         logger.warning(
             "workflow.dead_letter workflow_id=%s reason=%s attempts=%s",
@@ -301,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError as exc:
         print(json.dumps({"ok": False, "error": str(exc)}), file=sys.stderr)
         return 2
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         from impact_relay.workflows.guards import DurabilityGuardError
 
         if isinstance(exc, DurabilityGuardError):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from decimal import Decimal
 from pathlib import Path
 
@@ -12,22 +11,21 @@ from impact_relay.agents.authority import AuthorityError, requires_human_approva
 from impact_relay.agents.executor import LedgerCommandExecutor
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import (
+    L3_COMMAND_TYPES,
     AgentCommand,
     ApprovalReceipt,
     AuthorityLevel,
-    L3_COMMAND_TYPES,
     WorkflowState,
     utc_now_iso,
 )
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.domain.types import ExpenseState
-from impact_relay.pilot import build_ledger_from_fixture, load_fixture, run_pilot
+from impact_relay.pilot import run_pilot
 from impact_relay.workflows.ops import signal_approval_and_pump
 from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import WorkflowRunStatus, WorkflowType
 from impact_relay.workflows.worker import WorkerConfig, WorkflowWorker
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -225,7 +223,7 @@ def test_correction_workflow_reverse_pause_resume() -> None:
 
 
 def test_correction_workflow_supersede() -> None:
-    rt, store, ledger, receipts = _rt_from_pilot()
+    rt, store, ledger, _receipts = _rt_from_pilot()
     tenant = ledger.organization.id
     inst = rt.start_correction(
         tenant_id=tenant,

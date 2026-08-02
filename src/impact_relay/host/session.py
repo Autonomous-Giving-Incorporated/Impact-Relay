@@ -187,9 +187,7 @@ class HostSession:
 
         if actor.startswith("agent:"):
             return {"ok": False, "error": "approver_must_be_human"}
-        return durable_approve(
-            self.data_dir, workflow_id=workflow_id, approver_id=actor
-        )
+        return durable_approve(self.data_dir, workflow_id=workflow_id, approver_id=actor)
 
     def worker_once(self, *, max_ticks: int = 50) -> dict[str, Any]:
         return durable_worker(self.data_dir, once=True, max_ticks=max_ticks)
@@ -204,16 +202,12 @@ class HostSession:
     # Host queries (entity snapshot — no command-log replay)
     # ------------------------------------------------------------------
 
-    def list_expenses(
-        self, *, state: str | None = None, limit: int = 200
-    ) -> list[dict[str, Any]]:
+    def list_expenses(self, *, state: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
         err = self._gate(Permission.EXPENSE_READ)
         if err:
             raise AuthorizationError(err["message"])
         store = open_storage(self.data_dir)
-        return store.ledger.list_expenses(
-            self.tenant_id, state=state, limit=limit
-        )
+        return store.ledger.list_expenses(self.tenant_id, state=state, limit=limit)
 
     def get_expense(self, expense_id: str) -> dict[str, Any] | None:
         err = self._gate(Permission.EXPENSE_READ)
@@ -245,8 +239,8 @@ class HostSession:
 
         Loads ledger from entity snapshot when present, else rehydrates command log.
         """
-        from impact_relay.donor import open_donor_api
         from impact_relay.domain.tenant import TenantWorkspace
+        from impact_relay.donor import open_donor_api
 
         ws_store = open_workspace(self.data_dir, create=False)
         ledger = ws_store.binding.for_tenant(self.tenant_id)

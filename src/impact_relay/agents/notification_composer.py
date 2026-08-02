@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from impact_relay.agents.authority import assert_agent_may_propose
@@ -31,9 +31,7 @@ def _new_id(prefix: str) -> str:
 
 
 def _expires(hours: int = 48) -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 @dataclass(frozen=True)
@@ -80,10 +78,7 @@ def compose_email_from_uof(
         "remaining_designated_balance": f"{receipt.remaining_designated_balance:.2f}",
         "receipt_hash": receipt.receipt_hash,
     }
-    subject = (
-        f"How your gift to {receipt.organization_name} was used — "
-        f"{receipt.allocation_name}"
-    )
+    subject = f"How your gift to {receipt.organization_name} was used — {receipt.allocation_name}"
     body = (
         f"Hello,\n\n"
         f"{receipt.organization_name} approved an expenditure from "

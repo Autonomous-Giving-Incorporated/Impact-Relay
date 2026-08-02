@@ -13,7 +13,7 @@ privacy scans so public digests never include attendee names / contact data.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -39,9 +39,7 @@ def _new_id(prefix: str) -> str:
 
 
 def _deadline(hours: int = 72) -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 def assemble_digests(
@@ -81,9 +79,7 @@ def step_assemble_and_privacy(
 ) -> StepResult:
     """Assemble digests, run privacy gate, optionally park for human publish ack."""
     try:
-        digests = assemble_digests(
-            events_doc=events_doc, events_path=events_path, source=source
-        )
+        digests = assemble_digests(events_doc=events_doc, events_path=events_path, source=source)
     except (DigestError, PrivacySentinelError) as exc:
         assert_digest_transition(current, WorkflowState.BLOCKED)
         return StepResult(

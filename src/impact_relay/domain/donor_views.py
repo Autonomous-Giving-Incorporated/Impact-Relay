@@ -9,12 +9,12 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from impact_relay.domain.types import (
-    AllocationBalanceView,
     CORRECTED_EXPENSE_STATES,
+    VERIFIED_EXPENSE_STATES,
+    AllocationBalanceView,
     ExpenseState,
     NotFoundError,
     TimelineEvent,
-    VERIFIED_EXPENSE_STATES,
     money,
 )
 
@@ -44,9 +44,9 @@ class DonorReadService:
             for da in self.ledger.donation_allocations.values():
                 if da.donation_id != don.id:
                     continue
-                designated[da.allocation_id] = designated.get(
-                    da.allocation_id, Decimal("0.00")
-                ) + da.amount
+                designated[da.allocation_id] = (
+                    designated.get(da.allocation_id, Decimal("0.00")) + da.amount
+                )
 
         views: list[AllocationBalanceView] = []
         for allocation_id, total in sorted(designated.items()):
@@ -132,10 +132,7 @@ class DonorReadService:
                     TimelineEvent(
                         at=r.created_at or r.purchase_date,
                         kind="USE_OF_FUNDS",
-                        summary=(
-                            f"Purchase: {r.description} "
-                            f"({r.attributed_amount} {r.currency})"
-                        ),
+                        summary=(f"Purchase: {r.description} ({r.attributed_amount} {r.currency})"),
                         refs={
                             "receipt_id": r.receipt_id,
                             "expense_id": r.expenditure_expense_id,
@@ -187,14 +184,10 @@ class DonorReadService:
             if r.donor_id != donor_id:
                 raise NotFoundError(f"receipt not found: {receipt_id}")
             detail = r.to_dict()
-            detail["attribution_explanation"] = attribution_explanation(
-                r.attribution_method
-            )
+            detail["attribution_explanation"] = attribution_explanation(r.attribution_method)
             detail["remaining_designated_balance"] = str(r.remaining_designated_balance)
             detail["correction_history"] = self.correction_history(donor_id, receipt_id)
-            detail["evidence_attachments"] = self.evidence_safe_attachments(
-                donor_id, receipt_id
-            )
+            detail["evidence_attachments"] = self.evidence_safe_attachments(donor_id, receipt_id)
             detail["balances_for_allocation"] = [
                 b.to_dict()
                 for b in self.allocation_balances(donor_id)
@@ -206,9 +199,7 @@ class DonorReadService:
             if ir.donor_id != donor_id:
                 raise NotFoundError(f"receipt not found: {receipt_id}")
             detail = ir.to_dict()
-            detail["attribution_explanation"] = attribution_explanation(
-                ir.attribution_method
-            )
+            detail["attribution_explanation"] = attribution_explanation(ir.attribution_method)
             detail["correction_history"] = []
             detail["evidence_attachments"] = []
             return detail
@@ -222,9 +213,7 @@ class DonorReadService:
         for r in self.ledger.receipts.values():
             if r.donor_id != donor_id:
                 continue
-            if r.corrects_receipt_id == receipt_id or (
-                r.corrected and r.receipt_id == receipt_id
-            ):
+            if r.corrects_receipt_id == receipt_id or (r.corrected and r.receipt_id == receipt_id):
                 chain.append(
                     {
                         "receipt_id": r.receipt_id,
@@ -257,9 +246,7 @@ class DonorReadService:
         chain.sort(key=lambda d: d.get("created_at") or "")
         return chain
 
-    def evidence_safe_attachments(
-        self, donor_id: str, receipt_id: str
-    ) -> list[dict[str, Any]]:
+    def evidence_safe_attachments(self, donor_id: str, receipt_id: str) -> list[dict[str, Any]]:
         """Donor-visible evidence refs only — no internal paths or non-visible items."""
         self._require_donor(donor_id)
         r = self.ledger.receipts.get(receipt_id)
@@ -310,8 +297,7 @@ class DonorReadService:
 # Human-readable attribution copy (v0.7 donor experience)
 ATTRIBUTION_EXPLANATIONS: dict[str, str] = {
     "DIRECT_RESTRICTED": (
-        "Your gift was restricted to this fund and this purchase used that designation "
-        "directly."
+        "Your gift was restricted to this fund and this purchase used that designation directly."
     ),
     "PRO_RATA_POOL": (
         "Your gift shared a pool with other donors. The amount shown is your proportional "
@@ -332,9 +318,7 @@ ATTRIBUTION_EXPLANATIONS: dict[str, str] = {
     "EXPENSE_BACKED": (
         "This amount is backed by a verified expense recorded in the organization ledger."
     ),
-    "MANUAL_APPROVED": (
-        "Finance staff approved a manual attribution under organization policy."
-    ),
+    "MANUAL_APPROVED": ("Finance staff approved a manual attribution under organization policy."),
     "NONE": "No individual donor attribution applies to this item.",
 }
 

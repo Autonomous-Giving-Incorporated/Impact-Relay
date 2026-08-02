@@ -37,8 +37,7 @@ class EmailAdapter(Protocol):
         body_text: str,
         body_html: str | None = None,
         metadata: dict[str, str] | None = None,
-    ) -> DeliveryResult:
-        ...
+    ) -> DeliveryResult: ...
 
     def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
         """NotificationService-compatible entrypoint."""
@@ -56,11 +55,9 @@ class PushAdapter(Protocol):
         title: str,
         body: str,
         data: dict[str, Any] | None = None,
-    ) -> DeliveryResult:
-        ...
+    ) -> DeliveryResult: ...
 
-    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
-        ...
+    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]: ...
 
 
 class FixtureEmailAdapter:
@@ -124,9 +121,7 @@ class FixturePushAdapter:
         body: str,
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
-        self.sent.append(
-            {"token": device_token, "title": title, "body": body, "data": data or {}}
-        )
+        self.sent.append({"token": device_token, "title": title, "body": body, "data": data or {}})
         if self.fail:
             return DeliveryResult(False, "push_fail", "device unreachable")
         return DeliveryResult(True, f"push_{len(self.sent)}", "queued")
@@ -162,9 +157,7 @@ class APNsPushAdapter:
         body: str,
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
-        raise NotImplementedError(
-            "Configure host APNs client; use FixturePushAdapter for pilot"
-        )
+        raise NotImplementedError("Configure host APNs client; use FixturePushAdapter for pilot")
 
     def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
         raise NotImplementedError("APNs not configured")
@@ -186,9 +179,7 @@ class FCMPushAdapter:
         body: str,
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
-        raise NotImplementedError(
-            "Configure host FCM client; use FixturePushAdapter for pilot"
-        )
+        raise NotImplementedError("Configure host FCM client; use FixturePushAdapter for pilot")
 
     def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
         raise NotImplementedError("FCM not configured")

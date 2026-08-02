@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -14,6 +15,7 @@ from impact_relay.auth import (
     assert_separation_of_duties,
     has_permission,
     principal_from_fixture,
+    violates_dual_control,
 )
 from impact_relay.auth.oidc import (
     OidcClaims,
@@ -23,7 +25,6 @@ from impact_relay.auth.oidc import (
 from impact_relay.host import open_hacker_dojo_session
 from impact_relay.host.hacker_dojo import finance_approver_fixture
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -121,9 +122,7 @@ def test_host_approve_with_principal_rbac(tmp_path: Path) -> None:
 
 
 def test_host_require_principal_for_approve(tmp_path: Path) -> None:
-    session = open_hacker_dojo_session(
-        tmp_path / "hd2", require_principal_for_approve=True
-    )
+    session = open_hacker_dojo_session(tmp_path / "hd2", require_principal_for_approve=True)
     session.seed(expense_batch=BATCH)
     out = session.approve()
     assert out["ok"] is False
@@ -153,20 +152,36 @@ def test_hacker_dojo_campaign_role_map() -> None:
     assert has_permission(p, Permission.WORKFLOW_APPROVE_EXPENSE)
 
 
-def test_console_resolves_host_role_headers(tmp_path: Path) -> None:
+def test_console_resolves_host_role_headers_only_behind_trusted_proxy() -> None:
     from impact_relay.console_server import resolve_principal_from_request
 
     class H:
-        headers = {
+        headers: ClassVar[dict[str, str]] = {
             "X-Impact-Email": "lead@hackersdojo.org",
             "X-HD-Campaign-Role": "campaign_lead",
             "X-Impact-Subject": "uuid-1",
-            "Authorization": "Bearer ignored-when-headers-set",
         }
 
-    p = resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID)
+    # Default posture: any client can forge these headers, so they are ignored.
+    assert resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID) is None
+
+    p = resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True)
     assert p is not None
     assert Role.FINANCE_APPROVER in p.roles
+
+
+def test_console_unmappable_host_role_is_rejected_not_anonymous() -> None:
+    """A bad role header must 403, not silently degrade to an anonymous request."""
+    from impact_relay.console_server import resolve_principal_from_request
+
+    class H:
+        headers: ClassVar[dict[str, str]] = {
+            "X-Impact-Email": "lead@hackersdojo.org",
+            "X-HD-Campaign-Role": "not-a-real-role",
+        }
+
+    with pytest.raises(AuthorizationError):
+        resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True)
 
 
 def test_sod_on_host_approve(tmp_path: Path) -> None:
@@ -179,3 +194,68 @@ def test_sod_on_host_approve(tmp_path: Path) -> None:
     )
     assert out["ok"] is False
     assert out["error"] == "separation_of_duties"
+
+
+# --- dual control (PR #34 review: role dual-hold condition) --------------------
+
+
+def _p(email: str, roles: list[Role]):
+    return principal_from_fixture(tenant_id=CANONICAL_PILOT_TENANT_ID, email=email, roles=roles)
+
+
+@pytest.mark.parametrize(
+    "roles",
+    [
+        [Role.FINANCE_APPROVER, Role.COMMUNICATIONS_APPROVER],
+        [Role.TENANT_ADMIN],
+        [Role.TENANT_ADMIN, Role.FINANCE_APPROVER],
+        [Role.FINANCE_APPROVER],
+        [Role.COMMUNICATIONS_APPROVER],
+    ],
+    ids=["both-roles", "tenant-admin", "admin+finance", "finance-only", "comms-only"],
+)
+@pytest.mark.parametrize("action", ["approve_publish", "approve_send"])
+def test_same_human_cannot_sign_both_sides_regardless_of_roles(
+    roles: list[Role], action: str
+) -> None:
+    """Dual control keys on identity, not role combination.
+
+    tenant_admin holds every permission but neither approver role; keying on
+    roles let it approve an expense and then also sign the publish gate.
+    """
+    me = _p("same@hackersdojo.example", roles)
+    assert violates_dual_control(me, action=action, prior_approver_id="same@hackersdojo.example")
+    with pytest.raises(AuthorizationError, match="dual control"):
+        assert_separation_of_duties(me, action=action, prior_approver_id="same@hackersdojo.example")
+
+
+def test_dual_control_allows_a_different_second_approver() -> None:
+    comms = _p("comms@hackersdojo.example", [Role.COMMUNICATIONS_APPROVER])
+    assert not violates_dual_control(
+        comms, action="approve_publish", prior_approver_id="finance@hackersdojo.example"
+    )
+    assert_separation_of_duties(
+        comms, action="approve_publish", prior_approver_id="finance@hackersdojo.example"
+    )
+
+
+def test_dual_control_does_not_fire_on_the_expense_gate() -> None:
+    """approve_expense is guarded by the proposer_id rule, not dual control."""
+    me = _p("same@hackersdojo.example", [Role.FINANCE_APPROVER])
+    assert not violates_dual_control(
+        me, action="approve_expense", prior_approver_id="same@hackersdojo.example"
+    )
+
+
+def test_dual_control_can_be_waived_by_tenant_policy(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    me = _p("same@hackersdojo.example", [Role.TENANT_ADMIN])
+    with caplog.at_level("WARNING"):
+        assert_separation_of_duties(
+            me,
+            action="approve_publish",
+            prior_approver_id="same@hackersdojo.example",
+            enforce_dual_control=False,
+        )
+    assert "dual_control_waived" in caplog.text

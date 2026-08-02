@@ -27,7 +27,6 @@ from impact_relay.agents.types import (
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 

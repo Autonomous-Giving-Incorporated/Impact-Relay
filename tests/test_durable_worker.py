@@ -21,7 +21,6 @@ from impact_relay.workflows.guards import (
 from impact_relay.workflows.types import WorkflowRunStatus
 from impact_relay.workflows.worker import main as worker_main
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 
@@ -73,9 +72,7 @@ def test_durable_worker_drains_pending_after_restart(tmp_path: Path) -> None:
     data_dir = tmp_path / "dur-w"
     ws = open_workspace(data_dir, create=True)
     row = json.loads(BATCH.read_text(encoding="utf-8"))["expenses"][0]
-    inst = ws.runtime.start_expense_to_receipt(
-        tenant_id=ws.tenant_id, expense_row=row
-    )
+    inst = ws.runtime.start_expense_to_receipt(tenant_id=ws.tenant_id, expense_row=row)
     assert inst.run_status == WorkflowRunStatus.PENDING
     ws.save()
 
@@ -117,9 +114,7 @@ def test_cli_durable_worker_once(tmp_path: Path) -> None:
     )
     # seed already pumps; worker --once should idle-exit cleanly
     assert code == 0
-    code = main(
-        ["--durable", "worker", "--once", "--data-dir", str(data_dir), "--max-ticks", "5"]
-    )
+    code = main(["--durable", "worker", "--once", "--data-dir", str(data_dir), "--max-ticks", "5"])
     assert code == 0
 
 

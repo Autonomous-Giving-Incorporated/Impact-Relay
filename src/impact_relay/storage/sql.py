@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from impact_relay.storage.command_log import SqlLedgerCommandLog
 from impact_relay.storage.ledger_repo import LedgerEntityRepository
@@ -30,7 +31,7 @@ class StorageBundle:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.dsn = dsn
-        self._engine = SqlEngine(self.data_dir / "storage.db" if not dsn else dsn)
+        self._engine = SqlEngine(dsn or self.data_dir / "storage.db")
         self._engine.migrate()
         self.tenants = SqlTenantRepository(self._engine)
         self.outbox = SqlOutboxStore(self._engine)
@@ -49,20 +50,50 @@ class StorageBundle:
         return self._engine.is_postgres
 
 
+def to_postgres_placeholders(statement: str) -> str:
+    """Rewrite ``?`` placeholders as ``%s`` for psycopg.
+
+    A blanket ``str.replace`` would also rewrite a ``?`` inside a quoted
+    literal (``WHERE note = 'why?'``), silently corrupting the query, so
+    single-quoted literals are skipped. Doubled ``''`` is SQL's escaped quote
+    and stays inside the literal.
+
+    Callers must not mix ``?`` placeholders with literal ``%`` (e.g. ``LIKE
+    '%x%'``) in one statement: psycopg would read the ``%`` as a format spec.
+    No query in this package does.
+    """
+    out: list[str] = []
+    in_literal = False
+    i = 0
+    while i < len(statement):
+        ch = statement[i]
+        if ch == "'":
+            if in_literal and statement[i + 1 : i + 2] == "'":
+                out.append("''")
+                i += 2
+                continue
+            in_literal = not in_literal
+            out.append(ch)
+        elif ch == "?" and not in_literal:
+            out.append("%s")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 class SqlEngine:
     """Minimal connection helper shared by storage repositories."""
 
     def __init__(self, dsn_or_path: str | Path) -> None:
         self._dsn = str(dsn_or_path)
         self._lock = threading.RLock()
-        self.is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith(
-            "postgres:"
-        )
+        self.is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith("postgres:")
         if not self.is_postgres:
             path = self._dsn
             if path.startswith("sqlite:///"):
                 path = path[len("sqlite:///") :]
-            self._sqlite_path = Path(path)
+            self._sqlite_path: Path | None = Path(path)
             self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             self._sqlite_path = None
@@ -100,7 +131,7 @@ class SqlEngine:
 
     def sql(self, statement: str) -> str:
         if self.is_postgres and "?" in statement and "%s" not in statement:
-            return statement.replace("?", "%s")
+            return to_postgres_placeholders(statement)
         return statement
 
     def execute(self, conn: Any, sql: str, params: tuple[Any, ...] = ()) -> Any:
@@ -270,12 +301,10 @@ def open_storage(
     database_url: str | None = None,
 ) -> StorageBundle:
     """Open multi-tenant storage root (easy local default)."""
-    root = Path(
-        data_dir
-        or os.environ.get("IMPACT_RELAY_DATA_DIR")
-        or ".impact-relay"
-    )
-    url = database_url or os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get(
-        "DATABASE_URL"
+    root = Path(data_dir or os.environ.get("IMPACT_RELAY_DATA_DIR") or ".impact-relay")
+    url = (
+        database_url
+        or os.environ.get("IMPACT_RELAY_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
     )
     return StorageBundle(root, dsn=url)

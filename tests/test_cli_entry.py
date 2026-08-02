@@ -49,7 +49,13 @@ def test_cli_main_prints_json_receipt(capsys) -> None:
 
 def test_module_entry_subprocess() -> None:
     proc = subprocess.run(
-        [sys.executable, "-m", "impact_relay", "--fixture", str(ROOT / "fixtures" / "pilot_hd_ir_001.json")],
+        [
+            sys.executable,
+            "-m",
+            "impact_relay",
+            "--fixture",
+            str(ROOT / "fixtures" / "pilot_hd_ir_001.json"),
+        ],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

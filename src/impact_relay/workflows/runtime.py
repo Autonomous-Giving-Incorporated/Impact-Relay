@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from datetime import datetime, timedelta
+from typing import Any
 
 from impact_relay.agents.authority import AuthorityError, assert_execution_authorized
 from impact_relay.agents.base import AgentContext, CommandExecutor
@@ -14,7 +15,6 @@ from impact_relay.agents.types import (
     ExecutionReceipt,
     WorkflowState,
     to_jsonable,
-    utc_now_iso,
 )
 from impact_relay.policy import TenantPolicy, default_policy
 from impact_relay.workflows.commands import build_executable_command
@@ -64,12 +64,10 @@ def default_executor_factory(
     def factory(instance: WorkflowInstance) -> CommandExecutor:
         ledger = ledger_binding.for_tenant(instance.tenant_id)
         ws = ledger_binding.workspace(instance.tenant_id)
-        ex = LedgerCommandExecutor(
-            ledger, simulation=instance.simulation, workspace=ws
-        )
+        ex = LedgerCommandExecutor(ledger, simulation=instance.simulation, workspace=ws)
         if store is not None:
-            ex.receipt_store = store  # type: ignore[attr-defined]
-            ex.workflow_id = instance.workflow_id  # type: ignore[attr-defined]
+            ex.receipt_store = store
+            ex.workflow_id = instance.workflow_id
         return ex
 
     return factory
@@ -86,9 +84,7 @@ class WorkflowRuntime:
         self.store = store
         self.ledger_binding = ledger_binding
         self.clock = clock or SystemClock()
-        self.executor_factory = executor_factory or default_executor_factory(
-            ledger_binding, store
-        )
+        self.executor_factory = executor_factory or default_executor_factory(ledger_binding, store)
         self.agents = HandlerBundle()
 
     def start_expense_to_receipt(
@@ -106,9 +102,7 @@ class WorkflowRuntime:
         """Start one expense workflow. If pre_imported_expense_id set, begin at NORMALIZED."""
         pol = policy or default_policy(tenant_id)
         bk = business_key or str(
-            expense_row.get("external_source_id")
-            or expense_row.get("id")
-            or _new_id("bk")
+            expense_row.get("external_source_id") or expense_row.get("id") or _new_id("bk")
         )
         now = self.clock.now_iso()
         wid = _new_id("wf")
@@ -151,7 +145,7 @@ class WorkflowRuntime:
                 )
             ],
         )
-        return self.store.get(tenant_id, wid)  # type: ignore[return-value]
+        return self.store.get(tenant_id, wid)
 
     def signal_approval(
         self, *, tenant_id: str, workflow_id: str, approval: ApprovalReceipt
@@ -247,7 +241,7 @@ class WorkflowRuntime:
                 )
             ],
         )
-        return self.store.get(tenant_id, wid)  # type: ignore[return-value]
+        return self.store.get(tenant_id, wid)
 
     def start_correction(
         self,
@@ -308,7 +302,7 @@ class WorkflowRuntime:
                 )
             ],
         )
-        return self.store.get(tenant_id, wid)  # type: ignore[return-value]
+        return self.store.get(tenant_id, wid)
 
     def advance_once(self, instance: WorkflowInstance) -> WorkflowInstance:
         """Advance one step; returns updated instance from store."""
@@ -395,10 +389,10 @@ class WorkflowRuntime:
                 inst.run_status = WorkflowRunStatus.PENDING
             inst = self.advance_once(inst)
             # refresh
-            inst = self.store.get(tenant_id, workflow_id)  # type: ignore[assignment]
+            inst = self.store.get(tenant_id, workflow_id)
             if inst is None:
                 break
-        return inst  # type: ignore[return-value]
+        return inst
 
     def list_blocked(self, tenant_id: str) -> list[WorkflowInstance]:
         """Instances needing operator attention (blocked, DLQ, failed, needs info)."""
@@ -478,7 +472,7 @@ class WorkflowRuntime:
             consume_signals=consume or [],
         )
         self.store.commit_advance(bundle)
-        return self.store.get(inst.tenant_id, inst.workflow_id)  # type: ignore[return-value]
+        return self.store.get(inst.tenant_id, inst.workflow_id)
 
     def _execute_list(
         self, executor: CommandExecutor, executables: list[Any]
@@ -493,17 +487,16 @@ class WorkflowRuntime:
             )
             out.append(receipt)
             # Also push success into store via executor hook if present
+            receipt_store = getattr(executor, "receipt_store", None)
+            executor_workflow_id = getattr(executor, "workflow_id", None)
             if (
-                hasattr(executor, "receipt_store")
+                receipt_store is not None
+                and executor_workflow_id is not None
                 and receipt.status in ("SUCCEEDED", "SIMULATED", "SKIPPED")
-                and hasattr(executor, "workflow_id")
             ):
-                try:
-                    executor.receipt_store.put_execution_receipt(  # type: ignore[attr-defined]
-                        receipt, workflow_id=executor.workflow_id  # type: ignore[attr-defined]
-                    )
-                except Exception:  # noqa: BLE001
-                    pass
+                # Receipt persistence is best-effort; never fail the step on it.
+                with contextlib.suppress(Exception):
+                    receipt_store.put_execution_receipt(receipt, workflow_id=executor_workflow_id)
         return out
 
     def _advance_received(
@@ -574,7 +567,8 @@ class WorkflowRuntime:
             )
         else:
             evidence_items = list(row.get("evidence") or [])
-            amount = row.get("amount")
+            raw_amount = row.get("amount")
+            amount = "" if raw_amount is None else str(raw_amount)
             vendor = row.get("vendor", "")
             purchase_date = row.get("purchase_date", "")
             category = row.get("category", "")
@@ -628,7 +622,7 @@ class WorkflowRuntime:
             expense_id=expense_id,
             allocation_id=allocation_id,
             amount=amount,
-            evidence_refs=[e.get("id") for e in evidence_items if e.get("id")],
+            evidence_refs=[str(e.get("id")) for e in evidence_items if e.get("id")],
             agents=self.agents,
             current=WorkflowState.CLASSIFICATION_PENDING,
         )
@@ -675,9 +669,7 @@ class WorkflowRuntime:
             "proposal_id": wait.get("proposal_id"),
         }
         inst.wait_deadline = (
-            str(review_out.step.wait_deadline)
-            if review_out.step.wait_deadline
-            else None
+            str(review_out.step.wait_deadline) if review_out.step.wait_deadline else None
         )
         inst.workflow_state = WorkflowState.REVIEW_PENDING
         inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
@@ -712,13 +704,15 @@ class WorkflowRuntime:
                 expired_key = expired.get("command_idempotency_key") or (
                     (expired.get("frozen_command") or {}).get("idempotency_key")
                 )
-                prior = (inst.wait_descriptor or {}).get(
-                    "prior_command_idempotency_key"
-                )
-                if ar.command_idempotency_key in (
-                    expired_key,
-                    prior,
-                ) or ar.decision == "APPROVE":
+                prior = (inst.wait_descriptor or {}).get("prior_command_idempotency_key")
+                if (
+                    ar.command_idempotency_key
+                    in (
+                        expired_key,
+                        prior,
+                    )
+                    or ar.decision == "APPROVE"
+                ):
                     # Reject late APPROVE on expired frozen key
                     return self._commit(
                         inst,
@@ -731,9 +725,7 @@ class WorkflowRuntime:
                                 },
                             )
                         ],
-                        consume=[
-                            (s.signal_id, SignalConsumeResult.REJECTED_INVALID)
-                        ],
+                        consume=[(s.signal_id, SignalConsumeResult.REJECTED_INVALID)],
                     )
             inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
             inst.lease_owner = None
@@ -777,9 +769,7 @@ class WorkflowRuntime:
         frozen = FrozenProposedCommand.from_dict(frozen_raw)
         try:
             cmd = build_executable_command(frozen, approval)
-            assert_execution_authorized(
-                cmd, approval, agent_name=frozen.agent_name
-            )
+            assert_execution_authorized(cmd, approval, agent_name=frozen.agent_name)
         except AuthorityError as exc:
             inst.last_error = str(exc)
             inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
@@ -817,23 +807,17 @@ class WorkflowRuntime:
 
         # APPROVE path
         # Re-register email preview if send
-        if cmd.command_type == "send_notification" and isinstance(
-            executor, LedgerCommandExecutor
-        ):
+        if cmd.command_type == "send_notification" and isinstance(executor, LedgerCommandExecutor):
             preview = inst.context.get("email_preview")
             if preview:
                 from impact_relay.agents.notification_composer import EmailPreview
 
-                try:
+                # Ignore partial preview dicts.
+                with contextlib.suppress(TypeError):
                     executor.register_preview(EmailPreview(**preview))
-                except TypeError:
-                    # partial dict
-                    pass
 
         try:
-            receipt = executor.execute(
-                cmd, approval=approval, agent_name=frozen.agent_name
-            )
+            receipt = executor.execute(cmd, approval=approval, agent_name=frozen.agent_name)
         except Exception as exc:  # noqa: BLE001
             classified = classify_error(exc)
             if classified.retryable:
@@ -921,9 +905,7 @@ class WorkflowRuntime:
                     payload={"to": inst.workflow_state.value},
                 ),
             ],
-            receipts=[receipt]
-            if receipt.status in ("SUCCEEDED", "SIMULATED", "SKIPPED")
-            else [],
+            receipts=[receipt] if receipt.status in ("SUCCEEDED", "SIMULATED", "SKIPPED") else [],
             consume=[(signal.signal_id, SignalConsumeResult.ACCEPTED)],
         )
 
@@ -1124,9 +1106,7 @@ class WorkflowRuntime:
                     or (wait.get("frozen_command") or {}).get("idempotency_key"),
                     "proposal_id": wait.get("proposal_id"),
                 }
-            inst.wait_deadline = (
-                str(out.wait_deadline) if out.wait_deadline else None
-            )
+            inst.wait_deadline = str(out.wait_deadline) if out.wait_deadline else None
             inst.workflow_state = out.next_state
             inst.run_status = out.run_status
             inst.lease_owner = None
@@ -1157,7 +1137,9 @@ class WorkflowRuntime:
         """After LEDGER_COMMITTED: optional publish or complete."""
         # Correction workflows complete via _advance_correction (safety net)
         if inst.workflow_type == WorkflowType.CORRECTION:
-            return self._advance_correction(inst, executor, ctx, self.ledger_binding.for_tenant(inst.tenant_id))
+            return self._advance_correction(
+                inst, executor, ctx, self.ledger_binding.for_tenant(inst.tenant_id)
+            )
 
         spec = inst.context.get("publish_spec")
         if not spec:
@@ -1169,8 +1151,7 @@ class WorkflowRuntime:
             "donor_id": spec["donor_id"],
             "donation_id": spec["donation_id"],
             "expense_id": expense_id,
-            "allocation_id": spec.get("allocation_id")
-            or inst.context.get("allocation_id"),
+            "allocation_id": spec.get("allocation_id") or inst.context.get("allocation_id"),
             "attribution_method": spec["attribution_method"],
             "attributed_amount": spec["attributed_amount"],
             "created_at": spec.get("created_at"),
@@ -1207,9 +1188,7 @@ class WorkflowRuntime:
         }
         inst.workflow_state = WorkflowState.PUBLICATION_PENDING
         inst.run_status = WorkflowRunStatus.WAITING_SIGNAL
-        inst.wait_deadline = (
-            self.clock.now() + timedelta(days=7)
-        ).isoformat()
+        inst.wait_deadline = (self.clock.now() + timedelta(days=7)).isoformat()
         return self._commit(
             inst,
             events=[

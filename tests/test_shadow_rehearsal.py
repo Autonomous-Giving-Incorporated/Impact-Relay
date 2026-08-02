@@ -10,7 +10,6 @@ from impact_relay.host.rehearsal import (
     run_shadow_rehearsal,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 

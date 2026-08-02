@@ -51,11 +51,9 @@ class Agent(Protocol):
     version: str
     authority_level: AuthorityLevel
 
-    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal:
-        ...
+    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal: ...
 
-    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult:
-        ...
+    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult: ...
 
 
 class CommandExecutor:
@@ -85,7 +83,7 @@ class CommandExecutor:
             block_below = 0.75
             # Executors may stash policy threshold on the instance.
             if hasattr(self, "confidence_block_below"):
-                block_below = float(getattr(self, "confidence_block_below"))
+                block_below = float(self.confidence_block_below)
             assert_proposal_executable(proposal, block_below=block_below)
         assert_execution_authorized(command, approval, agent_name=agent_name)
 
@@ -177,9 +175,7 @@ class CommandExecutor:
         self.receipt_store.put_execution_receipt(receipt, workflow_id=wid)
 
     def _dispatch(self, command: AgentCommand) -> tuple[list[str], dict[str, Any]]:
-        raise NotImplementedError(
-            f"no handler for command_type={command.command_type!r}"
-        )
+        raise NotImplementedError(f"no handler for command_type={command.command_type!r}")
 
 
 def build_run_receipt(
@@ -201,14 +197,8 @@ def build_run_receipt(
     status: AgentRunStatus | None = None,
 ) -> AgentRunReceipt:
     proposed = [c.command_type for p in proposals for c in p.proposed_commands]
-    accepted = [
-        e.command_type for e in executions if e.status in ("SUCCEEDED", "SIMULATED")
-    ]
-    rejected = [
-        e.command_type
-        for e in executions
-        if e.status in ("FAILED", "SKIPPED")
-    ] + [
+    accepted = [e.command_type for e in executions if e.status in ("SUCCEEDED", "SIMULATED")]
+    rejected = [e.command_type for e in executions if e.status in ("FAILED", "SKIPPED")] + [
         "validation"
         for v in validations
         if v.status
@@ -220,9 +210,9 @@ def build_run_receipt(
             status = AgentRunStatus.FAILED
         elif any(e.simulated for e in executions):
             status = AgentRunStatus.SIMULATED
-        elif any(
-            v.status == ValidationStatus.BLOCKED for v in validations
-        ) or any(e.status == "SKIPPED" for e in executions):
+        elif any(v.status == ValidationStatus.BLOCKED for v in validations) or any(
+            e.status == "SKIPPED" for e in executions
+        ):
             status = AgentRunStatus.PARTIAL
         else:
             status = AgentRunStatus.SUCCEEDED
