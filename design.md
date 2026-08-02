@@ -1,40 +1,33 @@
-# Design — Impact Relay (public aggregate surface)
+# Design — Impact Relay public evidence surface
 
-Locked system for the public GitHub Pages tracker.
+Impact Relay is the public proof layer of the Zero State suite. It preserves an evidence-led, stat-first information architecture while adopting the shared brand foundation.
 
-## Genre
-modern-minimal (utilitarian ledger / trust product)
+## Visual direction
 
-## Macrostructure family
-- Public tracker: **Stat-Led** with vertical milestone ladder and record lists for digests / evidence / UOF / impact
+- Warm paper `#fbf9f4`, stone `#f4f0e8`, carbon `#1d2321`.
+- Signal yellow `#f2c200` for attention and focus.
+- Deep teal `#486f6a` for verified state and reciprocal suite links.
+- Georgia display headings, Inter body copy, IBM Plex Mono metadata.
+- Thin rules, compact corners, no decorative shadows or gradients.
 
-## Theme
-- Paper: light daylight green-tint (`--color-paper`)
-- Ink: near-black forest-neutral (`--color-ink`)
-- Accent: single forest green (`--color-accent`)
-- No multi-hue gradients; no dark-dashboard aurora
+## Information architecture
 
-## Typography
-- Display + body: IBM Plex Sans 400/500/600, roman headers
-- Mono: IBM Plex Mono for labels, status, technical lines
-- Money uses `tabular-nums`
-
-## Sections (IA)
-1. Campaign stat-led hero (+ raised provenance)
-2. Milestones ladder
-3. Public evidence (990 table + historical)
+1. Campaign stat-led hero and raised-funds provenance
+2. Milestone ladder
+3. Public evidence, including 990 records and history
 4. Event digests
 5. Impact outcomes
 6. Use-of-funds receipts
 7. Notification feed
 8. Privacy boundary
 
-## CTA voice
-- Primary: solid accent rectangle Donate
-- Secondary: text nav links
+## Identity and actions
 
-## What pages MUST NOT
-- Decorative eyebrows on every section
-- Thick left-stripe severity rails
-- Equal 4-up metric/milestone card grids
-- Invented metrics
+The masthead reads Zero State → Impact Relay → campaign context and provides links to AGI and Fund Intel. The primary Donate action is carbon with a signal-yellow edge; secondary navigation uses deep teal. The footer repeats the Zero State mark and product identity.
+
+## Guardrails
+
+- Do not use decorative eyebrows on every section.
+- Do not add thick severity rails, equal four-up dashboard grids, or invented metrics.
+- Status and provenance must remain explicit in text.
+- Public evidence and donation controls must work at narrow viewports without hiding authority context.

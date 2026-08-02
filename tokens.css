@@ -4,32 +4,32 @@
  * axes: light / grotesk-sans / chromatic-other (green)
  */
 :root {
-  --agi-bg: #f5f7fb;
+  --agi-bg: #fbf9f4;
   --agi-surface: #ffffff;
-  --agi-surface-alt: #eef2f8;
-  --agi-text: #152033;
-  --agi-muted: #566376;
-  --agi-line: #d8e0eb;
-  --agi-brand: #16325c;
-  --agi-brand-2: #255f85;
-  --agi-accent: #c9141c;
-  --agi-success: #19734a;
-  --agi-warning: #755000;
+  --agi-surface-alt: #f4f0e8;
+  --agi-text: #1d2321;
+  --agi-muted: #626b67;
+  --agi-line: #b9b2a7;
+  --agi-brand: #1d2321;
+  --agi-brand-2: #486f6a;
+  --agi-accent: #f2c200;
+  --agi-success: #486f6a;
+  --agi-warning: #6a5200;
   --agi-danger: #a83232;
-  --agi-shadow: 0 18px 50px rgba(21, 32, 51, 0.08);
-  --agi-radius-sm: 10px;
-  --agi-radius: 18px;
+  --agi-shadow: none;
+  --agi-radius-sm: 2px;
+  --agi-radius: 4px;
   --agi-radius-pill: 999px;
 
   --color-paper: var(--agi-bg);
   --color-paper-2: var(--agi-surface-alt);
-  --color-paper-3: #e4eaf2;
+  --color-paper-3: #e8e2d8;
   --color-ink: var(--agi-text);
-  --color-ink-2: #3d4a5d;
+  --color-ink-2: #3f4844;
   --color-muted: var(--agi-muted);
   --color-rule: var(--agi-line);
   --color-accent: var(--agi-accent);
-  --color-accent-ink: #ffffff;
+  --color-accent-ink: #1d2321;
   --color-focus: var(--agi-accent);
   --color-success: var(--agi-success);
   --color-warning: var(--agi-warning);
@@ -37,8 +37,8 @@
   --color-waiting-bg: #fff6dd;
   --color-empty-bg: var(--agi-surface-alt);
 
-  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: var(--font-display);
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: Inter, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 
   --space-3xs: 0.25rem;
@@ -62,7 +62,7 @@
 
   --radius-sm: var(--agi-radius-sm);
   --radius-md: var(--agi-radius);
-  --radius-pill: var(--agi-radius-pill);
+  --radius-pill: var(--agi-radius-sm);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --dur-short: 180ms;

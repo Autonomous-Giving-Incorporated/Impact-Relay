@@ -1,26 +1,32 @@
-# A.G.I. shared interface contract
+# Zero State shared interface contract
 
-Impact Relay and Fund-Intel present one product suite. Impact Relay keeps its
-evidence-led information architecture while sharing the same palette, type,
-radius, focus, status, and action conventions.
+AGI, Fund Intel, and Impact Relay are one Zero State suite. Impact Relay keeps its public evidence-led architecture while sharing the same identity hierarchy, palette, typography, focus, status, and navigation conventions.
 
-The canonical cross-repository custom properties use the `--agi-` prefix:
+## Shared primitives
 
-- canvas `#f5f7fb`, surface `#ffffff`, secondary surface `#eef2f8`
-- text `#152033`, muted `#566376`, rules `#d8e0eb`
-- suite blue `#16325c`, secondary blue `#255f85`
-- semantic success `#19734a`, warning `#755000`, danger `#a83232`
-- controls 10px, cards 18px, compact statuses and primary actions may use pills
+- Paper `#fbf9f4`, white surface `#ffffff`, stone `#f4f0e8`.
+- Carbon `#1d2321`, muted copy `#626b67`, rule `#b9b2a7`.
+- Signal yellow `#f2c200`; deep teal `#486f6a`.
+- Success/verified uses deep teal, warning uses `#6a5200`, danger uses `#a83232`.
+- Georgia display, Inter body, IBM Plex Mono metadata.
+- Controls use 2px corners; structural surfaces use 4px corners; shadows are omitted.
 
-Hacker Dojo may apply its red tenant accent. Other tenants may replace only the
-accent and identity assets. Semantic colors and interaction behavior do not
-change with tenant branding.
-Tenant accents must retain WCAG AA contrast in text, controls, focus rings, and status treatments.
+Canonical cross-repository custom properties use the `--agi-` prefix.
+
+## Identity hierarchy
+
+1. Zero State mark and wordmark
+2. Impact Relay product name and “Public Evidence” role
+3. Campaign context
+
+The masthead includes reciprocal links to AGI and Fund Intel. Tenant or campaign branding can add context but cannot replace the suite identity or semantic behavior.
 
 ## Interaction rules
 
 - Visible keyboard focus is mandatory.
+- Carbon carries primary actions; signal yellow carries attention and focus.
+- Deep teal indicates verified state and suite navigation.
 - Statuses include text and never rely on color alone.
-- Loading, empty, error, blocked, and success states use shared language.
+- Loading, empty, error, blocked, waiting, and verified states use shared language.
 - Tables and evidence records remain usable on narrow screens.
-- Authenticated finance and donor actions must visibly retain tenant and authority context.
+- Donation and evidence actions visibly retain campaign, provenance, and authority context.
