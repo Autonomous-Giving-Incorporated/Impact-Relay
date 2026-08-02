@@ -6,7 +6,7 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
 ---
 
@@ -179,6 +179,15 @@ python -m impact_relay --validate-every-org-aggregate ~/private/every_org_live.j
 ```
 
 See [docs/HD-IR-007.md](docs/HD-IR-007.md), [docs/DURABLE-QUICKSTART.md](docs/DURABLE-QUICKSTART.md), and [docs/EVERYORG-AGGREGATE-RUNBOOK.md](docs/EVERYORG-AGGREGATE-RUNBOOK.md).
+
+---
+
+
+## AGI-001: A.G.I. suite boundary
+
+Autonomously Giving Incorporated (**A.G.I.**) is the product-suite frame around Fund-Intel and Impact Relay. Fund-Intel is the GitHub Pages / Supabase frontend surface; Impact Relay remains the governed backend and deterministic financial transparency library, with Cloud Run recommended for hosted backend APIs and workers.
+
+The shared tenant contract is `client_id == tenant_id`. Hacker Dojo (`hacker-dojo`) is the reference tenant and clone template. Master admins manage platform onboarding and infrastructure; tenant directors manage nonprofit roles and workflows, but neither boundary bypasses finance, publication, notification, or policy approval gates. Planned production hardening includes Supabase JWT validation at the backend gateway before privileged calls are accepted. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
 
 ---
 

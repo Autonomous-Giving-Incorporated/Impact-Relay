@@ -32,6 +32,21 @@ Open (ops / production):
 - execute live finance cohort and fill `docs/pilot/FINDINGS.md`;
 - leadership sign-off on language, privacy, and operating runbooks.
 
+
+## AGI-001 — A.G.I. suite documentation
+
+**Goal:** document the suite boundary between Fund-Intel and Impact Relay without changing runtime code.
+
+- [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the governed product suite name.
+- [x] Document Fund-Intel as the GitHub Pages / Supabase frontend.
+- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers.
+- [x] Define the shared `client_id == tenant_id` contract.
+- [x] Identify `hacker-dojo` as the reference tenant and clone template.
+- [x] Clarify master admin versus tenant director boundaries.
+- [x] Track planned Supabase JWT validation at the backend gateway.
+
+**Exit gate:** docs consistently describe A.G.I., Fund-Intel, Cloud Run, Hacker Dojo, tenant identity, admin boundaries, and planned Supabase JWT validation.
+
 ## v0.5 — Agent Framework and Governance
 
 **Goal:** establish bounded agent contracts without changing financial authority.
