@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pytest tests/test_workflow_sql_store.py -v --no-header | tee /tmp/pg.log
+          pytest -o addopts='' tests/test_workflow_sql_store.py -v --no-header | tee /tmp/pg.log
       - name: Assert the Postgres SKIP LOCKED test was not skipped
         shell: bash
         run: |
