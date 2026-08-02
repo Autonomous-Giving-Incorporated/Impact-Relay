@@ -240,7 +240,9 @@ def test_open_sql_store_defaults_to_sqlite(tmp_path: Path, monkeypatch: pytest.M
     assert store.get("t1", "wf_sql_1") is not None
 
 
-def test_durable_sqlite_roundtrip_shows_completed(tmp_path: Path) -> None:
+def test_durable_sqlite_roundtrip_shows_completed(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("IMPACT_RELAY_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     data_dir = tmp_path / "dur-sql"
     seed = durable_seed(data_dir, expense_batch=BATCH)
     assert seed["ok"] and seed["waiting"]
