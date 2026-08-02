@@ -4,22 +4,22 @@ from __future__ import annotations
 
 import copy
 import json
-import os
+from datetime import UTC
 from pathlib import Path
 
 import pytest
 
+from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import (
     ApprovalReceipt,
     WorkflowState,
     utc_now_iso,
 )
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
-from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
+from impact_relay.workflows.exceptions import WorkflowStateError
 from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import WorkflowRunStatus
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -41,14 +41,12 @@ def _runtime_with_ledger(ledger):
     binding = InMemoryLedgerBinding()
     from impact_relay.domain.tenant import TenantWorkspace
 
-    binding.register(
-        ledger, TenantWorkspace(ledger.organization, ledger=ledger)
-    )
+    binding.register(ledger, TenantWorkspace(ledger.organization, ledger=ledger))
     return WorkflowRuntime(store, binding), store, binding
 
 
 def test_claim_never_returns_waiting_signal() -> None:
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     store = InMemoryWorkflowStore()
     from impact_relay.workflows.types import WorkflowInstance, WorkflowType
@@ -66,7 +64,7 @@ def test_claim_never_returns_waiting_signal() -> None:
     claimed = store.claim(
         worker_id="w1",
         limit=10,
-        now=datetime.now(timezone.utc),
+        now=datetime.now(UTC),
         lease_ttl=timedelta(seconds=60),
     )
     assert claimed == []
@@ -82,9 +80,7 @@ def test_signal_wakes_to_pending() -> None:
         expense_row=row,
         simulation=False,
     )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     assert inst.workflow_state == WorkflowState.REVIEW_PENDING
     assert inst.run_status == WorkflowRunStatus.WAITING_SIGNAL
 
@@ -119,9 +115,7 @@ def test_full_pump_to_ledger_committed() -> None:
         tenant_id=ledger.organization.id,
         expense_row=row,
     )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     wait = inst.context["wait"]
     frozen = wait["frozen_command"]
     ar = ApprovalReceipt(
@@ -139,13 +133,15 @@ def test_full_pump_to_ledger_committed() -> None:
         workflow_id=inst.workflow_id,
         approval=ar,
     )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
+    assert (
+        inst.workflow_state
+        in (
+            WorkflowState.LEDGER_COMMITTED,
+            WorkflowState.PUBLICATION_PENDING,
+        )
+        or inst.run_status == WorkflowRunStatus.COMPLETED
     )
-    assert inst.workflow_state in (
-        WorkflowState.LEDGER_COMMITTED,
-        WorkflowState.PUBLICATION_PENDING,
-    ) or inst.run_status == WorkflowRunStatus.COMPLETED
     # expense approved on ledger
     exp_id = inst.context["expense_id"]
     assert ledger.expenses[exp_id].state.value == "APPROVED"
@@ -155,12 +151,8 @@ def test_execution_receipt_idempotency_skips_second() -> None:
     ledger = _ledger_empty_expenses()
     rt, store, _ = _runtime_with_ledger(ledger)
     row = _row()
-    inst = rt.start_expense_to_receipt(
-        tenant_id=ledger.organization.id, expense_row=row
-    )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    inst = rt.start_expense_to_receipt(tenant_id=ledger.organization.id, expense_row=row)
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     wait = inst.context["wait"]
     frozen = wait["frozen_command"]
     key = frozen["idempotency_key"]
@@ -174,12 +166,8 @@ def test_execution_receipt_idempotency_skips_second() -> None:
         approver_role="finance_approver",
         approved_at=utc_now_iso(),
     )
-    rt.signal_approval(
-        tenant_id=ledger.organization.id, workflow_id=inst.workflow_id, approval=ar
-    )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    rt.signal_approval(tenant_id=ledger.organization.id, workflow_id=inst.workflow_id, approval=ar)
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     stored = store.get_execution_receipt(ledger.organization.id, key)
     assert stored is not None
     assert stored.status == "SUCCEEDED"
@@ -190,7 +178,7 @@ def test_execution_receipt_idempotency_skips_second() -> None:
     ex = LedgerCommandExecutor(ledger)
     ex.receipt_store = store
     ex.workflow_id = inst.workflow_id
-    cmd = AgentCommand(
+    AgentCommand(
         command_type="approve_expense",
         tenant_id=ledger.organization.id,
         payload={"expense_id": inst.context["expense_id"], "approved_by": "x"},
@@ -206,7 +194,7 @@ def test_failed_receipt_not_stored() -> None:
     store = InMemoryWorkflowStore()
     from impact_relay.agents.types import ExecutionReceipt
 
-    with pytest.raises(Exception):
+    with pytest.raises(WorkflowStateError):
         store.put_execution_receipt(
             ExecutionReceipt(
                 execution_id="e",
@@ -271,8 +259,6 @@ def test_simulation_no_ledger_approve() -> None:
         expense_row=_row(),
         simulation=True,
     )
-    inst = rt.run_until_wait_or_terminal(
-        inst.workflow_id, tenant_id=ledger.organization.id
-    )
+    inst = rt.run_until_wait_or_terminal(inst.workflow_id, tenant_id=ledger.organization.id)
     # simulation may not import real expenses
     assert len(ledger.expenses) == before or inst.simulation

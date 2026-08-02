@@ -110,9 +110,7 @@ def redacted_public_copy(payload: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, dict):
             out[key] = redacted_public_copy(value)
         elif isinstance(value, list):
-            out[key] = [
-                redacted_public_copy(v) if isinstance(v, dict) else v for v in value
-            ]
+            out[key] = [redacted_public_copy(v) if isinstance(v, dict) else v for v in value]
         else:
             out[key] = value
     return out

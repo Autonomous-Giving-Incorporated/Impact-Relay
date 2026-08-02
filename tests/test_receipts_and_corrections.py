@@ -76,9 +76,7 @@ def test_pro_rata_pool_attribution() -> None:
                 received_at="2026-01-01",
             )
         )
-        led.assign_donation_allocation(
-            donation_id=did, allocation_id="a1", amount=Decimal(amt)
-        )
+        led.assign_donation_allocation(donation_id=did, allocation_id="a1", amount=Decimal(amt))
     led.import_expense(
         Expense(
             id="e1",
@@ -150,9 +148,7 @@ def test_reversal_publishes_correction_without_mutating_prior_receipt() -> None:
     assert ledger.get_receipt_snapshot(prior_id) == prior_snap
 
     # Balance restored after reversal.
-    assert ledger.allocation_remaining_balance("alloc_community_hardware") == Decimal(
-        "1500.00"
-    )
+    assert ledger.allocation_remaining_balance("alloc_community_hardware") == Decimal("1500.00")
     assert ledger.donor_remaining_on_allocation(
         "don_1000_alice", "alloc_community_hardware"
     ) == Decimal("1000.00")
@@ -193,7 +189,7 @@ def test_supersede_creates_replacement_and_correction() -> None:
 
 def test_cannot_reallocate_approved_expense() -> None:
     ledger, _ = run_pilot()
-    with pytest.raises(StateError, match="approved|reconciled"):
+    with pytest.raises(StateError, match=r"approved|reconciled"):
         ledger.allocate_expense(
             expense_id="exp_soldering_842",
             allocation_id="alloc_community_hardware",

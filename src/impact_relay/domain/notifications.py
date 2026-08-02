@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol
 
 from impact_relay.domain.types import (
     ConsentRecord,
+    NotFoundError,
     NotificationChannel,
     NotificationDelivery,
     NotificationIntent,
     NotificationIntentStatus,
     NotificationMessageClass,
     NotificationPreference,
-    NotFoundError,
     StateError,
 )
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _new_id(prefix: str) -> str:
@@ -35,9 +35,7 @@ class DeliveryAdapter(Protocol):
 
     provider_name: str
 
-    def deliver(
-        self, intent: NotificationIntent
-    ) -> tuple[bool, str, str]:
+    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
         """Return (success, provider_receipt, detail)."""
         ...
 
@@ -106,9 +104,8 @@ class NotificationService:
             return channel == NotificationChannel.EMAIL
         if not pref.enabled:
             return False
-        if pref.topics and message_class.value not in pref.topics:
-            return False
-        return True
+        # An empty topic list means "all topics".
+        return not pref.topics or message_class.value in pref.topics
 
     def evaluate_intent(
         self,
@@ -221,9 +218,7 @@ class NotificationService:
             intent = self.ws.intents[intent_id]
         return intent
 
-    def _in_quiet_hours(
-        self, donor_id: str, channel: NotificationChannel, now_iso: str
-    ) -> bool:
+    def _in_quiet_hours(self, donor_id: str, channel: NotificationChannel, now_iso: str) -> bool:
         pref = self.ws.preferences.get((donor_id, channel.value))
         if pref is None or not pref.quiet_hours_start or not pref.quiet_hours_end:
             return False
@@ -238,7 +233,8 @@ class NotificationService:
                 return start <= tpart < end
             # wraps midnight
             return tpart >= start or tpart < end
-        except Exception:  # noqa: BLE001
+        except (AttributeError, IndexError, TypeError, ValueError):
+            # Malformed timestamp or preference — never defer on a parse failure.
             return False
 
     def get_preferences(self, donor_id: str) -> list[dict[str, Any]]:

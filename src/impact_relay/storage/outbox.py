@@ -99,9 +99,7 @@ class SqlOutboxStore:
                 (at, event_id),
             )
 
-    def list_for_tenant(
-        self, tenant_id: str, *, limit: int = 100
-    ) -> list[OutboxEvent]:
+    def list_for_tenant(self, tenant_id: str, *, limit: int = 100) -> list[OutboxEvent]:
         with self._engine.conn() as conn:
             rows = self._engine.fetchall(
                 conn,

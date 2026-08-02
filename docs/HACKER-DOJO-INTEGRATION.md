@@ -49,7 +49,9 @@ from impact_relay.host.hacker_dojo import finance_approver_fixture, hacker_dojo_
 #   principal = mapper.map_principal(claims, tenant_id="org_hacker_dojo")
 
 # Local pilot without live IdP:
-principal = finance_approver_fixture()  # or hacker_dojo_oidc_mapper().principal_for_token("email:…")
+principal = (
+    finance_approver_fixture()
+)  # or hacker_dojo_oidc_mapper().principal_for_token("email:…")
 
 with open_hacker_dojo_session(
     "./data/hd-pilot",

@@ -141,9 +141,7 @@ class S3ObjectStorage:
         try:
             import boto3
         except ImportError as exc:
-            raise ObjectStorageError(
-                "S3 support requires: pip install 'impact-relay[s3]'"
-            ) from exc
+            raise ObjectStorageError("S3 support requires: pip install 'impact-relay[s3]'") from exc
         kwargs: dict[str, Any] = {}
         if self._region_name:
             kwargs["region_name"] = self._region_name
@@ -178,24 +176,23 @@ class S3ObjectStorage:
             "",
         ):
             extra["ServerSideEncryption"] = self.server_side_encryption
-        self.client.put_object(
-            Bucket=self.bucket, Key=s3_key, Body=data, **extra
-        )
+        self.client.put_object(Bucket=self.bucket, Key=s3_key, Body=data, **extra)
         return object_storage_id(tenant_id, key)
 
     def get(self, tenant_id: str, key: str) -> bytes | None:
         s3_key = self._s3_key(tenant_id, key)
         try:
             resp = self.client.get_object(Bucket=self.bucket, Key=s3_key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # botocore ClientError NoSuchKey / 404
             code = getattr(exc, "response", {}).get("Error", {}).get("Code", "")
             if code in ("NoSuchKey", "404", "NotFound") or "NoSuchKey" in str(exc):
                 return None
             # Also handle 404 status
-            if getattr(exc, "response", {}).get("ResponseMetadata", {}).get(
-                "HTTPStatusCode"
-            ) == 404:
+            if (
+                getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                == 404
+            ):
                 return None
             raise ObjectStorageError(f"S3 get failed: {exc}") from exc
         body = resp["Body"].read()
@@ -206,13 +203,14 @@ class S3ObjectStorage:
         try:
             self.client.head_object(Bucket=self.bucket, Key=s3_key)
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             code = getattr(exc, "response", {}).get("Error", {}).get("Code", "")
             if code in ("404", "NoSuchKey", "NotFound") or "Not Found" in str(exc):
                 return False
-            if getattr(exc, "response", {}).get("ResponseMetadata", {}).get(
-                "HTTPStatusCode"
-            ) == 404:
+            if (
+                getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                == 404
+            ):
                 return False
             raise ObjectStorageError(f"S3 head failed: {exc}") from exc
 
@@ -255,15 +253,13 @@ def open_object_storage(
     if kind in ("s3", "minio", "r2"):
         bkt = bucket or os.environ.get("IMPACT_RELAY_S3_BUCKET")
         if not bkt:
-            raise ObjectStorageError(
-                "S3 object store requires IMPACT_RELAY_S3_BUCKET or bucket="
-            )
+            raise ObjectStorageError("S3 object store requires IMPACT_RELAY_S3_BUCKET or bucket=")
         pref = prefix if prefix is not None else os.environ.get("IMPACT_RELAY_S3_PREFIX", "")
         ep = endpoint_url or os.environ.get("IMPACT_RELAY_S3_ENDPOINT_URL")
-        region = region_name or os.environ.get("IMPACT_RELAY_S3_REGION") or os.environ.get(
-            "AWS_REGION"
+        region = (
+            region_name or os.environ.get("IMPACT_RELAY_S3_REGION") or os.environ.get("AWS_REGION")
         )
-        sse = (
+        sse: str | None = (
             server_side_encryption
             if server_side_encryption is not None
             else os.environ.get("IMPACT_RELAY_S3_SSE", "AES256")
@@ -279,6 +275,4 @@ def open_object_storage(
             server_side_encryption=sse,
         )
 
-    raise ObjectStorageError(
-        f"unknown IMPACT_RELAY_OBJECT_STORE={kind!r} (use local or s3)"
-    )
+    raise ObjectStorageError(f"unknown IMPACT_RELAY_OBJECT_STORE={kind!r} (use local or s3)")

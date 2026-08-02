@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from impact_relay.storage.command_log import SqlLedgerCommandLog
 from impact_relay.storage.ledger_repo import LedgerEntityRepository
@@ -30,7 +31,7 @@ class StorageBundle:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.dsn = dsn
-        self._engine = SqlEngine(self.data_dir / "storage.db" if not dsn else dsn)
+        self._engine = SqlEngine(dsn or self.data_dir / "storage.db")
         self._engine.migrate()
         self.tenants = SqlTenantRepository(self._engine)
         self.outbox = SqlOutboxStore(self._engine)
@@ -55,14 +56,12 @@ class SqlEngine:
     def __init__(self, dsn_or_path: str | Path) -> None:
         self._dsn = str(dsn_or_path)
         self._lock = threading.RLock()
-        self.is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith(
-            "postgres:"
-        )
+        self.is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith("postgres:")
         if not self.is_postgres:
             path = self._dsn
             if path.startswith("sqlite:///"):
                 path = path[len("sqlite:///") :]
-            self._sqlite_path = Path(path)
+            self._sqlite_path: Path | None = Path(path)
             self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             self._sqlite_path = None
@@ -270,12 +269,10 @@ def open_storage(
     database_url: str | None = None,
 ) -> StorageBundle:
     """Open multi-tenant storage root (easy local default)."""
-    root = Path(
-        data_dir
-        or os.environ.get("IMPACT_RELAY_DATA_DIR")
-        or ".impact-relay"
-    )
-    url = database_url or os.environ.get("IMPACT_RELAY_DATABASE_URL") or os.environ.get(
-        "DATABASE_URL"
+    root = Path(data_dir or os.environ.get("IMPACT_RELAY_DATA_DIR") or ".impact-relay")
+    url = (
+        database_url
+        or os.environ.get("IMPACT_RELAY_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
     )
     return StorageBundle(root, dsn=url)

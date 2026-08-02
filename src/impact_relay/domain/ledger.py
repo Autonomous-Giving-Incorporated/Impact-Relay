@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -40,7 +40,7 @@ from impact_relay.domain.types import (
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _new_id(prefix: str) -> str:
@@ -140,8 +140,7 @@ class Ledger:
         already = self._sum_donation_allocations(donation_id)
         if already + amt > donation.amount:
             raise InvariantError(
-                f"donation allocations exceed cleared amount: "
-                f"{already + amt} > {donation.amount}"
+                f"donation allocations exceed cleared amount: {already + amt} > {donation.amount}"
             )
 
         da = DonationAllocation(
@@ -220,7 +219,9 @@ class Ledger:
         # Soft check: remaining fund balance must cover (after approval it hard-enforces).
         remaining = self.allocation_remaining_balance(allocation_id)
         # Pending expense allocations on this fund also consume soft capacity for draft work.
-        pending_other = self._sum_pending_expense_allocations(allocation_id, exclude_expense=expense_id)
+        pending_other = self._sum_pending_expense_allocations(
+            allocation_id, exclude_expense=expense_id
+        )
         # Allow classification while soft-over; approval enforces hard balance.
         _ = remaining  # documented soft signal for operators
         _ = pending_other
@@ -239,10 +240,12 @@ class Ledger:
         self.expense_allocations[ea.id] = ea
 
         # Move toward classification/approval pipeline.
-        if expense.state in (ExpenseState.DRAFT, ExpenseState.IMPORTED, ExpenseState.CLASSIFICATION_PENDING):
-            self.expenses[expense_id] = with_expense_state(
-                expense, ExpenseState.APPROVAL_PENDING
-            )
+        if expense.state in (
+            ExpenseState.DRAFT,
+            ExpenseState.IMPORTED,
+            ExpenseState.CLASSIFICATION_PENDING,
+        ):
+            self.expenses[expense_id] = with_expense_state(expense, ExpenseState.APPROVAL_PENDING)
 
         self._audit(
             "ExpenseAllocated",
@@ -301,10 +304,12 @@ class Ledger:
             self.expense_allocations[ea.id] = ea
             results.append(ea)
 
-        if expense.state in (ExpenseState.DRAFT, ExpenseState.IMPORTED, ExpenseState.CLASSIFICATION_PENDING):
-            self.expenses[expense_id] = with_expense_state(
-                expense, ExpenseState.APPROVAL_PENDING
-            )
+        if expense.state in (
+            ExpenseState.DRAFT,
+            ExpenseState.IMPORTED,
+            ExpenseState.CLASSIFICATION_PENDING,
+        ):
+            self.expenses[expense_id] = with_expense_state(expense, ExpenseState.APPROVAL_PENDING)
 
         self._audit(
             "ExpenseAllocated",
@@ -356,9 +361,7 @@ class Ledger:
         if not approved_by:
             raise StateError("approved_by is required")
 
-        updated = with_expense_state(
-            expense, ExpenseState.APPROVED, approved_by=approved_by
-        )
+        updated = with_expense_state(expense, ExpenseState.APPROVED, approved_by=approved_by)
         self.expenses[expense_id] = updated
         self._audit(
             "ExpenseApproved",
@@ -373,9 +376,7 @@ class Ledger:
         expense = self._require_expense(expense_id)
         if expense.state != ExpenseState.APPROVED:
             raise StateError("only APPROVED expenses can be reconciled")
-        updated = with_expense_state(
-            expense, ExpenseState.RECONCILED, reconciled_at=_now_iso()
-        )
+        updated = with_expense_state(expense, ExpenseState.RECONCILED, reconciled_at=_now_iso())
         self.expenses[expense_id] = updated
         self._audit(
             "ExpenseReconciled",
@@ -402,13 +403,11 @@ class Ledger:
         attribution_id: str | None = None,
     ) -> DonorExpenseAttribution:
         if method == AttributionMethod.NONE or method not in ALLOWED_ATTRIBUTION_METHODS:
-            raise AttributionError(
-                f"phantom or disallowed attribution method: {method.value}"
-            )
+            raise AttributionError(f"phantom or disallowed attribution method: {method.value}")
         if donor_id not in self.donors:
             raise NotFoundError(f"donor not found: {donor_id}")
         donation = self._require_donation(donation_id)
-        expense = self._require_expense(expense_id)
+        self._require_expense(expense_id)  # raises when the expense is unknown
         if donation.donor_id != donor_id:
             raise InvariantError("donation does not belong to donor")
         if allocation_id not in self.allocations:
@@ -453,9 +452,7 @@ class Ledger:
         else:
             # Other allowed methods: require explicit amount under finance policy.
             if attributed_amount is None:
-                raise AttributionError(
-                    f"method {method.value} requires explicit attributed_amount"
-                )
+                raise AttributionError(f"method {method.value} requires explicit attributed_amount")
             attr_amt = money(attributed_amount)
 
         if attr_amt <= 0:
@@ -538,9 +535,7 @@ class Ledger:
 
         attr = self._find_attribution(donation_id, expense_id, allocation_id)
         if attr is None:
-            raise AttributionError(
-                "no attribution record; refuse phantom one-to-one linkage"
-            )
+            raise AttributionError("no attribution record; refuse phantom one-to-one linkage")
         if attr.method not in ALLOWED_ATTRIBUTION_METHODS:
             raise AttributionError(f"disallowed attribution method: {attr.method.value}")
 
@@ -672,9 +667,7 @@ class Ledger:
             raise StateError("only APPROVED or RECONCILED expenses can be reversed")
 
         prior_receipt_ids = list(self._expense_receipts.get(expense_id, []))
-        prior_snapshots = {
-            rid: self.get_receipt_snapshot(rid) for rid in prior_receipt_ids
-        }
+        prior_snapshots = {rid: self.get_receipt_snapshot(rid) for rid in prior_receipt_ids}
 
         reversed_expense = with_expense_state(
             expense,
@@ -732,9 +725,7 @@ class Ledger:
 
         prior_receipt_ids = list(self._expense_receipts.get(expense_id, []))
 
-        superseded = with_expense_state(
-            old, ExpenseState.SUPERSEDED, history_note=reason
-        )
+        superseded = with_expense_state(old, ExpenseState.SUPERSEDED, history_note=reason)
         self.expenses[expense_id] = superseded
 
         if replacement.id == expense_id:

@@ -2,7 +2,8 @@
 
 Usage:
   python -m impact_relay
-  python -m impact_relay --all-phases --digests-from-domain --write-digests data/impact-digests-public.json
+  python -m impact_relay --all-phases --digests-from-domain \
+      --write-digests data/impact-digests-public.json
   python -m impact_relay --every-org-aggregate fixtures/every_org_aggregate_v1.json \\
       --write-impact-state data/impact-state.json
   python -m impact_relay --publish-pages
@@ -210,9 +211,7 @@ def _run_workflow_ops(args: argparse.Namespace) -> int:
         inst = store.get(tenant_id, args.workflow_id)
         if inst is None:
             print(
-                _json.dumps(
-                    {"error": "workflow_not_found", "workflow_id": args.workflow_id}
-                ),
+                _json.dumps({"error": "workflow_not_found", "workflow_id": args.workflow_id}),
                 file=sys.stderr,
             )
             return 2
@@ -633,9 +632,7 @@ def main(argv: list[str] | None = None) -> int:
         ledger = build_ledger_from_fixture(data)
         store = InMemoryWorkflowStore()
         binding = InMemoryLedgerBinding()
-        binding.register(
-            ledger, TenantWorkspace(ledger.organization, ledger=ledger)
-        )
+        binding.register(ledger, TenantWorkspace(ledger.organization, ledger=ledger))
         runtime = WorkflowRuntime(store, binding)
         rows = batch.get("expenses") or []
         started_ids: list[str] = []
@@ -682,7 +679,11 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001
             print(
                 json.dumps(
-                    {"ok": False, "error": str(exc), "path": str(args.validate_every_org_aggregate)},
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "path": str(args.validate_every_org_aggregate),
+                    },
                     indent=2,
                 ),
                 file=sys.stderr,
@@ -713,15 +714,15 @@ def main(argv: list[str] | None = None) -> int:
             human_approver_id=args.actor,
             approve=not args.no_approve,
             simulation=args.simulate_agents,
-            publish_specs=None if args.no_approve or args.simulate_agents else [
+            publish_specs=None
+            if args.no_approve or args.simulate_agents
+            else [
                 {
                     "donor_id": "donor_alice",
                     "donation_id": "don_1000_alice",
                     "allocation_id": "alloc_community_hardware",
                     "attribution_method": "DIRECT_RESTRICTED",
-                    "attributed_amount": str(
-                        (batch.get("expenses") or [{}])[0].get("amount", "0")
-                    ),
+                    "attributed_amount": str((batch.get("expenses") or [{}])[0].get("amount", "0")),
                 }
             ],
             send_email=bool(args.send_email and not args.no_approve and not args.simulate_agents),
@@ -746,12 +747,8 @@ def main(argv: list[str] | None = None) -> int:
         args.write_impact_state = args.write_impact_state or Path("data/impact-state.json")
         args.write_public = args.write_public or Path("data/use-of-funds-public.json")
         args.write_digests = args.write_digests or Path("data/impact-digests-public.json")
-        args.write_public_evidence = args.write_public_evidence or Path(
-            "data/public-evidence.json"
-        )
-        args.write_public_impact = args.write_public_impact or Path(
-            "data/public-impact.json"
-        )
+        args.write_public_evidence = args.write_public_evidence or Path("data/public-evidence.json")
+        args.write_public_impact = args.write_public_impact or Path("data/public-impact.json")
         args.digests_from_domain = True
         args.merge_fixture_digests = True
         args.all_phases = True
@@ -794,16 +791,15 @@ def main(argv: list[str] | None = None) -> int:
         write_impact_state(target_state, impact_state)
     elif args.reconcile_from is not None:
         impact_state = reconcile_file(args.reconcile_from, target_state, write=True)
-        if args.require_observed and impact_state.get("campaign", {}).get(
-            "raisedSource"
-        ) != "processor_aggregate":
+        if (
+            args.require_observed
+            and impact_state.get("campaign", {}).get("raisedSource") != "processor_aggregate"
+        ):
             print(
                 json.dumps(
                     {
                         "error": "require_observed_failed",
-                        "raisedSource": impact_state.get("campaign", {}).get(
-                            "raisedSource"
-                        ),
+                        "raisedSource": impact_state.get("campaign", {}).get("raisedSource"),
                     },
                     indent=2,
                 ),
@@ -861,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     # --- Digests ---
-    if args.digests_from_domain and platform is not None:
+    if args.digests_from_domain and platform is not None and all_phases_payload is not None:
         primary_id = all_phases_payload.get("primary", {}).get("organization_id")
         ws = platform.get_workspace(primary_id)
         extra = None
@@ -876,9 +872,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         events_doc = (
-            load_events_fixture(args.events_fixture)
-            if args.events_fixture is not None
-            else None
+            load_events_fixture(args.events_fixture) if args.events_fixture is not None else None
         )
         digests = build_public_digests(events_doc)
 
@@ -890,13 +884,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # --- Use-of-funds public export ---
-    if args.all_phases and platform is not None:
+    if args.all_phases and platform is not None and all_phases_payload is not None:
         primary_id = all_phases_payload.get("primary", {}).get("organization_id")
         ws = platform.get_workspace(primary_id)
         receipts = [r for r in ws.ledger.receipts.values() if not r.corrected]
-        public_payload = build_public_export(
-            receipts, source="hd_ir_all_phases_pilot_fixture"
-        )
+        public_payload = build_public_export(receipts, source="hd_ir_all_phases_pilot_fixture")
         impact_public = build_public_impact_export(
             list(ws.impact_receipts.values()),
             source="domain_impact_receipts",
@@ -935,9 +927,7 @@ def main(argv: list[str] | None = None) -> int:
             else impact_state.get("campaign", {}).get("raisedSource"),
         }
         all_phases_payload["public_evidence"] = {
-            "written": str(args.write_public_evidence)
-            if args.write_public_evidence
-            else None,
+            "written": str(args.write_public_evidence) if args.write_public_evidence else None,
             "summary": None if public_evidence is None else public_evidence.get("summary"),
             "liveRaisedState": None
             if public_evidence is None

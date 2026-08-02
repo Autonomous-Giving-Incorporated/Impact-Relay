@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from impact_relay.agents.authority import AuthorityError
 from impact_relay.agents.expense_workflow import (
     run_expense_approval_slice,
     run_expense_approval_slice_legacy,
@@ -19,7 +20,6 @@ from impact_relay.agents.expense_workflow import (
 from impact_relay.agents.types import WorkflowState
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 from impact_relay.workflows.facade import facade_mode, run_expense_approval_slice_via_runtime
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -107,22 +107,20 @@ def test_parity_simulation_no_expense_mutation() -> None:
 
 
 def test_parity_contradictory_evidence_blocks() -> None:
-    legacy, runtime, _, _ = _run_both(
-        approve=True, evidence_flags={"contradictory": True}
-    )
+    legacy, runtime, _, _ = _run_both(approve=True, evidence_flags={"contradictory": True})
     assert legacy.workflow_state == WorkflowState.BLOCKED
     assert runtime.workflow_state == WorkflowState.BLOCKED
 
 
 def test_parity_agent_approver_rejected() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(AuthorityError):
         run_expense_approval_slice_legacy(
             _ledger(),
             expense_rows=_rows(),
             human_approver_id="agent:finance_review",
             approve=True,
         )
-    with pytest.raises(Exception):
+    with pytest.raises(AuthorityError):
         run_expense_approval_slice_via_runtime(
             _ledger(),
             expense_rows=_rows(),

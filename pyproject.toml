@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "impact-relay"
-version = "0.5.0"
+version = "0.9.1"
 description = "Impact Relay — ledger, agents, public export, digests, Every.org aggregate bridge"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -13,7 +13,7 @@ authors = [{ name = "Impact Relay" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "ruff>=0.6", "mypy>=1.11"]
 db = ["psycopg[binary]>=3.1"]
 s3 = ["boto3>=1.34"]
 
@@ -28,3 +28,62 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle
+  "W",
+  "F",    # pyflakes
+  "I",    # import order
+  "UP",   # pyupgrade
+  "B",    # bugbear
+  "C4",   # comprehensions
+  "SIM",  # simplify
+  "BLE",  # blind except
+  "RUF",
+]
+ignore = [
+  "SIM108",  # ternaries are not always clearer than if/else here
+  "RUF002",  # em dashes in docstrings are deliberate prose
+  "SIM102",  # nested ifs read better than compound conditions in ledger/workflow guards
+  # UP042 would rebase `class X(str, Enum)` onto StrEnum. Those enums are a
+  # serialization boundary (JSON payloads, schemas, the public Pages exports),
+  # so the migration needs its own reviewed PR with artifact regeneration.
+  "UP042",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests build deliberately malformed inputs and poke private handler internals.
+"tests/*" = ["B011", "SIM117"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+# Ratchet: these modules are fully typed and must stay that way. Money, identity,
+# and privacy boundaries get the strict treatment first.
+[[tool.mypy.overrides]]
+module = [
+  "impact_relay.auth.*",
+  "impact_relay.donor.*",
+  "impact_relay.agents.privacy",
+]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "psycopg.*"]
+ignore_missing_imports = true

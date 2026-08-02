@@ -25,9 +25,7 @@ class Principal:
     raw_claims: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        roles = frozenset(
-            r if isinstance(r, Role) else Role(str(r)) for r in self.roles
-        )
+        roles = frozenset(r if isinstance(r, Role) else Role(str(r)) for r in self.roles)
         object.__setattr__(self, "roles", roles)
 
     @property
@@ -68,9 +66,7 @@ def principal_from_fixture(
     """
     if email.startswith("agent:"):
         raise ValueError("fixture principal cannot be agent:*")
-    role_set = frozenset(
-        r if isinstance(r, Role) else Role(str(r)) for r in roles
-    )
+    role_set = frozenset(r if isinstance(r, Role) else Role(str(r)) for r in roles)
     return Principal(
         subject=subject or f"fixture:{email}",
         tenant_id=tenant_id,

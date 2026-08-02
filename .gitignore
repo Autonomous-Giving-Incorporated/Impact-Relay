@@ -20,3 +20,6 @@ htmlcov/
 .impact-relay-workflow-session.pkl
 *.workflow-session.pkl
 .impact-relay/
+
+# Local dev tooling (project uses pip)
+uv.lock

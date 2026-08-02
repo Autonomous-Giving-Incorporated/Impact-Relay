@@ -158,8 +158,8 @@ def test_storage_bundle_uses_s3_when_configured(
     monkeypatch.setenv("IMPACT_RELAY_S3_BUCKET", "bundle-bkt")
     # Force object store via open_storage path: open_object_storage reads env
     # but creates real boto3 without client. Inject by constructing bundle manually.
-    from impact_relay.storage.sql import StorageBundle
     from impact_relay.storage.objects import S3ObjectStorage
+    from impact_relay.storage.sql import StorageBundle
 
     bundle = StorageBundle(
         tmp_path / "st",

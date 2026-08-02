@@ -34,9 +34,9 @@ from impact_relay.auth.roles import (
 )
 
 __all__ = [
+    "HACKER_DOJO_CAMPAIGN_ROLE_MAP",
     "AuthorizationError",
     "FixtureOidcMapper",
-    "HACKER_DOJO_CAMPAIGN_ROLE_MAP",
     "OidcClaims",
     "OidcIdentityProvider",
     "Permission",

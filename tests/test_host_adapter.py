@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from impact_relay.domain.types import ExpenseState
 from impact_relay.host import (
     CANONICAL_PILOT_TENANT_ID,
-    HostSession,
     open_hacker_dojo_session,
     open_host_session,
 )
 from impact_relay.host.hacker_dojo import hacker_dojo_identity
-from impact_relay.domain.types import ExpenseState
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"

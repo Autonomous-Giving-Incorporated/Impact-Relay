@@ -53,9 +53,7 @@ class LedgerCommandExecutor(CommandExecutor):
         self.workspace = workspace
         # external_source_id -> expense_id for dedup
         self._external_index: dict[str, str] = {
-            e.external_source_id: e.id
-            for e in ledger.expenses.values()
-            if e.external_source_id
+            e.external_source_id: e.id for e in ledger.expenses.values() if e.external_source_id
         }
         # preview_id -> EmailPreview for send gate
         self.previews: dict[str, EmailPreview] = {}
@@ -135,9 +133,7 @@ class LedgerCommandExecutor(CommandExecutor):
         expense_id = payload["expense_id"]
         approved_by = payload.get("approved_by")
         if not approved_by:
-            raise AuthorityError(
-                "approve_expense payload requires approved_by from human"
-            )
+            raise AuthorityError("approve_expense payload requires approved_by from human")
         updated = self.ledger.approve_expense(expense_id, approved_by=approved_by)
         return [expense_id], {"expense_id": expense_id, "state": updated.state.value}
 
@@ -193,18 +189,12 @@ class LedgerCommandExecutor(CommandExecutor):
             raise KeyError(f"receipt not found: {receipt_id}")
         assert_preview_matches_receipt(preview, receipt)
         if payload.get("content_hash") != preview.content_hash:
-            raise AuthorityError(
-                "send payload content_hash does not match registered preview"
-            )
+            raise AuthorityError("send payload content_hash does not match registered preview")
         if payload.get("receipt_hash") != receipt.receipt_hash:
-            raise AuthorityError(
-                "send payload receipt_hash does not match ledger receipt"
-            )
+            raise AuthorityError("send payload receipt_hash does not match ledger receipt")
 
         ns = self.workspace.notifications()
-        if not self.workspace.consents.get(
-            (receipt.donor_id, NotificationChannel.EMAIL.value)
-        ):
+        if not self.workspace.consents.get((receipt.donor_id, NotificationChannel.EMAIL.value)):
             ns.record_consent(
                 ConsentRecord(
                     donor_id=receipt.donor_id,
@@ -226,11 +216,7 @@ class LedgerCommandExecutor(CommandExecutor):
             )
 
         intent = ns.evaluate_for_use_of_funds(receipt_id, deliver=True)
-        deliveries = [
-            d
-            for d in self.workspace.deliveries.values()
-            if d.intent_id == intent.id
-        ]
+        deliveries = [d for d in self.workspace.deliveries.values() if d.intent_id == intent.id]
         delivery = deliveries[-1] if deliveries else None
         refs = [intent.id]
         if delivery:
@@ -277,11 +263,11 @@ class LedgerCommandExecutor(CommandExecutor):
         expense_id = payload["expense_id"]
         actor = payload.get("actor") or payload.get("approved_by")
         reason = payload.get("reason") or ""
-        approved_by = payload.get("approved_by") or actor
         if not actor:
             raise AuthorityError("supersede_expense requires actor from human approval")
         if not reason:
             raise AuthorityError("supersede_expense requires reason")
+        approved_by = str(payload.get("approved_by") or actor)
         exp = self.ledger.expenses.get(expense_id)
         if exp is not None and exp.state == ExpenseState.SUPERSEDED:
             return [expense_id], {

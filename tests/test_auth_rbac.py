@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -23,7 +24,6 @@ from impact_relay.auth.oidc import (
 from impact_relay.host import open_hacker_dojo_session
 from impact_relay.host.hacker_dojo import finance_approver_fixture
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -121,9 +121,7 @@ def test_host_approve_with_principal_rbac(tmp_path: Path) -> None:
 
 
 def test_host_require_principal_for_approve(tmp_path: Path) -> None:
-    session = open_hacker_dojo_session(
-        tmp_path / "hd2", require_principal_for_approve=True
-    )
+    session = open_hacker_dojo_session(tmp_path / "hd2", require_principal_for_approve=True)
     session.seed(expense_batch=BATCH)
     out = session.approve()
     assert out["ok"] is False
@@ -157,7 +155,7 @@ def test_console_resolves_host_role_headers_only_behind_trusted_proxy() -> None:
     from impact_relay.console_server import resolve_principal_from_request
 
     class H:
-        headers = {
+        headers: ClassVar[dict[str, str]] = {
             "X-Impact-Email": "lead@hackersdojo.org",
             "X-HD-Campaign-Role": "campaign_lead",
             "X-Impact-Subject": "uuid-1",
@@ -166,9 +164,7 @@ def test_console_resolves_host_role_headers_only_behind_trusted_proxy() -> None:
     # Default posture: any client can forge these headers, so they are ignored.
     assert resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID) is None
 
-    p = resolve_principal_from_request(
-        H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True
-    )
+    p = resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True)
     assert p is not None
     assert Role.FINANCE_APPROVER in p.roles
 
@@ -178,15 +174,13 @@ def test_console_unmappable_host_role_is_rejected_not_anonymous() -> None:
     from impact_relay.console_server import resolve_principal_from_request
 
     class H:
-        headers = {
+        headers: ClassVar[dict[str, str]] = {
             "X-Impact-Email": "lead@hackersdojo.org",
             "X-HD-Campaign-Role": "not-a-real-role",
         }
 
     with pytest.raises(AuthorizationError):
-        resolve_principal_from_request(
-            H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True
-        )
+        resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True)
 
 
 def test_sod_on_host_approve(tmp_path: Path) -> None:

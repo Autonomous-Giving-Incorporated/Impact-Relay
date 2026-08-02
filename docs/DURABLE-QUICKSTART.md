@@ -82,6 +82,7 @@ After `seed` / `approve` / `worker`, Impact Relay **auto-saves** a queryable ent
 
 ```python
 from impact_relay.storage import open_storage
+
 store = open_storage(".impact-relay/durable")
 store.ledger.list_expenses("org_hacker_dojo")
 ```

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 
 class ErrorClass(str, Enum):
@@ -101,15 +100,11 @@ def classify_error(exc: BaseException) -> ClassifiedError:
     msg = str(exc).lower()
 
     if any(m in msg for m in _ALREADY_APPLIED_MARKERS):
-        return ClassifiedError(
-            ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc
-        )
+        return ClassifiedError(ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc)
 
     if name in _TERMINAL_TYPE_NAMES:
         if name == "StateError" and any(m in msg for m in _ALREADY_APPLIED_MARKERS):
-            return ClassifiedError(
-                ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc
-            )
+            return ClassifiedError(ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc)
         return ClassifiedError(ErrorClass.TERMINAL, f"terminal:{name}", exc)
 
     if name in _RETRYABLE_TYPE_NAMES:
@@ -121,9 +116,7 @@ def classify_error(exc: BaseException) -> ClassifiedError:
         return ClassifiedError(ErrorClass.TERMINAL, f"terminal_module:{mod}", exc)
     if "domain" in mod and name.endswith("Error"):
         if any(m in msg for m in _ALREADY_APPLIED_MARKERS):
-            return ClassifiedError(
-                ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc
-            )
+            return ClassifiedError(ErrorClass.ALREADY_APPLIED, f"already_applied:{name}", exc)
         return ClassifiedError(ErrorClass.TERMINAL, f"domain_terminal:{name}", exc)
 
     # Default: retry with attempt cap (unknown → DEAD_LETTER later)

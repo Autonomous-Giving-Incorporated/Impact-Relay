@@ -10,17 +10,16 @@ from typing import Any
 import pytest
 
 from impact_relay.console_server import make_handler
-from impact_relay.host.console import open_donor_console, open_finance_console
-from impact_relay.host.hacker_dojo import finance_approver_fixture
-from impact_relay.pilot import run_pilot
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.donor import open_donor_api
+from impact_relay.host.console import open_finance_console
+from impact_relay.host.hacker_dojo import finance_approver_fixture
+from impact_relay.pilot import run_pilot
 from impact_relay.storage import open_storage
 from impact_relay.storage.template import (
     CANONICAL_PILOT_TENANT_ID,
     ensure_canonical_hacker_dojo_tenant,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -59,13 +58,13 @@ def _request(
     """Drive one request through the handler without opening a socket."""
     h = handler_cls.__new__(handler_cls)
     req_headers = dict(headers or {})
-    payload = raw_body if raw_body is not None else (
-        json.dumps(body).encode("utf-8") if body is not None else b""
+    payload = (
+        raw_body
+        if raw_body is not None
+        else (json.dumps(body).encode("utf-8") if body is not None else b"")
     )
     if payload or content_length is not None:
-        req_headers.setdefault(
-            "Content-Length", content_length or str(len(payload))
-        )
+        req_headers.setdefault("Content-Length", content_length or str(len(payload)))
     h.headers = req_headers
     h.path = path
     h.rfile = BytesIO(payload)
@@ -216,9 +215,7 @@ def test_forged_identity_headers_are_ignored_by_default(tmp_path: Path) -> None:
         "X-Impact-Email": "attacker@example.com",
         "X-HD-Campaign-Role": "director",
     }
-    res = _request(
-        handler, "POST", f"/api/finance/cases/{wid}/approve", headers=forged, body={}
-    )
+    res = _request(handler, "POST", f"/api/finance/cases/{wid}/approve", headers=forged, body={})
     assert res.code == 401
 
 
@@ -241,9 +238,7 @@ def test_trusted_proxy_mode_accepts_identity_headers(tmp_path: Path) -> None:
 
 def test_unauthenticated_pilot_mode_restores_open_access(tmp_path: Path) -> None:
     data_dir, wid = _seeded(tmp_path)
-    handler = make_handler(
-        data_dir, CANONICAL_PILOT_TENANT_ID, allow_unauthenticated_pilot=True
-    )
+    handler = make_handler(data_dir, CANONICAL_PILOT_TENANT_ID, allow_unauthenticated_pilot=True)
     res = _request(handler, "POST", f"/api/finance/cases/{wid}/approve", body={})
     assert res.code == 200
     assert res.json["ok"] is True
@@ -335,13 +330,13 @@ def test_no_cors_header_unless_configured(tmp_path: Path) -> None:
     assert ok.header("Access-Control-Allow-Origin") == "https://dojo.example"
     assert ok.header("Vary") == "Origin"
 
-    denied = _request(
-        allowed, "GET", "/api/health", headers={"Origin": "https://evil.example"}
-    )
+    denied = _request(allowed, "GET", "/api/health", headers={"Origin": "https://evil.example"})
     assert denied.header("Access-Control-Allow-Origin") is None
 
 
-def test_internal_errors_do_not_leak_details(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_internal_errors_do_not_leak_details(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     data_dir, _ = _seeded(tmp_path)
     handler = make_handler(data_dir, CANONICAL_PILOT_TENANT_ID)
 

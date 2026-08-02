@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 # Re-export Permission for auth package consumers
 __all__ = [
-    "AuthorizationError",
     "DUAL_CONTROL_ACTIONS",
+    "AuthorizationError",
     "Permission",
     "assert_permission",
     "assert_separation_of_duties",
@@ -109,9 +109,7 @@ def assert_separation_of_duties(
             f"(proposer_id={proposer_id!r}, action={action})"
         )
 
-    if violates_dual_control(
-        principal, action=action, prior_approver_id=prior_approver_id
-    ):
+    if violates_dual_control(principal, action=action, prior_approver_id=prior_approver_id):
         if enforce_dual_control:
             raise AuthorizationError(
                 f"dual control: {principal.email!r} already approved an earlier step "

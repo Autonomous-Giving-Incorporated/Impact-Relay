@@ -103,9 +103,7 @@ def resolve_principal_from_request(
     auth = (handler.headers.get("Authorization") or "").replace("Bearer ", "").strip()
 
     if trusted_proxy and email_hdr and (campaign_role or roles_hdr):
-        impact_roles = (
-            [r.strip() for r in roles_hdr.split(",") if r.strip()] if roles_hdr else None
-        )
+        impact_roles = [r.strip() for r in roles_hdr.split(",") if r.strip()] if roles_hdr else None
         try:
             return principal_from_host_headers(
                 email=email_hdr,
@@ -176,7 +174,7 @@ def make_handler(
         config = cfg
 
         def log_message(self, fmt: str, *args: Any) -> None:
-            sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+            sys.stderr.write(f"{self.address_string()} - {fmt % args}\n")
 
         # ------------------------------------------------------------------
         # Responses
@@ -201,7 +199,7 @@ def make_handler(
             self.end_headers()
             self.wfile.write(raw)
 
-        def do_OPTIONS(self) -> None:  # noqa: N802
+        def do_OPTIONS(self) -> None:
             self.send_response(204)
             self._cors_headers()
             self.end_headers()
@@ -221,11 +219,7 @@ def make_handler(
             if principal is None and not cfg.allow_unauthenticated_pilot:
                 raise AuthenticationRequired(
                     "authentication required: send Authorization: Bearer <email>"
-                    + (
-                        " or X-Impact-Email with a role header"
-                        if cfg.trusted_proxy
-                        else ""
-                    )
+                    + (" or X-Impact-Email with a role header" if cfg.trusted_proxy else "")
                 )
             return principal
 
@@ -293,10 +287,10 @@ def make_handler(
             else:
                 self._json(code, body)
 
-        def do_GET(self) -> None:  # noqa: N802
+        def do_GET(self) -> None:
             self._dispatch(self._route_get)
 
-        def do_POST(self) -> None:  # noqa: N802
+        def do_POST(self) -> None:
             self._dispatch(self._route_post)
 
         def _route_get(self) -> tuple[int, Any]:
@@ -319,8 +313,7 @@ def make_handler(
                 return 200, self._finance().metrics()
             if path == "/api/finance/queue":
                 filters = (
-                    qs.get("filters")
-                    or ["waiting,blocked,dead_letter,needs_information,failed"]
+                    qs.get("filters") or ["waiting,blocked,dead_letter,needs_information,failed"]
                 )[0]
                 result = self._finance().queue(filters=filters)
                 return _status_for_result(result), result

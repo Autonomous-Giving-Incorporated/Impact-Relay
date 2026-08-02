@@ -4,16 +4,13 @@ PR-M1–M6: types, ports, memory store, runtime, worker, ops, façade.
 Pilot P1–P2: ledger command log + SQL store (SQLite / Postgres).
 """
 
+from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.workflows.commands import build_executable_command
-from impact_relay.workflows.expense_to_receipt import (
-    HandlerBundle,
-    StepOutcome,
-    freeze_command,
-    step_classify,
-    step_compose_send,
-    step_evidence,
-    step_intake,
-    step_review,
+from impact_relay.workflows.corrections import (
+    build_reverse_command,
+    build_supersede_command,
+    step_after_ledger_correction,
+    step_propose_correction,
 )
 from impact_relay.workflows.exceptions import (
     ClassifiedError,
@@ -26,18 +23,22 @@ from impact_relay.workflows.exceptions import (
     is_retryable,
     is_terminal,
 )
+from impact_relay.workflows.expense_to_receipt import (
+    HandlerBundle,
+    StepOutcome,
+    freeze_command,
+    step_classify,
+    step_compose_send,
+    step_evidence,
+    step_intake,
+    step_review,
+)
 from impact_relay.workflows.facade import (
     facade_mode,
     run_expense_approval_slice,
     run_expense_approval_slice_via_runtime,
 )
-from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
-from impact_relay.workflows.corrections import (
-    build_reverse_command,
-    build_supersede_command,
-    step_after_ledger_correction,
-    step_propose_correction,
-)
+from impact_relay.workflows.guards import DurabilityGuardError
 from impact_relay.workflows.machine import (
     CORRECTION_TRANSITIONS,
     DEFAULT_RUN_STATUS,
@@ -53,10 +54,15 @@ from impact_relay.workflows.machine import (
     default_run_status,
     is_human_gate,
 )
-from impact_relay.workflows.scheduled_digest import (
-    assemble_digests,
-    step_assemble_and_privacy,
-    step_complete_digest,
+from impact_relay.workflows.ops import (
+    OperatorCase,
+    approval_from_dict,
+    list_blocked,
+    list_operator_cases,
+    load_ops_session,
+    save_ops_session,
+    seed_session_to_wait,
+    signal_approval_and_pump,
 )
 from impact_relay.workflows.ports import (
     Clock,
@@ -68,20 +74,13 @@ from impact_relay.workflows.ports import (
     WorkflowStore,
 )
 from impact_relay.workflows.runtime import WorkflowRuntime, default_executor_factory
+from impact_relay.workflows.scheduled_digest import (
+    assemble_digests,
+    step_assemble_and_privacy,
+    step_complete_digest,
+)
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.store_sql import SqlWorkflowStore, open_sql_store
-from impact_relay.workflows.ops import (
-    OperatorCase,
-    approval_from_dict,
-    list_blocked,
-    list_operator_cases,
-    load_ops_session,
-    save_ops_session,
-    seed_session_to_wait,
-    signal_approval_and_pump,
-)
-from impact_relay.workflows.guards import DurabilityGuardError
-from impact_relay.workflows.worker import TickResult, WorkerConfig, WorkflowWorker
 from impact_relay.workflows.types import (
     CLAIMABLE_RUN_STATUSES,
     TERMINAL_RUN_STATUSES,
@@ -101,36 +100,37 @@ from impact_relay.workflows.types import (
     WorkflowState,
     WorkflowType,
 )
+from impact_relay.workflows.worker import TickResult, WorkerConfig, WorkflowWorker
 
 __all__ = [
-    "AdvanceCommitBundle",
     "CLAIMABLE_RUN_STATUSES",
     "CORRECTION_TRANSITIONS",
-    "ClassifiedError",
-    "Clock",
     "DEFAULT_RUN_STATUS",
     "DIGEST_TRANSITIONS",
-    "DurabilityGuardError",
     "EXPENSE_TO_RECEIPT_TRANSITIONS",
+    "HUMAN_GATE_STATES",
+    "TERMINAL_RUN_STATUSES",
+    "AdvanceCommitBundle",
+    "ClassifiedError",
+    "Clock",
+    "DurabilityGuardError",
     "ErrorClass",
     "ExecutableCommand",
     "ExecutorFactory",
     "FrozenProposedCommand",
-    "HUMAN_GATE_STATES",
     "HandlerBundle",
     "IdGenerator",
     "InMemoryLedgerBinding",
     "InMemoryWorkflowStore",
     "LedgerBinding",
-    "SqlWorkflowStore",
     "OperatorCase",
     "RetryPolicy",
     "SignalConsumeResult",
     "SignalType",
+    "SqlWorkflowStore",
     "StepOutcome",
     "StepResult",
     "SystemClock",
-    "TERMINAL_RUN_STATUSES",
     "TickResult",
     "UuidIdGenerator",
     "WorkerConfig",
@@ -168,10 +168,6 @@ __all__ = [
     "is_human_gate",
     "is_retryable",
     "is_terminal",
-    "step_after_ledger_correction",
-    "step_assemble_and_privacy",
-    "step_complete_digest",
-    "step_propose_correction",
     "list_blocked",
     "list_operator_cases",
     "load_ops_session",
@@ -181,9 +177,13 @@ __all__ = [
     "save_ops_session",
     "seed_session_to_wait",
     "signal_approval_and_pump",
+    "step_after_ledger_correction",
+    "step_assemble_and_privacy",
     "step_classify",
+    "step_complete_digest",
     "step_compose_send",
     "step_evidence",
     "step_intake",
+    "step_propose_correction",
     "step_review",
 ]

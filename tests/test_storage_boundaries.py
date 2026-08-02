@@ -61,12 +61,8 @@ def test_clone_other_nonprofit_isolated(tmp_path: Path) -> None:
 
 
 def test_clone_policy_does_not_mutate_hd() -> None:
-    other = clone_tenant_from_hacker_dojo(
-        tenant_id="org_x", display_name="X"
-    )
-    hd = clone_tenant_from_hacker_dojo(
-        tenant_id=CANONICAL_PILOT_TENANT_ID, display_name="ignored"
-    )
+    other = clone_tenant_from_hacker_dojo(tenant_id="org_x", display_name="X")
+    hd = clone_tenant_from_hacker_dojo(tenant_id=CANONICAL_PILOT_TENANT_ID, display_name="ignored")
     assert other.tenant_id == "org_x"
     assert hd.tenant_id == CANONICAL_PILOT_TENANT_ID
     assert hd.display_name == "Hacker Dojo"
@@ -111,16 +107,15 @@ def test_sql_command_log_rehydrate_hd_expense(tmp_path: Path) -> None:
         payload={"expense_id": "exp_soldering_842"},
         result_json=result,
     )
-    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
     import copy
+
+    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 
     data = copy.deepcopy(load_fixture())
     data["expenses"] = []
     data["publish"] = []
     empty = build_ledger_from_fixture(data)
-    rebuilt = store.command_log.rehydrate(
-        empty.organization, base_ledger=empty
-    )
+    rebuilt = store.command_log.rehydrate(empty.organization, base_ledger=empty)
     assert "exp_soldering_842" in rebuilt.expenses
     assert rebuilt.expenses["exp_soldering_842"].state in (
         ExpenseState.APPROVED,

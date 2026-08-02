@@ -63,11 +63,9 @@ class Agent:
     version: str
     authority_level: AuthorityLevel
 
-    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal:
-        ...
+    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal: ...
 
-    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult:
-        ...
+    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult: ...
 ```
 
 Execution is separate:
@@ -78,8 +76,7 @@ class CommandExecutor:
         self,
         proposal: ApprovedProposal,
         approval: ApprovalReceipt | None,
-    ) -> ExecutionReceipt:
-        ...
+    ) -> ExecutionReceipt: ...
 ```
 
 An agent cannot propose and approve the same action.

@@ -44,12 +44,8 @@ class LedgerEntityRepository:
         snap = snapshot_ledger_entities(ledger)
         now = utc_now_iso()
         with self._engine.conn() as conn:
-            self._engine.execute(
-                conn, "DELETE FROM ledger_entity WHERE tenant_id=?", (tenant_id,)
-            )
-            self._engine.execute(
-                conn, "DELETE FROM ledger_meta WHERE tenant_id=?", (tenant_id,)
-            )
+            self._engine.execute(conn, "DELETE FROM ledger_entity WHERE tenant_id=?", (tenant_id,))
+            self._engine.execute(conn, "DELETE FROM ledger_meta WHERE tenant_id=?", (tenant_id,))
             for etype in _ENTITY_MAPS:
                 mapping = snap.get(etype) or {}
                 if not isinstance(mapping, dict):
@@ -225,9 +221,5 @@ class LedgerEntityRepository:
 
     def delete_tenant_ledger(self, tenant_id: str) -> None:
         with self._engine.conn() as conn:
-            self._engine.execute(
-                conn, "DELETE FROM ledger_entity WHERE tenant_id=?", (tenant_id,)
-            )
-            self._engine.execute(
-                conn, "DELETE FROM ledger_meta WHERE tenant_id=?", (tenant_id,)
-            )
+            self._engine.execute(conn, "DELETE FROM ledger_entity WHERE tenant_id=?", (tenant_id,))
+            self._engine.execute(conn, "DELETE FROM ledger_meta WHERE tenant_id=?", (tenant_id,))

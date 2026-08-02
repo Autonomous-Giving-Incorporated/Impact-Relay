@@ -7,9 +7,10 @@ session file for multi-invocation CLI.
 from __future__ import annotations
 
 import pickle
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import ApprovalReceipt, WorkflowState, utc_now_iso
@@ -102,10 +103,7 @@ def _wait_key(inst: WorkflowInstance) -> str | None:
     if frozen.get("idempotency_key"):
         return str(frozen["idempotency_key"])
     desc = inst.wait_descriptor or {}
-    return (
-        desc.get("command_idempotency_key")
-        or desc.get("prior_command_idempotency_key")
-    )
+    return desc.get("command_idempotency_key") or desc.get("prior_command_idempotency_key")
 
 
 def instance_to_case(inst: WorkflowInstance) -> OperatorCase:
@@ -130,11 +128,17 @@ def list_operator_cases(
     filters: Iterable[str] | None = None,
     limit: int = 200,
 ) -> list[OperatorCase]:
-    """List operator-visible cases. Default filters: waiting+blocked+dead_letter+needs_information+failed."""
-    raw = [f.strip().lower() for f in (filters or ("waiting", "blocked", "dead_letter", "needs_information", "failed"))]
+    """List operator-visible cases.
+
+    Default filters: waiting, blocked, dead_letter, needs_information, failed.
+    """
+    raw = [
+        f.strip().lower()
+        for f in (filters or ("waiting", "blocked", "dead_letter", "needs_information", "failed"))
+    ]
     if "all" in raw:
         # Include completed / cancelled ("other") so status overviews are complete.
-        want = (CASE_FILTERS - {"all"}) | {"other"}
+        want: set[str] = set(CASE_FILTERS - {"all"}) | {"other"}
     else:
         want = set(raw) & CASE_FILTERS
         if not want:
@@ -195,9 +199,7 @@ def signal_approval_and_pump(
     worker_ticks: int = 20,
 ) -> WorkflowInstance:
     """Signal human approval then claim/advance until wait or terminal."""
-    runtime.signal_approval(
-        tenant_id=tenant_id, workflow_id=workflow_id, approval=approval
-    )
+    runtime.signal_approval(tenant_id=tenant_id, workflow_id=workflow_id, approval=approval)
     worker = WorkflowWorker(
         runtime,
         WorkerConfig(worker_id="ops-signal", poll_interval_seconds=0.0),
@@ -224,17 +226,21 @@ def signal_approval_and_pump(
                 WorkflowRunStatus.CANCELLED,
             ):
                 break
-        if inst.workflow_state in (
-            WorkflowState.LEDGER_COMMITTED,
-            WorkflowState.PUBLICATION_PENDING,
-            WorkflowState.PUBLISHED,
-            WorkflowState.NOTIFICATION_PENDING,
-            WorkflowState.DELIVERED,
-        ) and inst.run_status != WorkflowRunStatus.PENDING:
+        if (
+            inst.workflow_state
+            in (
+                WorkflowState.LEDGER_COMMITTED,
+                WorkflowState.PUBLICATION_PENDING,
+                WorkflowState.PUBLISHED,
+                WorkflowState.NOTIFICATION_PENDING,
+                WorkflowState.DELIVERED,
+            )
+            and inst.run_status != WorkflowRunStatus.PENDING
+        ):
             if inst.run_status != WorkflowRunStatus.RUNNING:
                 # continue pumping pending auto steps
                 pass
-    return runtime.store.get(tenant_id, workflow_id)  # type: ignore[return-value]
+    return runtime.store.get(tenant_id, workflow_id)
 
 
 # ---------------------------------------------------------------------------
@@ -309,9 +315,7 @@ def seed_session_to_wait(
             simulation=simulation,
         )
         ids.append(inst.workflow_id)
-    worker = WorkflowWorker(
-        runtime, WorkerConfig(worker_id="ops-seed", poll_interval_seconds=0.0)
-    )
+    worker = WorkflowWorker(runtime, WorkerConfig(worker_id="ops-seed", poll_interval_seconds=0.0))
     for _ in range(worker_ticks):
         r = worker.tick()
         if r.claimed == 0:

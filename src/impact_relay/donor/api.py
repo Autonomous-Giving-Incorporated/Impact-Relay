@@ -15,7 +15,6 @@ from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.domain.types import (
     NotificationChannel,
     NotificationPreference,
-    NotFoundError,
 )
 
 
@@ -27,9 +26,7 @@ class DonorExperienceAPI:
         self.reads = DonorReadService(workspace)
         self.notifications = NotificationService(workspace)
 
-    def _assert_donor_access(
-        self, donor_id: str, principal: Principal | None
-    ) -> None:
+    def _assert_donor_access(self, donor_id: str, principal: Principal | None) -> None:
         """Gate donor-scoped reads.
 
         ``principal is None`` means a trusted in-process caller (CLI, pilot
@@ -39,9 +36,7 @@ class DonorExperienceAPI:
         """
         if principal is None:
             return
-        assert_permission(
-            principal, Permission.RECEIPT_READ, tenant_id=self.ws.organization.id
-        )
+        assert_permission(principal, Permission.RECEIPT_READ, tenant_id=self.ws.organization.id)
         from impact_relay.auth.roles import Role
 
         staff = any(
@@ -67,9 +62,7 @@ class DonorExperienceAPI:
                 "the host must bind claims.donor_id at login"
             )
         if claim_donor != donor_id:
-            raise AuthorizationError(
-                f"donor principal cannot access donor_id={donor_id!r}"
-            )
+            raise AuthorizationError(f"donor principal cannot access donor_id={donor_id!r}")
 
     def get_receipt(
         self,
@@ -119,9 +112,7 @@ class DonorExperienceAPI:
         self._assert_donor_access(donor_id, principal)
         return self.reads.evidence_safe_attachments(donor_id, receipt_id)
 
-    def dashboard(
-        self, donor_id: str, *, principal: Principal | None = None
-    ) -> dict[str, Any]:
+    def dashboard(self, donor_id: str, *, principal: Principal | None = None) -> dict[str, Any]:
         self._assert_donor_access(donor_id, principal)
         return self.reads.donor_dashboard(donor_id)
 

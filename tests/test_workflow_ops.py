@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
@@ -16,9 +15,7 @@ from impact_relay.workflows.ops import (
     seed_session_to_wait,
     signal_approval_and_pump,
 )
-from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.types import WorkflowRunStatus
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
@@ -29,9 +26,7 @@ def _rows():
 
 
 def test_seed_lists_waiting_cases() -> None:
-    runtime, store, binding, tenant_id, ids = seed_session_to_wait(
-        expense_rows=_rows()
-    )
+    _runtime, store, _binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())
     assert ids
     cases = list_operator_cases(store, tenant_id, filters=("waiting",))
     assert cases
@@ -41,9 +36,7 @@ def test_seed_lists_waiting_cases() -> None:
 
 
 def test_signal_and_pump_approves_expense() -> None:
-    runtime, store, binding, tenant_id, ids = seed_session_to_wait(
-        expense_rows=_rows()
-    )
+    runtime, store, binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())
     wid = ids[0]
     inst = store.get(tenant_id, wid)
     assert inst is not None
@@ -72,12 +65,10 @@ def test_signal_and_pump_approves_expense() -> None:
 
 
 def test_session_roundtrip(tmp_path: Path) -> None:
-    runtime, store, binding, tenant_id, ids = seed_session_to_wait(
-        expense_rows=_rows()
-    )
+    _runtime, store, binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())
     path = tmp_path / "sess.pkl"
     save_ops_session(path, store, binding, tenant_id=tenant_id)
-    store2, binding2, tid2 = load_ops_session(path)
+    store2, _binding2, tid2 = load_ops_session(path)
     assert tid2 == tenant_id
     cases = list_operator_cases(store2, tid2, filters=("waiting",))
     assert any(c.workflow_id == ids[0] for c in cases)
@@ -111,7 +102,7 @@ def test_cli_ops_seed_list_signal(tmp_path: Path) -> None:
     )
     assert code == 0
 
-    store, binding, tenant_id = load_ops_session(sess)
+    store, _binding, tenant_id = load_ops_session(sess)
     cases = list_operator_cases(store, tenant_id, filters=("waiting",))
     assert cases
     wid = cases[0].workflow_id
@@ -144,18 +135,25 @@ def test_cli_ops_seed_list_signal(tmp_path: Path) -> None:
         ]
     )
     assert code == 0
-    store2, binding2, _ = load_ops_session(sess)
+    store2, _binding2, _ = load_ops_session(sess)
     inst = store2.get(tenant_id, wid)
     assert inst is not None
-    assert inst.workflow_state != WorkflowState.REVIEW_PENDING or inst.run_status != WorkflowRunStatus.WAITING_SIGNAL
+    assert (
+        inst.workflow_state != WorkflowState.REVIEW_PENDING
+        or inst.run_status != WorkflowRunStatus.WAITING_SIGNAL
+    )
     # Should have advanced past pure review wait
-    assert inst.workflow_state in (
-        WorkflowState.LEDGER_COMMITTED,
-        WorkflowState.PUBLICATION_PENDING,
-        WorkflowState.PUBLISHED,
-        WorkflowState.DELIVERED,
-        WorkflowState.NEEDS_INFORMATION,
-    ) or inst.run_status == WorkflowRunStatus.COMPLETED
+    assert (
+        inst.workflow_state
+        in (
+            WorkflowState.LEDGER_COMMITTED,
+            WorkflowState.PUBLICATION_PENDING,
+            WorkflowState.PUBLISHED,
+            WorkflowState.DELIVERED,
+            WorkflowState.NEEDS_INFORMATION,
+        )
+        or inst.run_status == WorkflowRunStatus.COMPLETED
+    )
 
 
 def test_cli_ops_demo(tmp_path: Path) -> None:
@@ -173,19 +171,18 @@ def test_cli_ops_demo(tmp_path: Path) -> None:
         ]
     )
     assert code == 0
-    store, binding, tenant_id = load_ops_session(sess)
+    _store, binding, tenant_id = load_ops_session(sess)
     # After demo approve, waiting should be empty or at next gate
     ledger = binding.for_tenant(tenant_id)
     assert any(e.state.value == "APPROVED" for e in ledger.expenses.values())
 
 
 def test_rejects_agent_approver_in_demo_path() -> None:
-    from impact_relay.agents.authority import AuthorityError
     import pytest
 
-    runtime, store, binding, tenant_id, ids = seed_session_to_wait(
-        expense_rows=_rows()
-    )
+    from impact_relay.agents.authority import AuthorityError
+
+    runtime, store, _binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())
     inst = store.get(tenant_id, ids[0])
     key = inst.context["wait"]["frozen_command"]["idempotency_key"]
     with pytest.raises(AuthorityError):

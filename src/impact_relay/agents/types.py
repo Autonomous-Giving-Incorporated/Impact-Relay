@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -93,7 +93,7 @@ L3_COMMAND_TYPES: frozenset[str] = frozenset(
 
 
 def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def stable_hash(payload: Any) -> str:
@@ -139,7 +139,10 @@ class AgentCommand:
                 }
             )
             object.__setattr__(self, "idempotency_key", key)
-        if self.command_type in L3_COMMAND_TYPES and self.required_authority != AuthorityLevel.L3_HUMAN_APPROVAL:
+        if (
+            self.command_type in L3_COMMAND_TYPES
+            and self.required_authority != AuthorityLevel.L3_HUMAN_APPROVAL
+        ):
             object.__setattr__(self, "required_authority", AuthorityLevel.L3_HUMAN_APPROVAL)
 
 

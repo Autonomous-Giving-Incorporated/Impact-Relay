@@ -74,7 +74,9 @@ def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
     """Map an Every.org-style aggregate summary into reconcile_file input."""
     _assert_every_org_safe(summary)
     totals = summary.get("totals") or {}
-    if not totals and all(k in summary for k in ("raisedPublic", "committedPublic", "donorCountPublic")):
+    if not totals and all(
+        k in summary for k in ("raisedPublic", "committedPublic", "donorCountPublic")
+    ):
         # Already in reconcile shape.
         aggregate = {
             "source": summary.get("source") or "every.org/aggregate",
@@ -146,17 +148,21 @@ def validate_live_aggregate(
         lower = source_path.lower()
         for marker in ("fixture", "template", "pilot", "synthetic"):
             if marker in lower:
-                raise ReconcileError(
-                    f"refusing path that looks like {marker!r}: {source_path}"
-                )
+                raise ReconcileError(f"refusing path that looks like {marker!r}: {source_path}")
 
     _assert_every_org_safe(summary)
-    missing = [f for f in LIVE_OBSERVED_REQUIRED_FIELDS if f not in summary or summary[f] in (None, "")]
+    missing = [
+        f for f in LIVE_OBSERVED_REQUIRED_FIELDS if f not in summary or summary[f] in (None, "")
+    ]
     if missing:
         raise ReconcileError(f"live aggregate missing required fields: {missing}")
 
     totals = summary.get("totals") or {}
-    if totals.get("raised") is None and totals.get("raisedUsd") is None and totals.get("amountRaised") is None:
+    if (
+        totals.get("raised") is None
+        and totals.get("raisedUsd") is None
+        and totals.get("amountRaised") is None
+    ):
         raise ReconcileError("totals.raised is required")
     if (
         totals.get("donorCount") is None
@@ -179,13 +185,10 @@ def validate_live_aggregate(
     }
     if require_observed and raised_source != "processor_aggregate":
         raise ReconcileError(
-            "live aggregate did not resolve to processor_aggregate/OBSERVED: "
-            f"{report}"
+            f"live aggregate did not resolve to processor_aggregate/OBSERVED: {report}"
         )
     if require_observed and claim_label != "OBSERVED":
-        raise ReconcileError(
-            f"live aggregate claim label must be OBSERVED, got {claim_label}"
-        )
+        raise ReconcileError(f"live aggregate claim label must be OBSERVED, got {claim_label}")
     return report
 
 

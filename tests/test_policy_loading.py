@@ -16,7 +16,6 @@ from impact_relay.policy import (
     resolve_policy_path,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 POLICY_FILE = ROOT / "policies" / "tenants" / "hacker-dojo.v1.0.yaml"
 

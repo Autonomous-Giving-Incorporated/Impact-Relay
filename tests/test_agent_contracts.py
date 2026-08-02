@@ -13,7 +13,11 @@ from impact_relay.agents.authority import (
     requires_human_approval,
 )
 from impact_relay.agents.base import AgentContext, CommandExecutor
-from impact_relay.agents.privacy import PrivacySentinelError, assert_public_safe, scan_public_payload
+from impact_relay.agents.privacy import (
+    PrivacySentinelError,
+    assert_public_safe,
+    scan_public_payload,
+)
 from impact_relay.agents.types import (
     AgentCommand,
     AgentProposal,
@@ -24,7 +28,6 @@ from impact_relay.agents.types import (
     to_jsonable,
     utc_now_iso,
 )
-
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / "schemas" / "agents"

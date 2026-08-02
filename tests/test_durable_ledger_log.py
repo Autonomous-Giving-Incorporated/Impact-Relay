@@ -6,6 +6,12 @@ import json
 from pathlib import Path
 
 from impact_relay.cli import main
+from impact_relay.domain.ledger_log import (
+    FileLedgerCommandLog,
+    apply_result_json,
+    build_result_json,
+    snapshot_ledger_entities,
+)
 from impact_relay.domain.types import ExpenseState
 from impact_relay.workflows.durable import (
     durable_approve,
@@ -15,21 +21,15 @@ from impact_relay.workflows.durable import (
     durable_status,
     open_workspace,
 )
-from impact_relay.domain.ledger_log import (
-    FileLedgerCommandLog,
-    apply_result_json,
-    build_result_json,
-    snapshot_ledger_entities,
-)
-
 
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 
 
 def test_apply_result_json_roundtrip() -> None:
-    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
     import copy
+
+    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 
     data = copy.deepcopy(load_fixture())
     # keep expenses for snapshot source
@@ -54,11 +54,12 @@ def test_apply_result_json_roundtrip() -> None:
 
 
 def test_file_log_append_and_rehydrate(tmp_path: Path) -> None:
-    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
     import copy
+
     from impact_relay.agents.executor import LedgerCommandExecutor
     from impact_relay.agents.types import AgentCommand, AuthorityLevel
     from impact_relay.domain.tenant import TenantWorkspace
+    from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 
     data = copy.deepcopy(load_fixture())
     data["expenses"] = []

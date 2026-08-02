@@ -75,7 +75,11 @@ EXPENSE_TO_RECEIPT_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = 
     ),
     WorkflowState.DELIVERED: frozenset(),
     WorkflowState.BLOCKED: frozenset(
-        {WorkflowState.EVIDENCE_PENDING, WorkflowState.REVIEW_PENDING, WorkflowState.NEEDS_INFORMATION}
+        {
+            WorkflowState.EVIDENCE_PENDING,
+            WorkflowState.REVIEW_PENDING,
+            WorkflowState.NEEDS_INFORMATION,
+        }
     ),
     WorkflowState.NEEDS_INFORMATION: frozenset(
         {
@@ -89,9 +93,7 @@ EXPENSE_TO_RECEIPT_TRANSITIONS: dict[WorkflowState, frozenset[WorkflowState]] = 
     WorkflowState.REJECTED: frozenset(),
     WorkflowState.DUPLICATE: frozenset(),
     # APPROVED is audit-only (K12); not a parked cursor for transitions from handlers
-    WorkflowState.APPROVED: frozenset(
-        {WorkflowState.LEDGER_COMMITTED, WorkflowState.REJECTED}
-    ),
+    WorkflowState.APPROVED: frozenset({WorkflowState.LEDGER_COMMITTED, WorkflowState.REJECTED}),
 }
 
 # Scheduled digest workflow (PR-L2): assemble → privacy → optional ack → complete.
@@ -201,9 +203,7 @@ def assert_transition(
     table: dict[WorkflowState, frozenset[WorkflowState]] | None = None,
 ) -> None:
     if not can_transition(current, nxt, table=table):
-        raise WorkflowStateError(
-            f"illegal workflow transition {current.value} → {nxt.value}"
-        )
+        raise WorkflowStateError(f"illegal workflow transition {current.value} → {nxt.value}")
 
 
 def can_correction_transition(current: WorkflowState, nxt: WorkflowState) -> bool:
