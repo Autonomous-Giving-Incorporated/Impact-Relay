@@ -2,17 +2,26 @@
 
 from __future__ import annotations
 
+import logging
+
 from impact_relay.auth.principal import Principal
 from impact_relay.auth.roles import Permission, Role, permissions_for_roles
+
+logger = logging.getLogger(__name__)
 
 # Re-export Permission for auth package consumers
 __all__ = [
     "AuthorizationError",
+    "DUAL_CONTROL_ACTIONS",
     "Permission",
     "assert_permission",
     "assert_separation_of_duties",
     "has_permission",
+    "violates_dual_control",
 ]
+
+# Later-step approvals that must not be signed by the earlier approver.
+DUAL_CONTROL_ACTIONS = frozenset({"approve_publish", "approve_send"})
 
 
 class AuthorizationError(PermissionError):
@@ -44,6 +53,30 @@ def assert_permission(
         )
 
 
+def violates_dual_control(
+    principal: Principal,
+    *,
+    action: str,
+    prior_approver_id: str | None = None,
+) -> bool:
+    """True when ``principal`` would sign both sides of a dual-control chain.
+
+    Triggers when the same human already approved an earlier step and now holds
+    both the finance and communications approver roles for a publish/send gate.
+    """
+    if not prior_approver_id or action not in DUAL_CONTROL_ACTIONS:
+        return False
+    if prior_approver_id not in (
+        principal.email,
+        principal.subject,
+        principal.approver_id,
+    ):
+        return False
+    return principal.has_role(Role.FINANCE_APPROVER) and principal.has_role(
+        Role.COMMUNICATIONS_APPROVER
+    )
+
+
 def assert_separation_of_duties(
     principal: Principal,
     *,
@@ -51,15 +84,18 @@ def assert_separation_of_duties(
     proposer_id: str | None = None,
     prior_approver_id: str | None = None,
     enforce_hard: bool = True,
+    enforce_dual_control: bool = True,
 ) -> None:
     """Separation of duties (SoD) gates.
 
     Hard (always when ``enforce_hard``):
     - principal cannot approve their own proposal (``proposer_id`` match)
     - agent identities rejected
+    - dual control: the approver of an earlier step cannot also sign a
+      publish/send gate while holding both approver roles
 
-    Soft preferences (documented; not hard-fail unless both roles used on same step):
-    - finance_reviewer vs finance_approver preferably distinct people
+    Set ``enforce_dual_control=False`` for tenants whose policy accepts
+    single-signer publication; the violation is then logged, not raised.
     """
     if principal.email.startswith("agent:") or principal.subject.startswith("agent:"):
         raise AuthorizationError("agents cannot satisfy SoD as approvers")
@@ -73,14 +109,18 @@ def assert_separation_of_duties(
             f"(proposer_id={proposer_id!r}, action={action})"
         )
 
-    # Soft: if same person already approved a prior step in chain, flag for dual-control paths
-    if (
-        prior_approver_id
-        and prior_approver_id in (principal.email, principal.subject)
-        and action in ("approve_publish", "approve_send")
-        and principal.has_role(Role.FINANCE_APPROVER)
-        and principal.has_role(Role.COMMUNICATIONS_APPROVER)
+    if violates_dual_control(
+        principal, action=action, prior_approver_id=prior_approver_id
     ):
-        # Same principal holding both roles re-approving later step — require explicit
-        # dual-control only when policy hardens; for now soft pass with no raise.
-        pass
+        if enforce_dual_control:
+            raise AuthorizationError(
+                f"dual control: {principal.email!r} already approved an earlier step "
+                f"(prior_approver_id={prior_approver_id!r}) and cannot also sign "
+                f"{action}; a second approver is required"
+            )
+        logger.warning(
+            "dual_control_waived action=%s approver=%s prior_approver=%s",
+            action,
+            principal.email,
+            prior_approver_id,
+        )

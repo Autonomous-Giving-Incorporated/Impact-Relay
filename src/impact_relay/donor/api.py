@@ -30,6 +30,13 @@ class DonorExperienceAPI:
     def _assert_donor_access(
         self, donor_id: str, principal: Principal | None
     ) -> None:
+        """Gate donor-scoped reads.
+
+        ``principal is None`` means a trusted in-process caller (CLI, pilot
+        scripts, tests) and skips checks. Network boundaries must never pass
+        ``None`` on behalf of a remote caller — ``console_server`` requires a
+        resolved principal unless explicitly run in unauthenticated pilot mode.
+        """
         if principal is None:
             return
         assert_permission(
@@ -50,9 +57,16 @@ class DonorExperienceAPI:
         )
         if staff:
             return
-        # Donor-only principals must bind claims.donor_id to the requested donor
+        # Donor-only principals must bind claims.donor_id to the requested donor.
+        # Fail closed when the claim is absent: an unbound donor principal would
+        # otherwise read every donor's receipts.
         claim_donor = principal.raw_claims.get("donor_id")
-        if claim_donor is not None and claim_donor != donor_id:
+        if claim_donor is None:
+            raise AuthorizationError(
+                f"donor principal {principal.email!r} has no donor_id claim; "
+                "the host must bind claims.donor_id at login"
+            )
+        if claim_donor != donor_id:
             raise AuthorizationError(
                 f"donor principal cannot access donor_id={donor_id!r}"
             )

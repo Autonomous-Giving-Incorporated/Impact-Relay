@@ -1,5 +1,7 @@
 # Impact Relay Agent Contract
 
+> **Scope note:** this document is the runtime governance contract for the AI agents *inside* Impact Relay (authority levels, human gates, proposal contracts). It is **not** contributor instructions for coding agents or humans working on this repository — see `CLAUDE.md` for that.
+
 Impact Relay uses bounded agents to collect evidence, propose classifications, prepare receipts, and route human decisions. Agents do not own financial truth.
 
 ## Prime directive

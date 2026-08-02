@@ -153,7 +153,7 @@ def test_hacker_dojo_campaign_role_map() -> None:
     assert has_permission(p, Permission.WORKFLOW_APPROVE_EXPENSE)
 
 
-def test_console_resolves_host_role_headers(tmp_path: Path) -> None:
+def test_console_resolves_host_role_headers_only_behind_trusted_proxy() -> None:
     from impact_relay.console_server import resolve_principal_from_request
 
     class H:
@@ -161,12 +161,32 @@ def test_console_resolves_host_role_headers(tmp_path: Path) -> None:
             "X-Impact-Email": "lead@hackersdojo.org",
             "X-HD-Campaign-Role": "campaign_lead",
             "X-Impact-Subject": "uuid-1",
-            "Authorization": "Bearer ignored-when-headers-set",
         }
 
-    p = resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID)
+    # Default posture: any client can forge these headers, so they are ignored.
+    assert resolve_principal_from_request(H(), CANONICAL_PILOT_TENANT_ID) is None
+
+    p = resolve_principal_from_request(
+        H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True
+    )
     assert p is not None
     assert Role.FINANCE_APPROVER in p.roles
+
+
+def test_console_unmappable_host_role_is_rejected_not_anonymous() -> None:
+    """A bad role header must 403, not silently degrade to an anonymous request."""
+    from impact_relay.console_server import resolve_principal_from_request
+
+    class H:
+        headers = {
+            "X-Impact-Email": "lead@hackersdojo.org",
+            "X-HD-Campaign-Role": "not-a-real-role",
+        }
+
+    with pytest.raises(AuthorizationError):
+        resolve_principal_from_request(
+            H(), CANONICAL_PILOT_TENANT_ID, trusted_proxy=True
+        )
 
 
 def test_sod_on_host_approve(tmp_path: Path) -> None:

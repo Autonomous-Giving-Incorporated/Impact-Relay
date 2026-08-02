@@ -57,10 +57,14 @@ def principal_from_fixture(
     roles: list[str] | list[Role],
     subject: str | None = None,
     display_name: str = "",
+    donor_id: str | None = None,
 ) -> Principal:
     """Build a principal without live OIDC (local pilot / tests).
 
     Host apps should use OIDC in production and this only for demos.
+
+    ``donor_id`` binds ``claims.donor_id``. Donor-role principals need it: the
+    donor API fails closed when a donor-only principal is unbound.
     """
     if email.startswith("agent:"):
         raise ValueError("fixture principal cannot be agent:*")
@@ -74,4 +78,5 @@ def principal_from_fixture(
         roles=role_set,
         display_name=display_name or email,
         issuer="fixture://local",
+        raw_claims={"donor_id": donor_id} if donor_id is not None else {},
     )

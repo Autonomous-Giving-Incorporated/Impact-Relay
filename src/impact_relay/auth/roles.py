@@ -41,7 +41,9 @@ def default_role_permissions() -> dict[Role, frozenset[Permission]]:
     return {
         Role.DONOR: frozenset(
             {
-                Permission.RECEIPT_READ,  # own receipts enforced by host later
+                # Scoped to the principal's own donor_id by DonorExperienceAPI,
+                # which fails closed when claims.donor_id is unbound.
+                Permission.RECEIPT_READ,
             }
         ),
         Role.FINANCE_REVIEWER: frozenset(
