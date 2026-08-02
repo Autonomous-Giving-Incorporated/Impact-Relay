@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-labelledby="title desc">
+<title id="title">Zero State Balanced Aperture Mark</title>
+<desc id="desc">An open reference frame surrounding a split zero ring.</desc>
+<g fill="none" stroke="#1D2321" stroke-linecap="square" stroke-linejoin="miter">
+  <g stroke-width="54"><path d="M 118 118 H 338"/><path d="M 118 118 V 338"/><path d="M 882 118 H 662"/><path d="M 882 118 V 338"/><path d="M 118 882 H 338"/><path d="M 118 882 V 662"/><path d="M 882 882 H 662"/><path d="M 882 882 V 662"/></g>
+  <path d="M 291.72 668.66 A 268 268 0 0 1 668.66 291.72" stroke-width="70"/>
+  <path d="M 708.28 331.34 A 268 268 0 0 1 331.34 708.28" stroke-width="70"/>
+</g>
+</svg>

@@ -4,7 +4,8 @@ import AxeBuilder from '@axe-core/playwright';
 test('public Impact Relay remains responsive and accessible', async ({ page }) => {
   await page.goto('/index.html');
   await expect(page.locator('main')).toBeVisible();
-  await expect(page.getByText('A.G.I. · Impact Relay')).toBeVisible();
+  await expect(page.locator('.suite-brand')).toContainText('Zero State');
+  await expect(page.locator('.suite-brand')).toContainText('Impact Relay');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
   const results = await new AxeBuilder({ page }).analyze();
