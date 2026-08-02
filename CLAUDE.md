@@ -11,12 +11,19 @@ The work queue is `ROADMAP.md` — start with **v0.9.1 (Hardening and Fidelity)*
 ## Setup and verification
 
 ```bash
-pip install -e ".[dev]"        # or: uv run --with pytest pytest
-pytest                          # ~227 tests, offline, sub-second — must stay that way
+pip install -e ".[dev]"
+pytest                # ~260 tests, offline, ~1s — must stay that way
+ruff check . --fix    # lint
+ruff format .         # formatter is canonical; CI runs --check
+mypy                  # config in pyproject; strict on auth/, donor/, agents.privacy
 ```
 
-- Python ≥ 3.11. The base package has **zero runtime dependencies** (stdlib only) — this is deliberate. Never add a runtime dependency; new integrations (boto3, PyJWT, HTTP clients) go behind optional extras with fixture-backed test paths.
-- Postgres and S3 tests are optional/env-gated and skip cleanly; don't make the default suite require a network or a service.
+All four must be clean before you commit — CI runs `ruff check`, `ruff format
+--check`, `mypy`, and `pytest` as gates.
+
+- Python ≥ 3.11. The base package has **zero runtime dependencies** (stdlib only) — this is deliberate. Never add a runtime dependency; new integrations (boto3, PyJWT, HTTP clients) go behind optional extras (`[db]`, `[s3]`, `[oidc]`) with fixture-backed test paths.
+- Tests needing an optional extra must `pytest.importorskip` so a bare install still passes; CI installs `.[dev]` and runs them for real. Postgres runs against a service container in the `postgres-store` job.
+- Don't make the default suite require a network or a service.
 
 ## CI contract (`.github/workflows/validate-and-deploy.yml`)
 
