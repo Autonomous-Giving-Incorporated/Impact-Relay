@@ -16,11 +16,13 @@ from impact_relay.auth.oidc import (
 )
 from impact_relay.auth.principal import Principal, principal_from_fixture
 from impact_relay.auth.rbac import (
+    DUAL_CONTROL_ACTIONS,
     AuthorizationError,
     Permission,
     assert_permission,
     assert_separation_of_duties,
     has_permission,
+    violates_dual_control,
 )
 from impact_relay.auth.role_map import (
     HACKER_DOJO_CAMPAIGN_ROLE_MAP,
@@ -34,6 +36,7 @@ from impact_relay.auth.roles import (
 )
 
 __all__ = [
+    "DUAL_CONTROL_ACTIONS",
     "HACKER_DOJO_CAMPAIGN_ROLE_MAP",
     "AuthorizationError",
     "FixtureOidcMapper",
@@ -51,4 +54,5 @@ __all__ = [
     "principal_from_fixture",
     "principal_from_host_headers",
     "roles_for_campaign_role",
+    "violates_dual_control",
 ]

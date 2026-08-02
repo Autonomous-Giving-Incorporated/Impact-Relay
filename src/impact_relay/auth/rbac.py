@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from impact_relay.auth.principal import Principal
-from impact_relay.auth.roles import Permission, Role, permissions_for_roles
+from impact_relay.auth.roles import Permission, permissions_for_roles
 
 logger = logging.getLogger(__name__)
 
@@ -61,19 +61,19 @@ def violates_dual_control(
 ) -> bool:
     """True when ``principal`` would sign both sides of a dual-control chain.
 
-    Triggers when the same human already approved an earlier step and now holds
-    both the finance and communications approver roles for a publish/send gate.
+    Triggers whenever the human who approved an earlier step is also the one
+    signing a publish/send gate. Identity is the whole test — deliberately not
+    conditioned on which roles they hold. An earlier version required the
+    principal to hold both `finance_approver` and `communications_approver`,
+    which let `tenant_admin` walk both sides: it carries every *permission* but
+    neither of those *roles*, so the check silently passed.
     """
     if not prior_approver_id or action not in DUAL_CONTROL_ACTIONS:
         return False
-    if prior_approver_id not in (
+    return prior_approver_id in (
         principal.email,
         principal.subject,
         principal.approver_id,
-    ):
-        return False
-    return principal.has_role(Role.FINANCE_APPROVER) and principal.has_role(
-        Role.COMMUNICATIONS_APPROVER
     )
 
 
@@ -91,8 +91,8 @@ def assert_separation_of_duties(
     Hard (always when ``enforce_hard``):
     - principal cannot approve their own proposal (``proposer_id`` match)
     - agent identities rejected
-    - dual control: the approver of an earlier step cannot also sign a
-      publish/send gate while holding both approver roles
+    - dual control: whoever approved an earlier step cannot also sign a
+      publish/send gate, whatever roles they hold
 
     Set ``enforce_dual_control=False`` for tenants whose policy accepts
     single-signer publication; the violation is then logged, not raised.

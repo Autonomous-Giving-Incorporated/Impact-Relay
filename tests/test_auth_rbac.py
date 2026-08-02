@@ -15,6 +15,7 @@ from impact_relay.auth import (
     assert_separation_of_duties,
     has_permission,
     principal_from_fixture,
+    violates_dual_control,
 )
 from impact_relay.auth.oidc import (
     OidcClaims,
@@ -193,3 +194,68 @@ def test_sod_on_host_approve(tmp_path: Path) -> None:
     )
     assert out["ok"] is False
     assert out["error"] == "separation_of_duties"
+
+
+# --- dual control (PR #34 review: role dual-hold condition) --------------------
+
+
+def _p(email: str, roles: list[Role]):
+    return principal_from_fixture(tenant_id=CANONICAL_PILOT_TENANT_ID, email=email, roles=roles)
+
+
+@pytest.mark.parametrize(
+    "roles",
+    [
+        [Role.FINANCE_APPROVER, Role.COMMUNICATIONS_APPROVER],
+        [Role.TENANT_ADMIN],
+        [Role.TENANT_ADMIN, Role.FINANCE_APPROVER],
+        [Role.FINANCE_APPROVER],
+        [Role.COMMUNICATIONS_APPROVER],
+    ],
+    ids=["both-roles", "tenant-admin", "admin+finance", "finance-only", "comms-only"],
+)
+@pytest.mark.parametrize("action", ["approve_publish", "approve_send"])
+def test_same_human_cannot_sign_both_sides_regardless_of_roles(
+    roles: list[Role], action: str
+) -> None:
+    """Dual control keys on identity, not role combination.
+
+    tenant_admin holds every permission but neither approver role; keying on
+    roles let it approve an expense and then also sign the publish gate.
+    """
+    me = _p("same@hackersdojo.example", roles)
+    assert violates_dual_control(me, action=action, prior_approver_id="same@hackersdojo.example")
+    with pytest.raises(AuthorizationError, match="dual control"):
+        assert_separation_of_duties(me, action=action, prior_approver_id="same@hackersdojo.example")
+
+
+def test_dual_control_allows_a_different_second_approver() -> None:
+    comms = _p("comms@hackersdojo.example", [Role.COMMUNICATIONS_APPROVER])
+    assert not violates_dual_control(
+        comms, action="approve_publish", prior_approver_id="finance@hackersdojo.example"
+    )
+    assert_separation_of_duties(
+        comms, action="approve_publish", prior_approver_id="finance@hackersdojo.example"
+    )
+
+
+def test_dual_control_does_not_fire_on_the_expense_gate() -> None:
+    """approve_expense is guarded by the proposer_id rule, not dual control."""
+    me = _p("same@hackersdojo.example", [Role.FINANCE_APPROVER])
+    assert not violates_dual_control(
+        me, action="approve_expense", prior_approver_id="same@hackersdojo.example"
+    )
+
+
+def test_dual_control_can_be_waived_by_tenant_policy(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    me = _p("same@hackersdojo.example", [Role.TENANT_ADMIN])
+    with caplog.at_level("WARNING"):
+        assert_separation_of_duties(
+            me,
+            action="approve_publish",
+            prior_approver_id="same@hackersdojo.example",
+            enforce_dual_control=False,
+        )
+    assert "dual_control_waived" in caplog.text
