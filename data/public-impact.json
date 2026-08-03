@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-08-02",
+  "updatedAt": "2026-08-03",
   "source": "domain_impact_receipts",
   "authority": "public_aggregate_only",
   "privacy": {
@@ -20,7 +20,7 @@
       "impactEventId": "imp_class_2026_09_02",
       "organizationName": "Hacker Dojo",
       "programName": "Beginner Electronics Class",
-      "allocationId": "alloc_community_hardware_001",
+      "allocationId": "alloc_community_hardware",
       "allocationName": "Community Hardware Fund",
       "eventType": "CLASS_HELD",
       "eventDate": "2026-09-02",
