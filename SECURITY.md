@@ -44,6 +44,14 @@ Local `--workflow-ops` sessions use a versioned JSON format with an explicit cla
 - Production adapters never create consent. Missing or revoked consent blocks delivery before recipient resolution or network access.
 - Prefer `starttls` or `ssl`. Plain SMTP (`none`) is an explicit host decision and should be limited to a protected local relay.
 
+## Aggregate HTTP bridge credentials
+
+- Every.org and Notion HTTP inputs are operator-configured bridges for pre-aggregated JSON documents. They are not direct donor, gift, transaction, or Notion-row APIs.
+- Keep `IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN` and `IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_TOKEN` in the host secret manager or process environment. Never put tokens in endpoint query strings, fixtures, logs, public artifacts, or git.
+- Fetchers require absolute HTTPS URLs, reject URL userinfo and fragments, require a JSON content type and object root, cap responses at 1 MiB, and sanitize network failures.
+- Network acceptance does not imply data acceptance. Every fetched payload passes the same mandatory deterministic personal-data and itemization validators as a local aggregate file.
+- Endpoint configuration is trusted operator input. Hosts should additionally restrict egress and allowlist bridge domains to reduce SSRF and supply-chain risk.
+
 ## Incident response
 
 If personal data is accidentally committed:

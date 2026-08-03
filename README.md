@@ -396,11 +396,23 @@ python -m impact_relay \
 python -m impact_relay \
   --notion-public-evidence fixtures/notion_public_evidence_v1.json \
   --write-public-evidence data/public-evidence.json
+
+# Optional operator-owned HTTPS aggregate bridges
+IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL=https://bridge.example/every-org \
+IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN="$EVERY_ORG_BRIDGE_TOKEN" \
+  python -m impact_relay --require-observed \
+  --write-impact-state data/impact-state.json
+
+IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL=https://bridge.example/notion-public \
+IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_TOKEN="$NOTION_BRIDGE_TOKEN" \
+  python -m impact_relay --write-public-evidence data/public-evidence.json
 ```
+
+HTTP sources must be absolute HTTPS URLs returning a JSON object. Responses are capped at 1 MiB, bearer credentials stay in host configuration, transport errors are sanitized, and fetched documents pass the same mandatory aggregate-only privacy validators as local files. These are bridges for pre-aggregated documents, not direct donor, transaction, or Notion-row clients.
 
 ## Applying authorized live aggregates
 
-Published totals remain `raisedSource: pilot_synthetic` and `PILOT` until finance provides an authorized aggregate file.
+Published totals remain `raisedSource: pilot_synthetic` and `PILOT` until finance provides an authorized aggregate file or HTTPS bridge response.
 
 ```bash
 cp fixtures/templates/every_org_live_aggregate.template.json ~/private/every_org_live.json

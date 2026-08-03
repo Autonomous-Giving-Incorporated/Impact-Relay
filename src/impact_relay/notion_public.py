@@ -13,6 +13,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from impact_relay.http_json import HTTPOpener, fetch_json_object
+
 DEFAULT_NOTION_EVIDENCE = (
     Path(__file__).resolve().parents[2] / "fixtures" / "notion_public_evidence_v1.json"
 )
@@ -54,10 +56,8 @@ def _assert_safe(payload: Any, path: str = "$") -> None:
             _assert_safe(item, f"{path}[{idx}]")
 
 
-def load_notion_public_evidence(path: Path | str | None = None) -> dict[str, Any]:
-    fixture_path = Path(path) if path else DEFAULT_NOTION_EVIDENCE
-    with fixture_path.open(encoding="utf-8") as f:
-        data = json.load(f)
+def validate_notion_public_evidence(data: dict[str, Any]) -> dict[str, Any]:
+    """Enforce the public-aggregate-only Notion evidence contract."""
     _assert_safe(data)
     privacy = data.get("privacy") or {}
     if privacy.get("piiAllowed") is not False:
@@ -67,6 +67,34 @@ def load_notion_public_evidence(path: Path | str | None = None) -> dict[str, Any
     if privacy.get("individualAmountsAllowed") is not False:
         raise NotionPublicError("privacy.individualAmountsAllowed must be false")
     return data
+
+
+def load_notion_public_evidence(path: Path | str | None = None) -> dict[str, Any]:
+    fixture_path = Path(path) if path else DEFAULT_NOTION_EVIDENCE
+    with fixture_path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise NotionPublicError("Notion public evidence JSON root must be an object")
+    return validate_notion_public_evidence(data)
+
+
+def fetch_notion_public_evidence(
+    url: str,
+    *,
+    bearer_token: str | None = None,
+    timeout_seconds: float = 10.0,
+    max_response_bytes: int = 1_048_576,
+    opener: HTTPOpener | None = None,
+) -> dict[str, Any]:
+    """Fetch a pre-aggregated evidence document, then apply local privacy rules."""
+    data = fetch_json_object(
+        url,
+        bearer_token=bearer_token,
+        timeout_seconds=timeout_seconds,
+        max_response_bytes=max_response_bytes,
+        opener=opener,
+    )
+    return validate_notion_public_evidence(data)
 
 
 def build_public_evidence_document(

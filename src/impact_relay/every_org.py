@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from impact_relay.http_json import HTTPOpener, fetch_json_object
 from impact_relay.reconcile import ReconcileError, _assert_aggregate_safe
 
 DEFAULT_EVERY_ORG_FIXTURE = (
@@ -58,16 +59,42 @@ def _assert_every_org_safe(payload: Any, path: str = "$") -> None:
                 )
 
 
-def load_every_org_summary(path: Path | str | None = None) -> dict[str, Any]:
-    fixture_path = Path(path) if path else DEFAULT_EVERY_ORG_FIXTURE
-    with fixture_path.open(encoding="utf-8") as f:
-        data = json.load(f)
+def validate_every_org_summary(data: dict[str, Any]) -> dict[str, Any]:
+    """Enforce the aggregate-only Every.org input contract."""
     _assert_every_org_safe(data)
     if data.get("exportKind") not in (None, "aggregate_summary", "public_totals"):
         raise ReconcileError("exportKind must be aggregate_summary or public_totals")
     if data.get("processor") not in (None, "every.org", "Every.org"):
         raise ReconcileError("processor must be every.org for this adapter")
     return data
+
+
+def load_every_org_summary(path: Path | str | None = None) -> dict[str, Any]:
+    fixture_path = Path(path) if path else DEFAULT_EVERY_ORG_FIXTURE
+    with fixture_path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ReconcileError("Every.org summary JSON root must be an object")
+    return validate_every_org_summary(data)
+
+
+def fetch_every_org_summary(
+    url: str,
+    *,
+    bearer_token: str | None = None,
+    timeout_seconds: float = 10.0,
+    max_response_bytes: int = 1_048_576,
+    opener: HTTPOpener | None = None,
+) -> dict[str, Any]:
+    """Fetch an operator-provided aggregate endpoint, then apply local privacy rules."""
+    data = fetch_json_object(
+        url,
+        bearer_token=bearer_token,
+        timeout_seconds=timeout_seconds,
+        max_response_bytes=max_response_bytes,
+        opener=opener,
+    )
+    return validate_every_org_summary(data)
 
 
 def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
@@ -116,6 +143,25 @@ def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
 
 def load_every_org_as_reconcile_aggregate(path: Path | str | None = None) -> dict[str, Any]:
     return every_org_to_reconcile_aggregate(load_every_org_summary(path))
+
+
+def fetch_every_org_as_reconcile_aggregate(
+    url: str,
+    *,
+    bearer_token: str | None = None,
+    timeout_seconds: float = 10.0,
+    max_response_bytes: int = 1_048_576,
+    opener: HTTPOpener | None = None,
+) -> dict[str, Any]:
+    return every_org_to_reconcile_aggregate(
+        fetch_every_org_summary(
+            url,
+            bearer_token=bearer_token,
+            timeout_seconds=timeout_seconds,
+            max_response_bytes=max_response_bytes,
+            opener=opener,
+        )
+    )
 
 
 # Required fields for an operator live OBSERVED aggregate file.

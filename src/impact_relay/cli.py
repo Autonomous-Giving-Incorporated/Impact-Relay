@@ -23,11 +23,13 @@ from impact_relay.digest import (
     write_public_digests,
 )
 from impact_relay.every_org import (
+    fetch_every_org_as_reconcile_aggregate,
     load_every_org_as_reconcile_aggregate,
     validate_live_aggregate_file,
 )
 from impact_relay.notion_public import (
     build_public_evidence_document,
+    fetch_notion_public_evidence,
     load_notion_public_evidence,
     notion_campaign_targets_patch,
     write_public_evidence,
@@ -398,6 +400,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--every-org-aggregate-url",
+        default=None,
+        help=(
+            "HTTPS endpoint returning an aggregate-only Every.org summary. "
+            "Also reads IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL."
+        ),
+    )
+    parser.add_argument(
         "--require-observed",
         action="store_true",
         help=(
@@ -520,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
         "--workflow-session",
         type=Path,
         default=None,
-        help="Pickle session path for ops list/signal across CLI invocations",
+        help="Versioned JSON session path for ops list/signal across CLI invocations",
     )
     parser.add_argument(
         "--workflow-filter",
@@ -554,6 +564,14 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Notion-exported public evidence JSON (Form 990 / historical aggregates only)",
+    )
+    parser.add_argument(
+        "--notion-public-evidence-url",
+        default=None,
+        help=(
+            "HTTPS endpoint returning pre-aggregated public evidence JSON. "
+            "Also reads IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL."
+        ),
     )
     parser.add_argument(
         "--write-public-evidence",
@@ -735,15 +753,31 @@ def main(argv: list[str] | None = None) -> int:
         env_agg = os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE", "").strip()
         if env_agg:
             args.every_org_aggregate = Path(env_agg)
+    args.every_org_aggregate_url = (
+        args.every_org_aggregate_url
+        or os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL", "").strip()
+        or None
+    )
+    args.notion_public_evidence_url = (
+        args.notion_public_evidence_url
+        or os.environ.get("IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL", "").strip()
+        or None
+    )
+    if args.every_org_aggregate is not None and args.every_org_aggregate_url is not None:
+        parser.error("choose either --every-org-aggregate or --every-org-aggregate-url")
+    if args.notion_public_evidence is not None and args.notion_public_evidence_url is not None:
+        parser.error("choose either --notion-public-evidence or --notion-public-evidence-url")
 
     if args.publish_pages:
         # Prefer live operator path via env; fall back to pilot fixture for demos.
-        args.every_org_aggregate = args.every_org_aggregate or Path(
-            "fixtures/every_org_aggregate_v1.json"
-        )
-        args.notion_public_evidence = args.notion_public_evidence or Path(
-            "fixtures/notion_public_evidence_v1.json"
-        )
+        if args.every_org_aggregate_url is None:
+            args.every_org_aggregate = args.every_org_aggregate or Path(
+                "fixtures/every_org_aggregate_v1.json"
+            )
+        if args.notion_public_evidence_url is None:
+            args.notion_public_evidence = args.notion_public_evidence or Path(
+                "fixtures/notion_public_evidence_v1.json"
+            )
         args.write_impact_state = args.write_impact_state or Path("data/impact-state.json")
         args.write_public = args.write_public or Path("data/use-of-funds-public.json")
         args.write_digests = args.write_digests or Path("data/impact-digests-public.json")
@@ -759,8 +793,14 @@ def main(argv: list[str] | None = None) -> int:
     # --- Aggregate reconciliation (Every.org or generic) ---
     impact_state = None
     target_state = args.write_impact_state or Path("data/impact-state.json")
-    if args.every_org_aggregate is not None:
-        aggregate = load_every_org_as_reconcile_aggregate(args.every_org_aggregate)
+    if args.every_org_aggregate is not None or args.every_org_aggregate_url is not None:
+        if args.every_org_aggregate_url is not None:
+            aggregate = fetch_every_org_as_reconcile_aggregate(
+                args.every_org_aggregate_url,
+                bearer_token=os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN") or None,
+            )
+        else:
+            aggregate = load_every_org_as_reconcile_aggregate(args.every_org_aggregate)
         current = load_impact_state(target_state)
         impact_state = apply_aggregate_reconciliation(current, aggregate)
         if args.require_observed:
@@ -811,12 +851,20 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Notion public evidence (does not invent live raised totals) ---
     public_evidence = None
-    if args.notion_public_evidence is not None or args.write_public_evidence is not None:
-        notion_src = (
-            load_notion_public_evidence(args.notion_public_evidence)
-            if args.notion_public_evidence is not None
-            else load_notion_public_evidence()
-        )
+    if (
+        args.notion_public_evidence is not None
+        or args.notion_public_evidence_url is not None
+        or args.write_public_evidence is not None
+    ):
+        if args.notion_public_evidence_url is not None:
+            notion_src = fetch_notion_public_evidence(
+                args.notion_public_evidence_url,
+                bearer_token=os.environ.get("IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_TOKEN") or None,
+            )
+        elif args.notion_public_evidence is not None:
+            notion_src = load_notion_public_evidence(args.notion_public_evidence)
+        else:
+            notion_src = load_notion_public_evidence()
         public_evidence = build_public_evidence_document(notion_src)
         if args.write_public_evidence:
             write_public_evidence(args.write_public_evidence, public_evidence)
