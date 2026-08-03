@@ -1,10 +1,12 @@
-"""Channel adapter contracts — host apps plug real Postmark/APNs/FCM later.
+"""Channel adapter contracts and governed transport implementations.
 
-Fixture adapters keep Hacker Dojo pilot offline and deterministic.
+Fixture adapters keep Hacker Dojo pilot offline and deterministic. SMTP and
+Postmark email transports are shipped; APNs/FCM remain host integration points.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import smtplib
 import ssl
@@ -13,6 +15,9 @@ from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import make_msgid
 from typing import Any, Protocol, runtime_checkable
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
+from urllib.request import Request, urlopen
 
 from impact_relay.domain.types import NotificationIntent
 
@@ -36,7 +41,11 @@ class NotificationConfigurationError(ValueError):
 
 
 def _is_single_email_address(value: str) -> bool:
-    return bool(value and "@" in value and not any(ch.isspace() for ch in value))
+    return bool(
+        value
+        and value.count("@") == 1
+        and not any(ch.isspace() or ch in ",;<>\x00" for ch in value)
+    )
 
 
 @dataclass(frozen=True)
@@ -89,6 +98,55 @@ class SMTPConfig:
             tls_mode=values.get("IMPACT_RELAY_SMTP_TLS", "starttls"),
             timeout_seconds=timeout,
             reply_to=values.get("IMPACT_RELAY_SMTP_REPLY_TO", ""),
+        )
+
+
+@dataclass(frozen=True)
+class PostmarkConfig:
+    """Validated Postmark transport configuration with a redacted server token."""
+
+    server_token: str = field(repr=False)
+    from_address: str
+    reply_to: str = ""
+    message_stream: str = "outbound"
+    timeout_seconds: float = 10.0
+    endpoint: str = "https://api.postmarkapp.com/email"
+
+    def __post_init__(self) -> None:
+        if not self.server_token.strip():
+            raise NotificationConfigurationError("Postmark server token is required")
+        if not _is_single_email_address(self.from_address):
+            raise NotificationConfigurationError("Postmark from address must be an email address")
+        if self.reply_to and not _is_single_email_address(self.reply_to):
+            raise NotificationConfigurationError("Postmark reply-to must be an email address")
+        if not self.message_stream.strip():
+            raise NotificationConfigurationError("Postmark message stream is required")
+        if self.timeout_seconds <= 0:
+            raise NotificationConfigurationError("Postmark timeout must be positive")
+        parsed = urlsplit(self.endpoint)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise NotificationConfigurationError("Postmark endpoint must be an absolute HTTPS URL")
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise NotificationConfigurationError(
+                "Postmark endpoint must not contain userinfo, a query, or a fragment"
+            )
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> PostmarkConfig:
+        values = env if env is not None else os.environ
+        try:
+            timeout = float(values.get("IMPACT_RELAY_POSTMARK_TIMEOUT_SECONDS", "10"))
+        except ValueError as exc:
+            raise NotificationConfigurationError("Postmark timeout must be numeric") from exc
+        return cls(
+            server_token=values.get("IMPACT_RELAY_POSTMARK_SERVER_TOKEN", ""),
+            from_address=values.get("IMPACT_RELAY_POSTMARK_FROM", ""),
+            reply_to=values.get("IMPACT_RELAY_POSTMARK_REPLY_TO", ""),
+            message_stream=values.get("IMPACT_RELAY_POSTMARK_MESSAGE_STREAM", "outbound"),
+            timeout_seconds=timeout,
+            endpoint=values.get(
+                "IMPACT_RELAY_POSTMARK_ENDPOINT", "https://api.postmarkapp.com/email"
+            ),
         )
 
 
@@ -174,6 +232,7 @@ class FixtureEmailAdapter:
 
 SMTPClientFactory = Callable[[SMTPConfig], Any]
 EmailAddressResolver = Callable[[NotificationIntent], str]
+PostmarkOpener = Callable[[Request, float], Any]
 
 
 def _open_smtp_client(config: SMTPConfig) -> Any:
@@ -334,17 +393,157 @@ class SMTPEmailAdapter:
         ).as_tuple()
 
 
+def _open_postmark(request: Request, timeout: float) -> Any:
+    return urlopen(request, timeout=timeout)
+
+
+class PostmarkEmailAdapter:
+    """Postmark transactional email transport using the governed email boundary."""
+
+    provider_name = "postmark"
+
+    def __init__(
+        self,
+        config: PostmarkConfig,
+        *,
+        address_resolver: EmailAddressResolver | None = None,
+        opener: PostmarkOpener | None = None,
+    ) -> None:
+        self.config = config
+        self.address_resolver = address_resolver
+        self._opener = opener or _open_postmark
+
+    def _recipient_for(self, intent: NotificationIntent) -> str:
+        address = (
+            self.address_resolver(intent)
+            if self.address_resolver is not None
+            else str(intent.payload.get("donor_email") or "")
+        )
+        if not _is_single_email_address(address):
+            raise NotificationConfigurationError(
+                "Postmark delivery requires a host-provided donor email resolver"
+            )
+        return address
+
+    def send_email(
+        self,
+        *,
+        to_address: str,
+        subject: str,
+        body_text: str,
+        body_html: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> DeliveryResult:
+        payload: dict[str, Any] = {
+            "From": self.config.from_address,
+            "To": to_address,
+            "Subject": subject,
+            "TextBody": body_text,
+            "MessageStream": self.config.message_stream,
+            "Metadata": metadata or {},
+        }
+        if body_html:
+            payload["HtmlBody"] = body_html
+        if self.config.reply_to:
+            payload["ReplyTo"] = self.config.reply_to
+        request = Request(
+            self.config.endpoint,
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Postmark-Server-Token": self.config.server_token,
+                "User-Agent": "impact-relay/0.9",
+            },
+            method="POST",
+        )
+        try:
+            with self._opener(request, self.config.timeout_seconds) as response:
+                content_type = str(response.headers.get("Content-Type", ""))
+                media_type = content_type.partition(";")[0].strip().lower()
+                if media_type != "application/json" and not media_type.endswith("+json"):
+                    return DeliveryResult(False, "", "temporary invalid Postmark response")
+                body = response.read(65_537)
+        except HTTPError as exc:
+            permanent = 400 <= exc.code < 500 and exc.code != 429
+            prefix = "permanent: " if permanent else ""
+            return DeliveryResult(
+                False,
+                "",
+                f"{prefix}Postmark returned HTTP {exc.code}",
+                permanent_failure=permanent,
+            )
+        except (URLError, OSError, TimeoutError):
+            return DeliveryResult(False, "", "temporary Postmark transport failure")
+
+        if len(body) > 65_536:
+            return DeliveryResult(False, "", "temporary invalid Postmark response")
+        try:
+            result = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return DeliveryResult(False, "", "temporary invalid Postmark response")
+        if not isinstance(result, dict):
+            return DeliveryResult(False, "", "temporary invalid Postmark response")
+        message_id = str(result.get("MessageID") or "")
+        error_code = result.get("ErrorCode")
+        if error_code == 0 and message_id:
+            return DeliveryResult(True, message_id, "accepted by Postmark")
+        if isinstance(error_code, int) and error_code != 0:
+            return DeliveryResult(
+                False,
+                message_id,
+                f"permanent: Postmark rejected message with error code {error_code}",
+                permanent_failure=True,
+            )
+        return DeliveryResult(False, message_id, "temporary invalid Postmark response")
+
+    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
+        try:
+            recipient = self._recipient_for(intent)
+        except NotificationConfigurationError as exc:
+            return DeliveryResult(False, "", f"permanent: {exc}", permanent_failure=True).as_tuple()
+        except Exception:  # noqa: BLE001 - host resolver details may contain donor PII
+            return DeliveryResult(
+                False,
+                "",
+                "permanent: donor email resolution failed",
+                permanent_failure=True,
+            ).as_tuple()
+        subject = str(
+            intent.payload.get("email_subject")
+            or f"[{intent.message_class.value}] Impact Relay update"
+        )
+        body_text = str(
+            intent.payload.get("email_body_text")
+            or intent.payload.get("description")
+            or intent.source_id
+        )
+        body_html_raw = intent.payload.get("email_body_html")
+        return self.send_email(
+            to_address=recipient,
+            subject=subject,
+            body_text=body_text,
+            body_html=str(body_html_raw) if body_html_raw else None,
+            metadata={
+                "intent-id": intent.id,
+                "tenant-id": intent.organization_id,
+                "source-id": intent.source_id,
+            },
+        ).as_tuple()
+
+
 def open_email_adapter(
     *,
     backend: str | None = None,
     env: Mapping[str, str] | None = None,
     address_resolver: EmailAddressResolver | None = None,
     client_factory: SMTPClientFactory | None = None,
+    postmark_opener: PostmarkOpener | None = None,
 ) -> EmailAdapter:
-    """Open the explicit fixture or SMTP email backend.
+    """Open the explicit fixture, SMTP, or Postmark email backend.
 
-    SMTP configuration is validated immediately. No fallback to fixture delivery
-    occurs after ``smtp`` is selected.
+    Production configuration is validated immediately. No fallback to fixture
+    delivery occurs after ``smtp`` or ``postmark`` is selected.
     """
 
     values = env if env is not None else os.environ
@@ -357,8 +556,14 @@ def open_email_adapter(
             address_resolver=address_resolver,
             client_factory=client_factory,
         )
+    if kind == "postmark":
+        return PostmarkEmailAdapter(
+            PostmarkConfig.from_env(values),
+            address_resolver=address_resolver,
+            opener=postmark_opener,
+        )
     raise NotificationConfigurationError(
-        f"unknown IMPACT_RELAY_EMAIL_BACKEND={kind!r} (use fixture or smtp)"
+        f"unknown IMPACT_RELAY_EMAIL_BACKEND={kind!r} (use fixture, smtp, or postmark)"
     )
 
 

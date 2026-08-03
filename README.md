@@ -298,9 +298,9 @@ pytest
 
 Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up`.
 
-### SMTP email adapter
+### Production email adapters
 
-The library ships a standard-library SMTP adapter. Fixture email remains the default; selecting SMTP never falls back to fixtures when configuration is invalid.
+The library ships standard-library SMTP and Postmark adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid.
 
 ```bash
 export IMPACT_RELAY_EMAIL_BACKEND=smtp
@@ -310,6 +310,16 @@ export IMPACT_RELAY_SMTP_FROM=impact@example.org
 export IMPACT_RELAY_SMTP_USERNAME=mailer
 export IMPACT_RELAY_SMTP_PASSWORD='from-your-secret-manager'
 export IMPACT_RELAY_SMTP_TLS=starttls  # starttls | ssl | none
+```
+
+Postmark uses its transactional `/email` API without adding a runtime SDK dependency:
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=postmark
+export IMPACT_RELAY_POSTMARK_SERVER_TOKEN='from-your-secret-manager'
+export IMPACT_RELAY_POSTMARK_FROM=impact@example.org
+export IMPACT_RELAY_POSTMARK_REPLY_TO=reply@example.org       # optional
+export IMPACT_RELAY_POSTMARK_MESSAGE_STREAM=outbound          # optional
 ```
 
 Recipient lookup is deliberately host-owned because donor contact data must stay outside this repository. Bind the adapter to a tenant workspace with a resolver after the host has authenticated and loaded its private contact record:
@@ -328,7 +338,7 @@ assert workspace is not None
 workspace.configure_notification_adapters({NotificationChannel.EMAIL: email})
 ```
 
-Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. SMTP sends the already-approved `EmailPreview` subject and body, records the generated Message-ID as the provider receipt, and sanitizes provider failures before durable recording.
+Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Both production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections.
 
 ## Pilot commands
 

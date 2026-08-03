@@ -7,6 +7,8 @@ import json
 import smtplib
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request
 
 import pytest
 
@@ -22,6 +24,8 @@ from impact_relay.domain.types import (
 )
 from impact_relay.notifications import (
     NotificationConfigurationError,
+    PostmarkConfig,
+    PostmarkEmailAdapter,
     SMTPConfig,
     SMTPEmailAdapter,
     open_email_adapter,
@@ -60,6 +64,21 @@ class FakeSMTPClient:
         return self.refused
 
 
+class FakePostmarkResponse:
+    def __init__(self, payload: Any) -> None:
+        self.body = payload if isinstance(payload, bytes) else json.dumps(payload).encode("utf-8")
+        self.headers = {"Content-Type": "application/json"}
+
+    def __enter__(self) -> FakePostmarkResponse:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def read(self, amount: int = -1) -> bytes:
+        return self.body if amount < 0 else self.body[:amount]
+
+
 def _config(**overrides: Any) -> SMTPConfig:
     values = {
         "host": "smtp.example.org",
@@ -71,6 +90,17 @@ def _config(**overrides: Any) -> SMTPConfig:
     }
     values.update(overrides)
     return SMTPConfig(**values)
+
+
+def _postmark_config(**overrides: Any) -> PostmarkConfig:
+    values = {
+        "server_token": "postmark-server-secret",
+        "from_address": "impact@example.org",
+        "reply_to": "reply@example.org",
+        "message_stream": "outbound",
+    }
+    values.update(overrides)
+    return PostmarkConfig(**values)
 
 
 def _ledger_with_receipt():
@@ -134,6 +164,8 @@ def test_smtp_config_validates_and_hides_password() -> None:
         _config(tls_mode="opportunistic")
     with pytest.raises(NotificationConfigurationError, match="from address"):
         _config(from_address="impact@example.org\nBcc: stolen@example.org")
+    with pytest.raises(NotificationConfigurationError, match="from address"):
+        _config(from_address="first@example.org,second@example.org")
 
 
 def test_open_email_adapter_fails_closed_for_bad_smtp_config() -> None:
@@ -146,6 +178,163 @@ def test_open_email_adapter_fails_closed_for_bad_smtp_config() -> None:
         )
     with pytest.raises(NotificationConfigurationError, match="unknown"):
         open_email_adapter(backend="silent-fallback")
+
+
+def test_postmark_config_and_factory_fail_closed_and_hide_token() -> None:
+    config = _postmark_config()
+    assert "postmark-server-secret" not in repr(config)
+    with pytest.raises(NotificationConfigurationError, match="server token"):
+        _postmark_config(server_token="")
+    with pytest.raises(NotificationConfigurationError, match="from address"):
+        _postmark_config(from_address="first@example.org,second@example.org")
+    with pytest.raises(NotificationConfigurationError, match="absolute HTTPS"):
+        _postmark_config(endpoint="http://api.postmarkapp.com/email")
+    with pytest.raises(NotificationConfigurationError, match="query"):
+        _postmark_config(endpoint="https://api.postmarkapp.com/email?token=secret")
+    with pytest.raises(NotificationConfigurationError, match="server token"):
+        open_email_adapter(
+            env={
+                "IMPACT_RELAY_EMAIL_BACKEND": "postmark",
+                "IMPACT_RELAY_POSTMARK_FROM": "impact@example.org",
+            }
+        )
+    adapter = open_email_adapter(
+        env={
+            "IMPACT_RELAY_EMAIL_BACKEND": "postmark",
+            "IMPACT_RELAY_POSTMARK_SERVER_TOKEN": "postmark-server-secret",
+            "IMPACT_RELAY_POSTMARK_FROM": "impact@example.org",
+        },
+        postmark_opener=lambda request, timeout: FakePostmarkResponse(
+            {"ErrorCode": 0, "MessageID": "factory-message-id"}
+        ),
+    )
+    assert isinstance(adapter, PostmarkEmailAdapter)
+
+
+def test_postmark_send_builds_official_api_request_and_records_message_id() -> None:
+    seen: dict[str, Any] = {}
+
+    def opener(request: Request, timeout: float) -> FakePostmarkResponse:
+        seen["method"] = request.method
+        seen["url"] = request.full_url
+        seen["token"] = request.get_header("X-postmark-server-token")
+        seen["timeout"] = timeout
+        seen["payload"] = json.loads(request.data or b"{}")
+        return FakePostmarkResponse(
+            {
+                "ErrorCode": 0,
+                "Message": "OK",
+                "MessageID": "0a129aee-e1cd-480d-b08d-4f48548ff48d",
+            }
+        )
+
+    adapter = PostmarkEmailAdapter(_postmark_config(), opener=opener)
+    result = adapter.send_email(
+        to_address="donor@example.net",
+        subject="Approved impact update",
+        body_text="Canonical receipt text",
+        body_html="<p>Canonical receipt text</p>",
+        metadata={"intent-id": "nint_1"},
+    )
+    assert result.success
+    assert result.provider_receipt == "0a129aee-e1cd-480d-b08d-4f48548ff48d"
+    assert seen["method"] == "POST"
+    assert seen["url"] == "https://api.postmarkapp.com/email"
+    assert seen["token"] == "postmark-server-secret"
+    assert seen["timeout"] == 10.0
+    assert seen["payload"] == {
+        "From": "impact@example.org",
+        "To": "donor@example.net",
+        "Subject": "Approved impact update",
+        "TextBody": "Canonical receipt text",
+        "HtmlBody": "<p>Canonical receipt text</p>",
+        "ReplyTo": "reply@example.org",
+        "MessageStream": "outbound",
+        "Metadata": {"intent-id": "nint_1"},
+    }
+
+
+@pytest.mark.parametrize(
+    ("status", "permanent"),
+    [(401, True), (422, True), (429, False), (503, False)],
+)
+def test_postmark_http_failures_are_classified_without_provider_body(
+    status: int, permanent: bool
+) -> None:
+    def opener(request: Request, timeout: float) -> FakePostmarkResponse:
+        raise HTTPError(
+            request.full_url,
+            status,
+            "secret provider message",
+            {},
+            None,
+        )
+
+    result = PostmarkEmailAdapter(_postmark_config(), opener=opener).send_email(
+        to_address="donor@example.net", subject="Subject", body_text="Body"
+    )
+    assert not result.success
+    assert result.permanent_failure is permanent
+    assert f"HTTP {status}" in result.detail
+    assert "secret" not in result.detail
+    assert "postmark-server-secret" not in result.detail
+
+
+def test_postmark_api_rejection_and_transport_errors_are_sanitized() -> None:
+    rejected = PostmarkEmailAdapter(
+        _postmark_config(),
+        opener=lambda request, timeout: FakePostmarkResponse(
+            {
+                "ErrorCode": 406,
+                "Message": "inactive donor-secret@example.net",
+                "MessageID": "",
+            }
+        ),
+    ).send_email(to_address="donor@example.net", subject="Subject", body_text="Body")
+    assert not rejected.success
+    assert rejected.permanent_failure
+    assert rejected.detail == "permanent: Postmark rejected message with error code 406"
+    assert "donor-secret" not in rejected.detail
+
+    def failing_opener(request: Request, timeout: float) -> FakePostmarkResponse:
+        raise URLError("network path included postmark-server-secret")
+
+    failed = PostmarkEmailAdapter(_postmark_config(), opener=failing_opener).send_email(
+        to_address="donor@example.net", subject="Subject", body_text="Body"
+    )
+    assert failed.detail == "temporary Postmark transport failure"
+    assert "secret" not in failed.detail
+
+
+def test_postmark_production_adapter_does_not_bootstrap_consent() -> None:
+    ledger, receipt = _ledger_with_receipt()
+    workspace = TenantWorkspace(ledger.organization, ledger=ledger)
+    requests: list[Request] = []
+
+    def opener(request: Request, timeout: float) -> FakePostmarkResponse:
+        requests.append(request)
+        return FakePostmarkResponse({"ErrorCode": 0, "MessageID": "postmark-id"})
+
+    adapter = PostmarkEmailAdapter(
+        _postmark_config(),
+        address_resolver=lambda intent: "donor@example.net",
+        opener=opener,
+    )
+    workspace.configure_notification_adapters({NotificationChannel.EMAIL: adapter})
+    preview = compose_email_from_uof(receipt)
+    executor = LedgerCommandExecutor(ledger, workspace=workspace)
+    executor.register_preview(preview)
+    command, approval = _send_command(preview)
+    execution = executor.execute(
+        command,
+        approval=approval,
+        agent_name="notification_composer",
+    )
+    assert execution.status == "FAILED"
+    assert "BLOCKED_NO_CONSENT" in (execution.error or "")
+    assert not workspace.consents
+    assert not workspace.deliveries
+    assert not requests
 
 
 def test_smtp_send_uses_tls_auth_html_and_metadata() -> None:

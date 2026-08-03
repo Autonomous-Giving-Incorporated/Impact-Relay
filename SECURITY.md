@@ -44,6 +44,13 @@ Local `--workflow-ops` sessions use a versioned JSON format with an explicit cla
 - Production adapters never create consent. Missing or revoked consent blocks delivery before recipient resolution or network access.
 - Prefer `starttls` or `ssl`. Plain SMTP (`none`) is an explicit host decision and should be limited to a protected local relay.
 
+## Postmark credentials and delivery responses
+
+- Keep `IMPACT_RELAY_POSTMARK_SERVER_TOKEN` in the host secret manager or process environment. It is redacted from configuration representations and must never appear in fixtures, logs, receipts, findings, or git.
+- Postmark uses the same host-owned donor resolver, consent checks, enabled-preference checks, and independently approved content boundary as SMTP. Selecting Postmark never creates consent or falls back to fixture delivery.
+- The endpoint must use HTTPS. Production should retain the default `https://api.postmarkapp.com/email`; endpoint overrides exist for controlled gateways and should be domain-allowlisted by the host.
+- Provider response messages can contain recipient details and are never persisted. Durable delivery records retain only the Postmark `MessageID`, numeric error code classification, and sanitized status.
+
 ## Aggregate HTTP bridge credentials
 
 - Every.org and Notion HTTP inputs are operator-configured bridges for pre-aggregated JSON documents. They are not direct donor, gift, transaction, or Notion-row APIs.

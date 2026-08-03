@@ -42,7 +42,7 @@ Closed in v0.9.1 (previously the honest gaps between the language above and the 
 
 Still open (needs credentials or live endpoints, not code):
 
-- SMTP/Postmark and APNs/FCM client implementations behind the shipped protocols;
+- SMTP/Postmark credentials and APNs/FCM client implementations behind the shipped protocols;
 - authorized Every.org and Notion aggregate endpoints for the shipped HTTPS fetchers.
 
 ## v0.5 — Agent Framework and Governance
@@ -122,7 +122,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
 - [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists). *(ops: requires authorized live data)*
 - [ ] Integrate one live accounting/expense source (fixture batch only today). *(ops: requires provider access; adapter code is agent work — see v0.9.1)*
-- [ ] Enable email and app push in controlled cohorts (fixture adapters only). *(ops: credentials; adapter implementations are agent work — see v0.9.1)*
+- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email adapters shipped; app push remains fixture-only). *(ops: credentials; push adapter implementations remain agent work — see v0.9.1)*
 - [ ] Complete privacy, security, and finance review with leadership. *(human)*
 - [ ] Run correction and provider-outage exercises with operators. *(human)*
 - [ ] Execute live cohort and fill findings template. *(human)*
@@ -157,7 +157,8 @@ Still open (needs credentials or live endpoints, not code):
 
 - [x] JWKS-based `OidcIdentityProvider` implementing the existing port (`src/impact_relay/auth/oidc.py`), as an optional extra (e.g. PyJWT) — keeps the zero-runtime-dependency base intact.
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
-- [ ] Postmark email adapter and APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
+- [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
+- [ ] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
 - [x] Optional HTTP fetchers for the Every.org aggregate and Notion public-evidence bridges, feeding the **existing** safety validators (`src/impact_relay/every_org.py`, `src/impact_relay/notion_public.py`) — HTTPS-only, bounded responses, host-owned bearer credentials, sanitized errors, and a deterministic mandatory PII firewall.
 - [x] Add the missing cross-boundary JSON Schemas: `agent-command`, `execution-receipt`, `validation-result` (`schemas/agents/` has only 3 of ~6 contracts).
 
