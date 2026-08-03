@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "platform": "Impact Relay",
+  "revision": "0.9.1",
+  "required_artifacts": [
+    "docs/PLATFORM-CONFORMANCE.md",
+    "docs/DOMAIN-MODEL.md",
+    "docs/AGENT-CONTRACTS.md",
+    "schemas/agents/agent-command.schema.json",
+    "schemas/agents/agent-proposal.schema.json",
+    "schemas/agents/agent-run-receipt.schema.json",
+    "schemas/agents/approval-receipt.schema.json",
+    "schemas/agents/execution-receipt.schema.json",
+    "schemas/agents/validation-result.schema.json"
+  ],
+  "checks": [
+    {
+      "id": "SPEC-004.01",
+      "title": "Domain model and aggregate boundaries",
+      "requirement": "The domain model must define the canonical money, impact, notification, and tenant aggregates used by all hosts.",
+      "required": true,
+      "scope": [
+        "docs/DOMAIN-MODEL.md",
+        "src/impact_relay/domain/tenant.py",
+        "src/impact_relay/domain/ledger.py",
+        "src/impact_relay/domain/impact.py",
+        "src/impact_relay/domain/notifications.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "docs/DOMAIN-MODEL.md",
+          "docs/HD-IR-001.md",
+          "docs/HD-IR-002.md",
+          "docs/HD-IR-004.md",
+          "docs/HD-IR-006.md"
+        ],
+        "tests": [
+          "tests/test_ledger_invariants.py",
+          "tests/test_phases_2_6.py",
+          "tests/test_durable_ledger_log.py",
+          "tests/test_workflow_sql_store.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_ledger_invariants.py tests/test_phases_2_6.py"
+        ],
+        "evidence_fields": [
+          "ledger aggregate",
+          "expense and attribution invariants",
+          "multi-tenant isolation",
+          "impact aggregate linkage",
+          "notification boundaries"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-004.02",
+      "title": "Domain invariants and money truth are regression-gated",
+      "requirement": "Allocation, approval, and receipt invariants must remain hard gates in code and tests.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/domain/ledger.py",
+        "src/impact_relay/domain/types.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/domain/ledger.py",
+          "src/impact_relay/domain/types.py",
+          "tests/test_ledger_invariants.py"
+        ],
+        "tests": [
+          "tests/test_ledger_invariants.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_ledger_invariants.py"
+        ],
+        "evidence_fields": [
+          "donation allocation caps",
+          "expense sum validation",
+          "restricted balance never negative",
+          "no silent mutation",
+          "single live receipt per triple"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-007.01",
+      "title": "Agent schema parity and versioned contracts",
+      "requirement": "All public agent contracts must have schema artifacts and field parity checks.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/agents/types.py",
+        "schemas/agents/*.schema.json",
+        "tests/test_agent_contract_schemas.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/agents/types.py",
+          "schemas/agents/agent-command.schema.json",
+          "schemas/agents/agent-proposal.schema.json",
+          "schemas/agents/agent-run-receipt.schema.json",
+          "schemas/agents/approval-receipt.schema.json",
+          "schemas/agents/execution-receipt.schema.json",
+          "schemas/agents/validation-result.schema.json",
+          "tests/test_agent_contract_schemas.py"
+        ],
+        "tests": [
+          "tests/test_agent_contract_schemas.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_agent_contract_schemas.py"
+        ],
+        "evidence_fields": [
+          "AgentCommand",
+          "AgentProposal",
+          "ExecutionReceipt",
+          "ApprovalReceipt",
+          "AgentRunReceipt",
+          "ValidationResult"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-007.02",
+      "title": "L3 execution requires explicit human approval",
+      "requirement": "Consequence commands must enforce tenant-bound ApprovalReceipt with APPROVE decision and non-agent approver identity.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/agents/authority.py",
+        "src/impact_relay/agents/base.py",
+        "tests/test_agent_contracts.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/agents/authority.py",
+          "src/impact_relay/agents/base.py",
+          "tests/test_agent_contracts.py"
+        ],
+        "tests": [
+          "tests/test_agent_contracts.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_agent_contracts.py"
+        ],
+        "evidence_fields": [
+          "requires_human_approval",
+          "tenant matching",
+          "approver identity guard",
+          "approval decision check"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-007.03",
+      "title": "Proposal execution safety and confidence gates",
+      "requirement": "Expired, contradictory, or low-confidence proposals are non-executable and must be surfaced as rejected validation or proposal failures.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/agents/authority.py",
+        "src/impact_relay/agents/types.py",
+        "src/impact_relay/agents/notification_composer.py",
+        "tests/test_agent_contracts.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/agents/authority.py",
+          "src/impact_relay/agents/types.py",
+          "tests/test_agent_contracts.py"
+        ],
+        "tests": [
+          "tests/test_agent_contracts.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_agent_contracts.py"
+        ],
+        "evidence_fields": [
+          "proposal expiry",
+          "confidence floor",
+          "contradiction rejection",
+          "agent propose ceilings"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-007.04",
+      "title": "End-to-end HD-IR-007 vertical slice contract",
+      "requirement": "Fixture-led expense intake + review + approval + publish + optional send approval remains intact and simulation-safe.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/agents/expense_workflow.py",
+        "src/impact_relay/agents/executor.py",
+        "tests/test_expense_approval_slice.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/agents/expense_workflow.py",
+          "src/impact_relay/agents/executor.py",
+          "tests/test_expense_approval_slice.py"
+        ],
+        "tests": [
+          "tests/test_expense_approval_slice.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_expense_approval_slice.py"
+        ],
+        "evidence_fields": [
+          "simulation mode safe",
+          "idempotent import and dedupe",
+          "human approve/reject behavior",
+          "receipt lineage preserved",
+          "public-safe preview without donor ids"
+        ]
+      }
+    },
+    {
+      "id": "SPEC-007.05",
+      "title": "Privacy sentinel for public-facing projections",
+      "requirement": "Public payloads and classification flags must pass privacy checks before export/intent publication.",
+      "required": true,
+      "scope": [
+        "src/impact_relay/agents/privacy.py",
+        "src/impact_relay/public_impact.py",
+        "src/impact_relay/digest.py",
+        "tests/test_public_export.py",
+        "tests/test_digest_and_reconcile.py"
+      ],
+      "evidence": {
+        "artifacts": [
+          "src/impact_relay/agents/privacy.py",
+          "src/impact_relay/digest.py",
+          "src/impact_relay/public_impact.py",
+          "docs/HD-IR-002.md",
+          "docs/HD-IR-006.md",
+          "tests/test_public_export.py",
+          "tests/test_digest_and_reconcile.py"
+        ],
+        "tests": [
+          "tests/test_public_export.py",
+          "tests/test_digest_and_reconcile.py"
+        ],
+        "commands": [
+          "pytest -q tests/test_public_export.py tests/test_digest_and_reconcile.py"
+        ],
+        "evidence_fields": [
+          "public_aggregate_only",
+          "piiAllowed false",
+          "donorNamesAllowed false",
+          "attendeeNamesAllowed false"
+        ]
+      }
+    }
+  ]
+}

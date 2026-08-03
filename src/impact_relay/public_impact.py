@@ -3,6 +3,10 @@
 Domain ImpactReceipt objects are donor-specific. Public Pages must never
 show donor_id or donation_id. This module collapses verified impact
 receipts to one public row per impact event.
+
+`allocationId` is the suite join key shared with Fund-Intel decisions and
+AGI public narrative contracts (see Autonomous-Giving-Incorporated
+CONTRACT_GOVERNANCE). It is a public allocation identifier, not a donor id.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ def impact_receipt_to_event_row(receipt: ImpactReceipt) -> dict[str, Any]:
         "impactEventId": receipt.impact_event_id,
         "organizationName": receipt.organization_name,
         "programName": receipt.program_name,
+        "allocationId": receipt.allocation_id,
         "allocationName": receipt.allocation_name,
         "eventType": receipt.event_type,
         "eventDate": receipt.event_date[:10] if receipt.event_date else receipt.event_date,

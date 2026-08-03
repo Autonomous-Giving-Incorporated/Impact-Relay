@@ -1,16 +1,21 @@
 # Design — Impact Relay public evidence surface
 
-Impact Relay is the public proof layer of the AGI suite. It preserves an evidence-led, stat-first information architecture while adopting the shared corporate brand foundation.
+Impact Relay is the public proof layer of the **AGI suite** (Autonomously Giving Incorporated). It keeps an evidence-led, stat-first information architecture while adopting the **shared corporate brand foundation** used by AGI and Fund Intel.
 
-## Visual direction
+**Suite UI/UX is not optional.** Identity, palette, type, focus, status language, suite navigation, and footer governance must stay consistent with the companion repos. Product-specific layout and density may differ; branding may not. Full contract: [`docs/AGI-DESIGN-SYSTEM.md`](docs/AGI-DESIGN-SYSTEM.md).
 
-- Warm paper `#fbf9f4`, stone `#f4f0e8`, carbon `#1d2321`.
-- Signal yellow `#f2c200` for attention and focus.
-- Deep teal `#486f6a` for verified state and reciprocal suite links.
-- Georgia display headings, Inter body copy, IBM Plex Mono metadata.
-- Thin rules, compact corners, no decorative shadows or gradients.
+## Visual direction (shared AGI foundation)
 
-## Information architecture
+- Paper `#f7f8fa`, white surface `#ffffff`, cool gray `#e6e9ec`
+- Ink `#0e1116`, graphite `#1f232b`, muted derived from graphite
+- AGI gold `#e6b23c` for attention and focus; AGI green `#2e7d6b` / mint for verified and suite links
+- Success/verified deep teal; warning `#6a5200`; danger `#a83232`
+- **Space Grotesk** display, **Inter** body, **IBM Plex Mono** metadata
+- Thin rules, 2px control / 4px surface corners, no decorative shadows or gradients
+
+Implementation: `tokens.css` (`--agi-*` primitives + local aliases) → `styles.css`. Do not reintroduce legacy warm-paper / Georgia treatments.
+
+## Information architecture (Impact Relay–specific)
 
 1. Campaign stat-led hero and raised-funds provenance
 2. Milestone ladder
@@ -23,7 +28,7 @@ Impact Relay is the public proof layer of the AGI suite. It preserves an evidenc
 
 ## Identity and actions
 
-The masthead reads AGI → Impact Relay → campaign context and provides links to AGI and Fund Intel. The primary Donate action uses AGI ink with a gold edge; secondary navigation uses AGI green. The footer repeats the AGI mark and product identity, then credits “Software by Zero State” beside Tokens, Logo use, and Legal.
+The masthead reads **AGI → Impact Relay → campaign context** and provides reciprocal links to AGI and Fund Intel (`autogive.app`). The primary Donate action uses AGI ink with a gold edge; suite navigation uses AGI green. The footer repeats the AGI mark and product identity, then credits “Software by Zero State” beside Tokens, Logo use, and Legal.
 
 ## Guardrails
 
@@ -31,3 +36,9 @@ The masthead reads AGI → Impact Relay → campaign context and provides links 
 - Do not add thick severity rails, equal four-up dashboard grids, or invented metrics.
 - Status and provenance must remain explicit in text.
 - Public evidence and donation controls must work at narrow viewports without hiding authority context.
+- Never replace AGI identity with tenant or builder branding in the masthead.
+- When shared suite tokens change in AGI or Fund Intel, update this surface in the same change window.
+
+## QA
+
+Visual acceptance against the AGI brand board is recorded in [`design-qa.md`](design-qa.md).

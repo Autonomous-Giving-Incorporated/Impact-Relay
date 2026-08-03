@@ -10,6 +10,8 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder.
 
+**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) and [Fund Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
+
 ---
 
 ## Why Impact Relay
