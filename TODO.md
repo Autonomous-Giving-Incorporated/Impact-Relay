@@ -119,6 +119,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add incident response runbook.
 - [x] Add provider outage and replay runbook.
 - [x] Add retention and deletion policy (runbook).
+- [x] Add object storage retention metadata, legal holds, and local expired-object purge receipts.
 - [x] Add backup and restoration test (rehydrate + snapshot tests).
 - [x] Add security review checklist.
 

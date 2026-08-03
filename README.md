@@ -75,7 +75,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Durable workflows (memory + SQLite/Postgres) | `workflows/` · [DURABLE-QUICKSTART](docs/DURABLE-QUICKSTART.md) |
 | Ledger command log rehydrate (K11/K17) | `domain/ledger_log.py` · `storage/command_log.py` |
 | Tenant registry, SQL ledger entities, outbox | `storage/` · [STORAGE](docs/architecture/STORAGE.md) |
-| Object storage (local FS + S3/MinIO) | `storage/objects.py` |
+| Object storage (local FS + S3/MinIO, SSE + retention purge controls) | `storage/objects.py` |
 | RBAC roles, SoD, OIDC ports, HD role map | `auth/` |
 | Host façade + finance/donor consoles | `host/` · `console_server.py` |
 | Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
@@ -87,7 +87,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 - live accounting provider credentials/authorized endpoint mapping (HTTPS JSON adapter boundary shipped; fixture batch remains default);
 - production Every.org donation ingestion (aggregate dry-run path exists);
-- production multi-region workflow DR and full observability (pilot local+SQL path shipped);
+- production multi-region workflow DR and full observability (pilot local+SQL path shipped; object SSE + retention purge controls shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
 - production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);
