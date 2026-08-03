@@ -29,6 +29,14 @@ from impact_relay.domain.types import (
 from impact_relay.donor import open_donor_api
 from impact_relay.every_org import every_org_to_reconcile_aggregate
 from impact_relay.host import open_hacker_dojo_session, open_host_session
+from impact_relay.observability import (
+    HealthCheck,
+    build_operational_snapshot,
+    summarize_ledger,
+    summarize_outbox,
+    summarize_storage,
+    summarize_workflows,
+)
 from impact_relay.pilot import run_all_phases_pilot, run_pilot
 from impact_relay.privacy_ops import (
     DonorNotificationEraseReceipt,
@@ -56,12 +64,14 @@ __all__ = [
     "ExpenseState",
     "HTTPSJSONAccountingConfig",
     "HTTPSJSONAccountingExpenseSource",
+    "HealthCheck",
     "Ledger",
     "Platform",
     "RestrictionType",
     "TenantWorkspace",
     "UseOfFundsReceipt",
     "apply_aggregate_reconciliation",
+    "build_operational_snapshot",
     "build_public_digests",
     "build_public_export",
     "digests_from_workspace",
@@ -76,6 +86,10 @@ __all__ = [
     "receipt_to_public",
     "run_all_phases_pilot",
     "run_pilot",
+    "summarize_ledger",
+    "summarize_outbox",
+    "summarize_storage",
+    "summarize_workflows",
 ]
 
 __version__ = "0.9.1"

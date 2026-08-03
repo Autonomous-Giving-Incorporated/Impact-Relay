@@ -57,7 +57,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 **Package version:** `0.9.1` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
 
-**Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
+**Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and deterministic observability summaries, plus a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
 
 ### Shipped capabilities
 
@@ -81,13 +81,14 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
 | Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
+| Operational health and metrics summaries | `observability.py` |
 | Ops threat model, runbooks, pilot findings template | `docs/ops/` · `docs/pilot/` |
 
 ### Deferred / host-owned production capabilities
 
 - live accounting provider credentials/authorized endpoint mapping (HTTPS JSON adapter boundary shipped; fixture batch remains default);
 - production Every.org donation ingestion (aggregate dry-run path exists);
-- production multi-region workflow DR and full observability (pilot local+SQL path shipped; object SSE + retention purge controls shipped);
+- production multi-region workflow DR and production alerting/SLO dashboards (pilot local+SQL path, object retention controls, and deterministic observability summaries shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
 - production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);

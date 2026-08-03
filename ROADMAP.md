@@ -22,7 +22,7 @@ Shipped:
 - RBAC roles, separation of duties, OIDC identity ports, Hacker-Dojo campaign role map;
 - host façade (`impact_relay.host`), finance/donor console APIs, pilot `console_server`;
 - Hacker-Dojo host screens + shadow/live-cohort runbooks (sibling repo);
-- ops docs: threat model, incident response, runbooks, security checklist, findings template.
+- ops docs and deterministic observability summaries: threat model, incident response, runbooks, health/metrics snapshots, security checklist, findings template.
 
 Open (ops / production):
 
@@ -161,6 +161,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
 - [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
+- [x] Deterministic operational snapshots for storage, workflows, outbox, object backend, and ledger/audit counts (`observability.py`); production alerting/SLO dashboards remain host ops work.
 - [x] Object storage retention controls: per-object retention metadata, legal holds, local expired-object purge receipts, and S3 metadata/SSE compatibility (`storage/objects.py`).
 - [x] Donor-scoped data export + mutable notification-state deletion primitives (`privacy_ops.py`), preserving immutable ledger/accounting facts while revoking consent and removing contact-delivery history when requested.
 - [x] Optional HTTP fetchers for the Every.org aggregate and Notion public-evidence bridges, feeding the **existing** safety validators (`src/impact_relay/every_org.py`, `src/impact_relay/notion_public.py`) — HTTPS-only, bounded responses, host-owned bearer credentials, sanitized errors, and a deterministic mandatory PII firewall.
@@ -183,7 +184,7 @@ Still open (needs credentials or live endpoints, not code):
 **Goal:** production-grade Hacker Dojo deployment.
 
 - [ ] Production durable workflow DR / multi-region (pilot local+SQL path already on main).
-- [ ] Production observability, alerting, and audit explorer.
+- [ ] Production alerting/SLO dashboards and audit explorer (deterministic operational snapshot helpers shipped).
 - [ ] Live OIDC JWT validation in host gateway (library ports + RBAC already shipped).
 - [ ] Full encrypted evidence storage policy rollout and retention UX (object ports, S3 SSE, per-object retention metadata, local purge receipts shipped).
 - [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/APNs/FCM adapter code already shipped).

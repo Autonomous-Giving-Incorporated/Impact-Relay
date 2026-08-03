@@ -115,6 +115,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 - [x] Threat model agent, finance, evidence, notification, and tenant boundaries.
 - [x] Add structured logs for workflows (worker tick metrics); OTel reserved for v1.0.
+- [x] Add deterministic operational snapshots for storage, workflows, outbox, object backend, and ledger/audit counts.
 - [x] Add audit explorer primitives (command log + entity list + events via stores).
 - [x] Add incident response runbook.
 - [x] Add provider outage and replay runbook.
