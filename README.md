@@ -6,7 +6,9 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://autogive.app/impact-relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+
+Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder.
 
 ---
 

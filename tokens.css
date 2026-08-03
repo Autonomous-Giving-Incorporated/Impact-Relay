@@ -4,16 +4,16 @@
  * axes: light / grotesk-sans / chromatic-other (green)
  */
 :root {
-  --agi-bg: #fbf9f4;
+  --agi-bg: #f7f8fa;
   --agi-surface: #ffffff;
-  --agi-surface-alt: #f4f0e8;
-  --agi-text: #1d2321;
-  --agi-muted: #626b67;
-  --agi-line: #b9b2a7;
-  --agi-brand: #1d2321;
-  --agi-brand-2: #486f6a;
-  --agi-accent: #f2c200;
-  --agi-success: #486f6a;
+  --agi-surface-alt: #e6e9ec;
+  --agi-text: #0e1116;
+  --agi-muted: #5b646f;
+  --agi-line: #cfd5d9;
+  --agi-brand: #0e1116;
+  --agi-brand-2: #2e7d6b;
+  --agi-accent: #e6b23c;
+  --agi-success: #2e7d6b;
   --agi-warning: #6a5200;
   --agi-danger: #a83232;
   --agi-shadow: none;
@@ -37,7 +37,7 @@
   --color-waiting-bg: #fff6dd;
   --color-empty-bg: var(--agi-surface-alt);
 
-  --font-display: Georgia, "Times New Roman", serif;
+  --font-display: "Space Grotesk", Inter, system-ui, sans-serif;
   --font-body: Inter, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 

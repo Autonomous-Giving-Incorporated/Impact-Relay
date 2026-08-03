@@ -1,6 +1,6 @@
 # Design — Impact Relay public evidence surface
 
-Impact Relay is the public proof layer of the Zero State suite. It preserves an evidence-led, stat-first information architecture while adopting the shared brand foundation.
+Impact Relay is the public proof layer of the AGI suite. It preserves an evidence-led, stat-first information architecture while adopting the shared corporate brand foundation.
 
 ## Visual direction
 
@@ -23,7 +23,7 @@ Impact Relay is the public proof layer of the Zero State suite. It preserves an 
 
 ## Identity and actions
 
-The masthead reads Zero State → Impact Relay → campaign context and provides links to AGI and Fund Intel. The primary Donate action is carbon with a signal-yellow edge; secondary navigation uses deep teal. The footer repeats the Zero State mark and product identity.
+The masthead reads AGI → Impact Relay → campaign context and provides links to AGI and Fund Intel. The primary Donate action uses AGI ink with a gold edge; secondary navigation uses AGI green. The footer repeats the AGI mark and product identity, then credits “Software by Zero State” beside Tokens, Logo use, and Legal.
 
 ## Guardrails
 

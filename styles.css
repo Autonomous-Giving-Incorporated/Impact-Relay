@@ -3,6 +3,7 @@
  * design-system: tokens.css · pre-emit critique: P4 H5 E4 S5 R5 V4
  */
 @import url("tokens.css");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 html { overflow-x: clip; }
 
@@ -69,7 +70,7 @@ a:hover { text-decoration-thickness: 2px; }
   color: var(--color-ink);
   text-decoration: none;
 }
-.suite-brand img { width: 3rem; height: 3rem; }
+.suite-brand img { width: clamp(10.5rem, 19vw, 13rem); height: auto; }
 .suite-brand span { display: grid; line-height: 1.05; }
 .suite-brand small {
   color: var(--color-success);
@@ -570,6 +571,7 @@ main { padding-bottom: var(--space-2xl); }
 }
 .footer-suite { display: inline-flex; align-items: center; gap: var(--space-2xs); font-weight: 600; color: var(--color-ink); }
 .footer-suite img { width: 1.75rem; height: 1.75rem; }
+.footer-legal { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2xs) var(--space-sm); }
 .site-footer a {
   color: var(--color-ink-2);
   text-decoration: none;
