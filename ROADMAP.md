@@ -9,6 +9,7 @@ Shipped:
 - deterministic donation, allocation, expense, attribution, and receipt domain;
 - append-only corrections and receipt lineage (ledger + correction workflows);
 - donor read projections and authenticated donor experience API;
+- donor-scoped data export and notification-state deletion primitives (`privacy_ops.py`; immutable ledger facts preserved);
 - program / funded-asset / impact receipt domain;
 - fixture-backed notification adapters and consent/preference model;
 - multi-tenant domain isolation + tenant registry / clone-from-Hacker-Dojo template;
@@ -160,6 +161,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
 - [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
+- [x] Donor-scoped data export + mutable notification-state deletion primitives (`privacy_ops.py`), preserving immutable ledger/accounting facts while revoking consent and removing contact-delivery history when requested.
 - [x] Optional HTTP fetchers for the Every.org aggregate and Notion public-evidence bridges, feeding the **existing** safety validators (`src/impact_relay/every_org.py`, `src/impact_relay/notion_public.py`) — HTTPS-only, bounded responses, host-owned bearer credentials, sanitized errors, and a deterministic mandatory PII firewall.
 - [x] Add the missing cross-boundary JSON Schemas: `agent-command`, `execution-receipt`, `validation-result` (`schemas/agents/` has only 3 of ~6 contracts).
 
@@ -187,7 +189,7 @@ Still open (needs credentials or live endpoints, not code):
 - [ ] Consent and preference center (model shipped; full UX deferred).
 - [ ] SLA/SLO definitions and incident response (runbooks drafted; SLOs not signed).
 - [ ] External security assessment.
-- [ ] Data export and deletion workflows.
+- [ ] Full host-facing data export/deletion workflows and UI (library donor export + notification-state deletion primitives shipped).
 
 ## v1.1 — Reusable Nonprofit Platform
 

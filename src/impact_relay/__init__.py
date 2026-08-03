@@ -30,6 +30,12 @@ from impact_relay.donor import open_donor_api
 from impact_relay.every_org import every_org_to_reconcile_aggregate
 from impact_relay.host import open_hacker_dojo_session, open_host_session
 from impact_relay.pilot import run_all_phases_pilot, run_pilot
+from impact_relay.privacy_ops import (
+    DonorNotificationEraseReceipt,
+    erase_donor_notification_state,
+    export_donor_data,
+    export_donor_data_json,
+)
 from impact_relay.public_export import build_public_export, receipt_to_public
 from impact_relay.reconcile import apply_aggregate_reconciliation
 from impact_relay.storage.template import (
@@ -45,6 +51,7 @@ __all__ = [
     "Allocation",
     "AttributionMethod",
     "Donation",
+    "DonorNotificationEraseReceipt",
     "Expense",
     "ExpenseState",
     "HTTPSJSONAccountingConfig",
@@ -58,7 +65,10 @@ __all__ = [
     "build_public_digests",
     "build_public_export",
     "digests_from_workspace",
+    "erase_donor_notification_state",
     "every_org_to_reconcile_aggregate",
+    "export_donor_data",
+    "export_donor_data_json",
     "open_accounting_expense_source",
     "open_donor_api",
     "open_hacker_dojo_session",

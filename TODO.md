@@ -91,6 +91,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add APNs/FCM production adapters (fixture push remains default; credentials and device-token lookup are host-owned).
 - [x] Add delivery receipts and permanent-failure classification.
 - [x] Add unsubscribe and opt-out ingestion (preference enabled=False / consent revoke).
+- [x] Add donor data export and mutable notification-state deletion primitives (ledger facts preserved).
 
 ## P2 — Hacker Dojo pilot
 
