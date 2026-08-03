@@ -16,7 +16,7 @@ from email.message import EmailMessage
 from email.utils import make_msgid
 from typing import Any, Protocol, runtime_checkable
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 
 from impact_relay.domain.types import NotificationIntent
@@ -150,6 +150,95 @@ class PostmarkConfig:
         )
 
 
+@dataclass(frozen=True)
+class APNsPushConfig:
+    """Validated APNs transport configuration with redacted bearer token."""
+
+    auth_token: str = field(repr=False)
+    topic: str
+    bundle_id: str
+    endpoint: str = "https://api.push.apple.com"
+    timeout_seconds: float = 10.0
+    apns_push_type: str = "alert"
+    apns_priority: str = "10"
+
+    def __post_init__(self) -> None:
+        if not _stringify_push_value(self.auth_token):
+            raise NotificationConfigurationError("APNs auth token is required")
+        topic = self.topic.strip()
+        bundle_id = self.bundle_id.strip()
+        if not topic:
+            raise NotificationConfigurationError("APNs topic is required")
+        if not bundle_id:
+            raise NotificationConfigurationError("APNs bundle_id is required")
+        object.__setattr__(self, "topic", topic)
+        object.__setattr__(self, "bundle_id", bundle_id)
+        if self.apns_priority not in {"5", "10"}:
+            raise NotificationConfigurationError("APNs priority must be 5 or 10")
+        if self.apns_push_type not in {
+            "alert",
+            "background",
+            "voip",
+            "complication",
+            "fileprovider",
+            "mdm",
+        }:
+            raise NotificationConfigurationError("APNs push type must be a valid Apple push type")
+        if self.timeout_seconds <= 0:
+            raise NotificationConfigurationError("APNs timeout must be positive")
+        _validate_https_endpoint(self.endpoint, name="APNs endpoint")
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> APNsPushConfig:
+        values = env if env is not None else os.environ
+        try:
+            timeout = float(values.get("IMPACT_RELAY_APNS_TIMEOUT_SECONDS", "10"))
+        except ValueError as exc:
+            raise NotificationConfigurationError("APNs timeout must be numeric") from exc
+        return cls(
+            auth_token=values.get("IMPACT_RELAY_APNS_AUTH_TOKEN", ""),
+            topic=(values.get("IMPACT_RELAY_APNS_TOPIC", "") or values.get("IMPACT_RELAY_APNS_BUNDLE_ID", "")).strip(),
+            bundle_id=values.get("IMPACT_RELAY_APNS_BUNDLE_ID", "").strip(),
+            endpoint=values.get("IMPACT_RELAY_APNS_ENDPOINT", "https://api.push.apple.com"),
+            timeout_seconds=timeout,
+            apns_push_type=values.get("IMPACT_RELAY_APNS_PUSH_TYPE", "alert"),
+            apns_priority=values.get("IMPACT_RELAY_APNS_PRIORITY", "10"),
+        )
+
+
+@dataclass(frozen=True)
+class FCMConfig:
+    """Validated Firebase Cloud Messaging configuration with redacted OAuth token."""
+
+    project_id: str
+    server_token: str = field(repr=False)
+    endpoint: str = "https://fcm.googleapis.com/v1"
+    timeout_seconds: float = 10.0
+
+    def __post_init__(self) -> None:
+        if not self.project_id.strip():
+            raise NotificationConfigurationError("FCM project id is required")
+        if not _stringify_push_value(self.server_token):
+            raise NotificationConfigurationError("FCM server token is required")
+        if self.timeout_seconds <= 0:
+            raise NotificationConfigurationError("FCM timeout must be positive")
+        _validate_https_endpoint(self.endpoint, name="FCM endpoint")
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> FCMConfig:
+        values = env if env is not None else os.environ
+        try:
+            timeout = float(values.get("IMPACT_RELAY_FCM_TIMEOUT_SECONDS", "10"))
+        except ValueError as exc:
+            raise NotificationConfigurationError("FCM timeout must be numeric") from exc
+        return cls(
+            project_id=(values.get("IMPACT_RELAY_FCM_PROJECT_ID") or "").strip(),
+            server_token=values.get("IMPACT_RELAY_FCM_SERVER_TOKEN", ""),
+            endpoint=values.get("IMPACT_RELAY_FCM_ENDPOINT", "https://fcm.googleapis.com/v1"),
+            timeout_seconds=timeout,
+        )
+
+
 @runtime_checkable
 class EmailAdapter(Protocol):
     provider_name: str
@@ -233,6 +322,37 @@ class FixtureEmailAdapter:
 SMTPClientFactory = Callable[[SMTPConfig], Any]
 EmailAddressResolver = Callable[[NotificationIntent], str]
 PostmarkOpener = Callable[[Request, float], Any]
+PushTokenResolver = Callable[[NotificationIntent], str]
+APNsOpener = Callable[[Request, float], Any]
+FCMOpener = Callable[[Request, float], Any]
+
+
+def _validate_https_endpoint(endpoint: str, *, name: str, allow_path: bool = True) -> None:
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise NotificationConfigurationError(f"{name} must be an absolute HTTPS URL")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise NotificationConfigurationError(f"{name} must not contain userinfo, a query, or a fragment")
+    if not allow_path and not parsed.path.startswith("/"):
+        raise NotificationConfigurationError(f"{name} must be a valid endpoint path")
+
+
+def _safe_string_map(value: object, *, prefix: str | None = None) -> dict[str, str]:
+    if not isinstance(value, Mapping):
+        return {}
+    out: dict[str, str] = {}
+    for key, raw_value in value.items():
+        safe_key = str(key).strip()
+        if not safe_key or any(ch in safe_key for ch in "\r\n"):
+            continue
+        if prefix and safe_key.startswith(prefix):
+            safe_key = safe_key.removeprefix(prefix)
+        out[safe_key] = "" if raw_value is None else str(raw_value)
+    return out
+
+
+def _stringify_push_value(value: str) -> bool:
+    return bool(value and not any(ch in value for ch in "\r\n"))
 
 
 def _open_smtp_client(config: SMTPConfig) -> Any:
@@ -599,18 +719,45 @@ class FixturePushAdapter:
         ).as_tuple()
 
 
-class APNsPushAdapter:
-    """Contract placeholder — host supplies credentials and HTTP/2 client.
+def _open_apns(request: Request, timeout: float) -> Any:
+    return urlopen(request, timeout=timeout)
 
-    Not for production use until configured; raises if deliver is called.
-    """
+
+def _open_fcm(request: Request, timeout: float) -> Any:
+    return urlopen(request, timeout=timeout)
+
+
+def _is_push_token_valid(token: str) -> bool:
+    return bool(token and not any(ch in token for ch in "\r\n\t "))
+
+
+class APNsPushAdapter:
+    """Production-capable APNs push transport using the configured token and endpoint."""
 
     provider_name = "apns"
 
-    def __init__(self, *, team_id: str = "", key_id: str = "", bundle_id: str = "") -> None:
-        self.team_id = team_id
-        self.key_id = key_id
-        self.bundle_id = bundle_id
+    def __init__(
+        self,
+        config: APNsPushConfig,
+        *,
+        token_resolver: PushTokenResolver | None = None,
+        opener: APNsOpener | None = None,
+    ) -> None:
+        self.config = config
+        self.token_resolver = token_resolver
+        self._opener = opener or _open_apns
+
+    def _token_for(self, intent: NotificationIntent) -> str:
+        token = (
+            self.token_resolver(intent)
+            if self.token_resolver is not None
+            else str(intent.payload.get("device_token") or "")
+        )
+        if not _is_push_token_valid(token):
+            raise NotificationConfigurationError(
+                "APNs delivery requires a host-provided donor device-token resolver"
+            )
+        return token
 
     def send_push(
         self,
@@ -620,19 +767,131 @@ class APNsPushAdapter:
         body: str,
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
-        raise NotImplementedError("Configure host APNs client; use FixturePushAdapter for pilot")
+        if not _is_push_token_valid(device_token):
+            return DeliveryResult(False, "", "permanent: invalid APNs device token", permanent_failure=True)
+        safe_title = title
+        safe_body = body
+        if not _stringify_push_value(safe_title):
+            safe_title = ""
+        if not _stringify_push_value(safe_body):
+            safe_body = ""
+
+        payload = {
+            "aps": {
+                "alert": {
+                    "title": safe_title,
+                    "body": safe_body,
+                },
+                "sound": "default",
+            },
+            **_safe_string_map(data or {}),
+        }
+        request = Request(
+            f"{self.config.endpoint.rstrip('/')}/3/device/{quote(device_token, safe='')}" ,
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.config.auth_token}",
+                "Content-Type": "application/json",
+                "apns-topic": self.config.topic,
+                "apns-push-type": self.config.apns_push_type,
+                "apns-priority": self.config.apns_priority,
+                "User-Agent": "impact-relay/0.9",
+            },
+            method="POST",
+        )
+        try:
+            with self._opener(request, self.config.timeout_seconds) as response:
+                content_type = str(response.headers.get("Content-Type", ""))
+                media_type = content_type.partition(";")[0].strip().lower()
+                if media_type != "application/json" and not media_type.endswith("+json"):
+                    return DeliveryResult(False, "", "temporary invalid APNs response")
+                body = response.read(65_537)
+        except HTTPError as exc:
+            permanent = 400 <= exc.code < 500 and exc.code != 429
+            prefix = "permanent: " if permanent else ""
+            return DeliveryResult(
+                False,
+                "",
+                f"{prefix}APNs returned HTTP {exc.code}",
+                permanent_failure=permanent,
+            )
+        except (URLError, OSError, TimeoutError):
+            return DeliveryResult(False, "", "temporary APNs transport failure")
+
+        if len(body) > 65_536:
+            return DeliveryResult(False, "", "temporary invalid APNs response")
+        if body:
+            try:
+                result = json.loads(body.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return DeliveryResult(False, "", "temporary invalid APNs response")
+            if not isinstance(result, dict):
+                return DeliveryResult(False, "", "temporary invalid APNs response")
+        apns_id = str(response.headers.get("apns-id", ""))
+        return DeliveryResult(True, apns_id, "accepted by APNs")
 
     def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
-        raise NotImplementedError("APNs not configured")
+        try:
+            device_token = self._token_for(intent)
+        except NotificationConfigurationError as exc:
+            return DeliveryResult(False, "", f"permanent: {exc}", permanent_failure=True).as_tuple()
+        except Exception:  # noqa: BLE001 - host resolver details may contain donor PII
+            return DeliveryResult(
+                False,
+                "",
+                "permanent: device token resolution failed",
+                permanent_failure=True,
+            ).as_tuple()
+        title = str(
+            intent.payload.get("push_title")
+            or intent.message_class.value
+            or f"[{intent.message_class.value}] Impact Relay update"
+        )
+        body = str(
+            intent.payload.get("push_body")
+            or intent.payload.get("description")
+            or intent.source_id
+        )
+        data = _safe_string_map(
+            intent.payload.get("push_data")
+            or {
+                "intent-id": intent.id,
+                "tenant-id": intent.organization_id,
+                "source-id": intent.source_id,
+                "message-class": intent.message_class.value,
+                "source-type": intent.source_type,
+            },
+        )
+        return self.send_push(device_token=device_token, title=title, body=body, data=data).as_tuple()
 
 
 class FCMPushAdapter:
-    """Contract placeholder for Firebase Cloud Messaging."""
+    """Production-capable Firebase Cloud Messaging transport."""
 
     provider_name = "fcm"
 
-    def __init__(self, *, project_id: str = "") -> None:
-        self.project_id = project_id
+    def __init__(
+        self,
+        config: FCMConfig,
+        *,
+        token_resolver: PushTokenResolver | None = None,
+        opener: FCMOpener | None = None,
+    ) -> None:
+        self.config = config
+        self.token_resolver = token_resolver
+        self._opener = opener or _open_fcm
+
+    def _token_for(self, intent: NotificationIntent) -> str:
+        token = (
+            self.token_resolver(intent)
+            if self.token_resolver is not None
+            else str(intent.payload.get("device_token") or "")
+        )
+        if not _is_push_token_valid(token):
+            raise NotificationConfigurationError(
+                "FCM delivery requires a host-provided donor device-token resolver"
+            )
+        return token
 
     def send_push(
         self,
@@ -642,7 +901,128 @@ class FCMPushAdapter:
         body: str,
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
-        raise NotImplementedError("Configure host FCM client; use FixturePushAdapter for pilot")
+        if not _is_push_token_valid(device_token):
+            return DeliveryResult(False, "", "permanent: invalid FCM device token", permanent_failure=True)
+        payload: dict[str, Any] = {
+            "message": {
+                "token": device_token,
+                "notification": {
+                    "title": title,
+                    "body": body,
+                },
+            }
+        }
+        payload_data = _safe_string_map(data or {})
+        if payload_data:
+            payload["message"]["data"] = payload_data
+
+        request = Request(
+            f"{self.config.endpoint.rstrip('/')}/projects/{quote(self.config.project_id, safe='')}/messages:send",
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.config.server_token}",
+                "Content-Type": "application/json",
+                "User-Agent": "impact-relay/0.9",
+            },
+            method="POST",
+        )
+        try:
+            with self._opener(request, self.config.timeout_seconds) as response:
+                content_type = str(response.headers.get("Content-Type", ""))
+                media_type = content_type.partition(";")[0].strip().lower()
+                if media_type != "application/json" and not media_type.endswith("+json"):
+                    return DeliveryResult(False, "", "temporary invalid FCM response")
+                body = response.read(65_537)
+        except HTTPError as exc:
+            permanent = 400 <= exc.code < 500 and exc.code != 429
+            prefix = "permanent: " if permanent else ""
+            return DeliveryResult(
+                False,
+                "",
+                f"{prefix}FCM returned HTTP {exc.code}",
+                permanent_failure=permanent,
+            )
+        except (URLError, OSError, TimeoutError):
+            return DeliveryResult(False, "", "temporary FCM transport failure")
+
+        if len(body) > 65_536:
+            return DeliveryResult(False, "", "temporary invalid FCM response")
+        try:
+            result = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return DeliveryResult(False, "", "temporary invalid FCM response")
+        if not isinstance(result, dict):
+            return DeliveryResult(False, "", "temporary invalid FCM response")
+        name = str(result.get("name") or "")
+        if not name:
+            return DeliveryResult(False, "", "temporary invalid FCM response")
+        return DeliveryResult(True, name, "accepted by FCM")
 
     def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
-        raise NotImplementedError("FCM not configured")
+        try:
+            device_token = self._token_for(intent)
+        except NotificationConfigurationError as exc:
+            return DeliveryResult(False, "", f"permanent: {exc}", permanent_failure=True).as_tuple()
+        except Exception:  # noqa: BLE001 - host resolver details may contain donor PII
+            return DeliveryResult(
+                False,
+                "",
+                "permanent: device token resolution failed",
+                permanent_failure=True,
+            ).as_tuple()
+        title = str(
+            intent.payload.get("push_title")
+            or intent.message_class.value
+            or f"[{intent.message_class.value}] Impact Relay update"
+        )
+        body = str(
+            intent.payload.get("push_body")
+            or intent.payload.get("description")
+            or intent.source_id
+        )
+        data = _safe_string_map(
+            intent.payload.get("push_data")
+            or {
+                "intent-id": intent.id,
+                "tenant-id": intent.organization_id,
+                "source-id": intent.source_id,
+                "message-class": intent.message_class.value,
+                "source-type": intent.source_type,
+            },
+        )
+        return self.send_push(device_token=device_token, title=title, body=body, data=data).as_tuple()
+
+
+def open_push_adapter(
+    *,
+    backend: str | None = None,
+    env: Mapping[str, str] | None = None,
+    token_resolver: PushTokenResolver | None = None,
+    apns_opener: APNsOpener | None = None,
+    fcm_opener: FCMOpener | None = None,
+) -> PushAdapter:
+    """Open the explicit APNs or FCM push backend.
+
+    Production configuration is validated immediately. No fallback to fixture push
+    occurs after ``apns`` or ``fcm`` is selected.
+    """
+
+    values = env if env is not None else os.environ
+    kind = (backend or values.get("IMPACT_RELAY_PUSH_BACKEND") or "fixture").lower().strip()
+    if kind == "fixture":
+        return FixturePushAdapter()
+    if kind == "apns":
+        return APNsPushAdapter(
+            APNsPushConfig.from_env(values),
+            token_resolver=token_resolver,
+            opener=apns_opener,
+        )
+    if kind == "fcm":
+        return FCMPushAdapter(
+            FCMConfig.from_env(values),
+            token_resolver=token_resolver,
+            opener=fcm_opener,
+        )
+    raise NotificationConfigurationError(
+        f"unknown IMPACT_RELAY_PUSH_BACKEND={kind!r} (use fixture, apns, or fcm)"
+    )
