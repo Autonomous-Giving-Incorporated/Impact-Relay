@@ -1,0 +1,49 @@
+platform_spec:
+  repository: scrimshawlife-ctrl/Autonomous-Giving-Specs
+  version: 1.0.0
+
+service:
+  id: impact-relay
+  role: evidence
+  name: Impact Relay
+
+implements:
+  specs:
+    - SPEC-001
+    - SPEC-002
+    - SPEC-004
+    - SPEC-005
+    - SPEC-006
+    - SPEC-007
+    - SPEC-008
+    - SPEC-009
+    - SPEC-012
+    - SPEC-013
+  contracts:
+    produces:
+      - CONTRACT-004
+      - CONTRACT-006
+      - CONTRACT-007
+    consumes:
+      - CONTRACT-003
+      - CONTRACT-005
+  events:
+    produces:
+      - EVENT-007
+      - EVENT-009
+      - EVENT-010
+    consumes:
+      - EVENT-001
+      - EVENT-002
+      - EVENT-003
+      - EVENT-004
+      - EVENT-005
+      - EVENT-006
+      - EVENT-008
+
+evidence:
+  integration_tests: docs/PLATFORM-CONFORMANCE.md
+  notes: >
+    Evidence, verification, and notification boundary — no silent history edits.
+    Pinned to Autonomous Giving Specs v1.0.0 (tag v1.0.0).
+    Product-level HD-IR checks remain in docs/platform-conformance.yml.

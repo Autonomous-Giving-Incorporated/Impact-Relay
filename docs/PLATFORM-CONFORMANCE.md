@@ -47,3 +47,14 @@ Any edit to:
 
 must be reviewed as a platform contract change and reflected in commit notes,
 `docs/PLATFORM-CONFORMANCE.md`, and `docs/platform-conformance.yml` together.
+
+## Autonomous Giving platform pin
+
+Cross-suite platform canon is pinned at **Specs v1.0.0**:
+
+- Release: https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/releases/tag/v1.0.0
+- Manifest: [`platform-spec/conformance.yml`](../platform-spec/conformance.yml)
+- Notes: [`platform-spec/README.md`](../platform-spec/README.md)
+
+This is distinct from the product inventory in `docs/platform-conformance.yml` (HD-IR / agent checks above).
+
