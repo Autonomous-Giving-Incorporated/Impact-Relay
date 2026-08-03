@@ -14,6 +14,12 @@ Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer
 
 ---
 
+## Allocation middleware
+
+Suite product direction: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
+
+See [docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md).
+
 ## Why Impact Relay
 
 Most donation products stop at payment confirmation. Accounting systems know what was purchased, program systems know what occurred, and communication systems send updates—but donors rarely receive a trustworthy, attributable explanation of the complete chain.
