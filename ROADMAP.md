@@ -25,7 +25,7 @@ Shipped:
 
 Open (ops / production):
 
-- live accounting ingestion beyond fixture batch;
+- authorized live accounting endpoint/provider mapping beyond fixture batch (provider-neutral HTTPS JSON expense adapter shipped);
 - production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/APNs/FCM adapters shipped; SMS production client remains open);
 - production multi-tenant workflow DR / multi-region observability;
 - live OIDC JWT validation wiring (library now ships a JWKS provider, `impact_relay.auth.jwt_oidc`; the host must point it at a real issuer or keep terminating auth at its gateway);
@@ -121,7 +121,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Deploy donor timeline and receipt-detail screens.
 - [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
 - [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists). *(ops: requires authorized live data)*
-- [ ] Integrate one live accounting/expense source (fixture batch only today). *(ops: requires provider access; adapter code is agent work — see v0.9.1)*
+- [ ] Integrate one live accounting/expense source (provider-neutral HTTPS JSON expense adapter shipped; fixture batch remains default). *(ops: requires provider access and host endpoint mapping)*
 - [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
 - [ ] Complete privacy, security, and finance review with leadership. *(human)*
 - [ ] Run correction and provider-outage exercises with operators. *(human)*
@@ -156,6 +156,7 @@ Still open (needs credentials or live endpoints, not code):
 ### Track C — Library completions (pure code; credentials remain ops)
 
 - [x] JWKS-based `OidcIdentityProvider` implementing the existing port (`src/impact_relay/auth/oidc.py`), as an optional extra (e.g. PyJWT) — keeps the zero-runtime-dependency base intact.
+- [x] Provider-neutral HTTPS JSON accounting expense adapter, feeding the existing `NormalizedExpenseImport` workflow contract; credentials and vendor/proxy endpoint mapping remain host-owned.
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
 - [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.

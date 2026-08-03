@@ -7,6 +7,13 @@ HD-IR-004: domain digests + Every.org aggregate adapter
 Phases 2–6: donor reads, notifications, impact, multi-tenant fixture pilot
 """
 
+from impact_relay.accounting import (
+    AccountingExpenseSource,
+    AccountingSourceError,
+    HTTPSJSONAccountingConfig,
+    HTTPSJSONAccountingExpenseSource,
+    open_accounting_expense_source,
+)
 from impact_relay.digest import build_public_digests, digests_from_workspace
 from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.tenant import Platform, TenantWorkspace
@@ -33,11 +40,15 @@ from impact_relay.storage.template import (
 __all__ = [
     "CANONICAL_PILOT_TENANT_ID",
     "CANONICAL_POLICY_SLUG",
+    "AccountingExpenseSource",
+    "AccountingSourceError",
     "Allocation",
     "AttributionMethod",
     "Donation",
     "Expense",
     "ExpenseState",
+    "HTTPSJSONAccountingConfig",
+    "HTTPSJSONAccountingExpenseSource",
     "Ledger",
     "Platform",
     "RestrictionType",
@@ -48,6 +59,7 @@ __all__ = [
     "build_public_export",
     "digests_from_workspace",
     "every_org_to_reconcile_aggregate",
+    "open_accounting_expense_source",
     "open_donor_api",
     "open_hacker_dojo_session",
     "open_host_session",

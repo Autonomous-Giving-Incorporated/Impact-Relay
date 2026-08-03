@@ -18,6 +18,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 ## P0 — First vertical slice
 
 - [x] Define normalized expense import contract.
+- [x] Add provider-neutral HTTPS JSON accounting source adapter for host-owned live expense exports.
 - [x] Implement fixture-backed Expense Intake Agent.
 - [x] Implement Allocation Classifier proposal output.
 - [x] Implement Evidence Validator states: `MISSING`, `PARTIAL`, `SUFFICIENT`, `CONTRADICTORY`, `EXPIRED`, `REDACTION_REQUIRED`.

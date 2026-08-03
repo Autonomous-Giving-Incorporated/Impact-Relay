@@ -70,7 +70,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Consent, preferences, fixture + SMTP/Postmark email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
-| Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
+| Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · `accounting.py` · [HD-IR-007](docs/HD-IR-007.md) |
 | Durable workflows (memory + SQLite/Postgres) | `workflows/` · [DURABLE-QUICKSTART](docs/DURABLE-QUICKSTART.md) |
 | Ledger command log rehydrate (K11/K17) | `domain/ledger_log.py` · `storage/command_log.py` |
 | Tenant registry, SQL ledger entities, outbox | `storage/` · [STORAGE](docs/architecture/STORAGE.md) |
@@ -84,7 +84,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 ### Deferred / host-owned production capabilities
 
-- live accounting provider adapter (beyond fixture batch);
+- live accounting provider credentials/authorized endpoint mapping (HTTPS JSON adapter boundary shipped; fixture batch remains default);
 - production Every.org donation ingestion (aggregate dry-run path exists);
 - production multi-region workflow DR and full observability (pilot local+SQL path shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
