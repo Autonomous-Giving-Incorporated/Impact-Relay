@@ -32,6 +32,10 @@ Ops detail: [docs/ops/](docs/ops/) (threat model, incident response, security ch
 - Separation of duties: proposers cannot self-approve; agent principals are rejected for L3 money paths.
 - Production notification credentials and SMS activation remain operator-gated.
 
+## Local operator session files
+
+Local `--workflow-ops` sessions use a versioned JSON format with an explicit class allowlist and a corruption-detection checksum. The checksum is not a signature and does not authenticate the file. Legacy Python pickle sessions are rejected because deserializing an attacker-controlled pickle can execute code. Treat session files as sensitive operational state, and use the durable SQLite/Postgres workflow path for production or restart-sensitive deployments.
+
 ## Incident response
 
 If personal data is accidentally committed:

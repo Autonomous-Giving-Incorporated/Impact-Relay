@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from impact_relay.agents.types import WorkflowState
 from impact_relay.cli import main
+from impact_relay.storage.ops_session import SessionFormatError
 from impact_relay.workflows.ops import (
     approval_from_dict,
     list_operator_cases,
@@ -66,16 +69,35 @@ def test_signal_and_pump_approves_expense() -> None:
 
 def test_session_roundtrip(tmp_path: Path) -> None:
     _runtime, store, binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())
-    path = tmp_path / "sess.pkl"
+    path = tmp_path / "sess.json"
     save_ops_session(path, store, binding, tenant_id=tenant_id)
+    assert path.read_bytes().startswith(b"{")
     store2, _binding2, tid2 = load_ops_session(path)
     assert tid2 == tenant_id
     cases = list_operator_cases(store2, tid2, filters=("waiting",))
     assert any(c.workflow_id == ids[0] for c in cases)
 
 
+def test_session_rejects_legacy_pickle_bytes(tmp_path: Path) -> None:
+    path = tmp_path / "legacy.pkl"
+    path.write_bytes(b"\x80\x04legacy-pickle")
+    with pytest.raises(SessionFormatError, match="UTF-8 JSON"):
+        load_ops_session(path)
+
+
+def test_session_rejects_checksum_mismatch(tmp_path: Path) -> None:
+    _runtime, store, binding, tenant_id, _ids = seed_session_to_wait(expense_rows=_rows())
+    path = tmp_path / "tampered.json"
+    save_ops_session(path, store, binding, tenant_id=tenant_id)
+    envelope = json.loads(path.read_text(encoding="utf-8"))
+    envelope["sha256"] = "0" * 64
+    path.write_text(json.dumps(envelope), encoding="utf-8")
+    with pytest.raises(SessionFormatError, match="integrity check failed"):
+        load_ops_session(path)
+
+
 def test_cli_ops_seed_list_signal(tmp_path: Path) -> None:
-    sess = tmp_path / "cli-sess.pkl"
+    sess = tmp_path / "cli-sess.json"
     code = main(
         [
             "--workflow-ops",
@@ -157,7 +179,7 @@ def test_cli_ops_seed_list_signal(tmp_path: Path) -> None:
 
 
 def test_cli_ops_demo(tmp_path: Path) -> None:
-    sess = tmp_path / "demo.pkl"
+    sess = tmp_path / "demo.json"
     code = main(
         [
             "--workflow-ops",
@@ -178,8 +200,6 @@ def test_cli_ops_demo(tmp_path: Path) -> None:
 
 
 def test_rejects_agent_approver_in_demo_path() -> None:
-    import pytest
-
     from impact_relay.agents.authority import AuthorityError
 
     runtime, store, _binding, tenant_id, ids = seed_session_to_wait(expense_rows=_rows())

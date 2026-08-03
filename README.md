@@ -55,7 +55,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 ## Current maturity
 
-**Package version:** `0.5.0` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
+**Package version:** `0.9.1` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
 
 **Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
 
@@ -321,6 +321,16 @@ python -m impact_relay --durable help
 python -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo
 python -m impact_relay --durable worker --once --data-dir .impact-relay/hacker-dojo
 ```
+
+Local operator-session demo:
+
+```bash
+python -m impact_relay --workflow-ops seed \
+  --workflow-session .impact-relay-workflow-session.json \
+  --expense-batch fixtures/expense_intake_batch_v1.json
+```
+
+Operator sessions use a versioned JSON graph with a fixed class allowlist and a corruption-detection checksum. The checksum does not authenticate a session file. Legacy pickle sessions are intentionally rejected and must not be loaded or converted from untrusted sources. Production and restart-sensitive deployments should use the durable SQLite/Postgres path instead.
 
 Library API:
 

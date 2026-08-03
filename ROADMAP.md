@@ -144,13 +144,14 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Fail-closed donor access: a donor-role principal whose claims lack `donor_id` must be denied, not waved through; decide and document behavior for `principal=None`. (`src/impact_relay/donor/api.py:53-58`, `src/impact_relay/auth/roles.py:44`) + tests.
 - [x] Implement the soft separation-of-duties dual-control branch (currently a `pass`) or explicitly downgrade it to a documented advisory with a logged warning. (`src/impact_relay/auth/rbac.py:76-86`) + tests.
 - [x] Fix silent `except ValueError: pass` in `console_server.resolve_principal` (hides auth misconfiguration); narrow the ~23 broad `except Exception` sites where a specific exception is knowable.
+- [x] Replace local operator-session pickle persistence with a versioned JSON graph, fixed class allowlist, corruption checksum, and explicit legacy-pickle rejection.
 
 ### Track B — Tooling and CI
 
 - [x] Add `ruff` (lint + format) and `mypy` configuration to `pyproject.toml` dev extras; fix resulting findings (codebase is already fully annotated — cost is low).
 - [x] Add lint + typecheck jobs to `.github/workflows/validate-and-deploy.yml`.
 - [x] Add a Postgres service container to CI and set `IMPACT_RELAY_DATABASE_URL` so the env-gated `SKIP LOCKED` test runs (`tests/test_workflow_sql_store.py:273`; credentials already in `docker-compose.postgres.yml`).
-- [x] Align version metadata with the roadmap (`pyproject.toml` and `src/impact_relay/__init__.py`, currently `0.5.0`).
+- [x] Align version metadata with the roadmap (`pyproject.toml`, `src/impact_relay/__init__.py`, and README now report `0.9.1`).
 
 ### Track C — Library completions (pure code; credentials remain ops)
 

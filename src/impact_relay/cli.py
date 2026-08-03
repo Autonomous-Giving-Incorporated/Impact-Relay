@@ -128,7 +128,7 @@ def _run_workflow_ops(args: argparse.Namespace) -> int:
     from impact_relay.workflows.runtime import WorkflowRuntime
 
     op = args.workflow_ops
-    session_path = args.workflow_session or Path(".impact-relay-workflow-session.pkl")
+    session_path = args.workflow_session or Path(".impact-relay-workflow-session.json")
 
     if op == "seed":
         batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")

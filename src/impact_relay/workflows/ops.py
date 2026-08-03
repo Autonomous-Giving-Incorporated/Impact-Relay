@@ -6,7 +6,6 @@ session file for multi-invocation CLI.
 
 from __future__ import annotations
 
-import pickle
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +13,11 @@ from typing import Any
 
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
 from impact_relay.agents.types import ApprovalReceipt, WorkflowState, utc_now_iso
+from impact_relay.storage.ops_session import (
+    SessionFormatError,
+    decode_session,
+    encode_session,
+)
 from impact_relay.workflows.runtime import WorkflowRuntime
 from impact_relay.workflows.store_memory import InMemoryWorkflowStore
 from impact_relay.workflows.types import WorkflowInstance, WorkflowRunStatus
@@ -263,8 +267,7 @@ def save_ops_session(
         "store": store,
         "binding": binding,
     }
-    with p.open("wb") as f:
-        pickle.dump(payload, f, protocol=pickle.HIGHEST_PROTOCOL)
+    p.write_text(encode_session(payload), encoding="utf-8")
 
 
 def load_ops_session(
@@ -273,8 +276,15 @@ def load_ops_session(
     p = Path(path)
     if not p.is_file():
         raise FileNotFoundError(f"workflow session not found: {p}")
-    with p.open("rb") as f:
-        payload = pickle.load(f)
+    try:
+        raw = p.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise SessionFormatError("workflow session is not valid UTF-8 JSON") from exc
+    payload = decode_session(raw)
+    if payload.get("version") != 1:
+        raise SessionFormatError(
+            f"unsupported workflow payload version: {payload.get('version')!r}"
+        )
     store = payload["store"]
     binding = payload["binding"]
     tenant_id = str(payload["tenant_id"])
