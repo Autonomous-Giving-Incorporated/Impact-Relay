@@ -31,9 +31,11 @@ CI validates that every required artifact path in that file exists.
 
 ## Result protocol
 
-- CI step `platform-conformance` runs `scripts/check_platform_conformance.py`.
-- The check fails fast if any required artifact is missing.
-- Optional follow-up expansion can enforce command execution checks if required later.
+- CI step `platform-conformance` runs `scripts/check_platform_conformance.py` in structural validation mode.
+- The structural check fails fast if any required artifact is missing or if the manifest shape is invalid.
+- Operators can run `python3 scripts/check_platform_conformance.py --run-commands` to execute the unique evidence commands declared in `docs/platform-conformance.yml`.
+- Evidence command execution is deduplicated by exact command string and fails fast with owning check IDs in the error output.
+- This keeps the default CI gate deterministic while enabling a stronger manual or future-CI verification mode.
 
 ## Change control
 
