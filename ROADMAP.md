@@ -26,7 +26,7 @@ Shipped:
 Open (ops / production):
 
 - live accounting ingestion beyond fixture batch;
-- production email, push, and SMS credentials (fixture adapters shipped; APNs/FCM clients are protocol placeholders);
+- production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/APNs/FCM adapters shipped; SMS production client remains open);
 - production multi-tenant workflow DR / multi-region observability;
 - live OIDC JWT validation wiring (library now ships a JWKS provider, `impact_relay.auth.jwt_oidc`; the host must point it at a real issuer or keep terminating auth at its gateway);
 - execute live finance cohort and fill `docs/pilot/FINDINGS.md`;
@@ -42,7 +42,7 @@ Closed in v0.9.1 (previously the honest gaps between the language above and the 
 
 Still open (needs credentials or live endpoints, not code):
 
-- SMTP/Postmark credentials and APNs/FCM client implementations behind the shipped protocols;
+- SMTP/Postmark/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
 - authorized Every.org and Notion aggregate endpoints for the shipped HTTPS fetchers.
 
 ## v0.5 — Agent Framework and Governance
@@ -122,7 +122,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
 - [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists). *(ops: requires authorized live data)*
 - [ ] Integrate one live accounting/expense source (fixture batch only today). *(ops: requires provider access; adapter code is agent work — see v0.9.1)*
-- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email adapters shipped; app push remains fixture-only). *(ops: credentials; push adapter implementations remain agent work — see v0.9.1)*
+- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
 - [ ] Complete privacy, security, and finance review with leadership. *(human)*
 - [ ] Run correction and provider-outage exercises with operators. *(human)*
 - [ ] Execute live cohort and fill findings template. *(human)*
@@ -158,7 +158,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] JWKS-based `OidcIdentityProvider` implementing the existing port (`src/impact_relay/auth/oidc.py`), as an optional extra (e.g. PyJWT) — keeps the zero-runtime-dependency base intact.
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
-- [ ] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
+- [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
 - [x] Optional HTTP fetchers for the Every.org aggregate and Notion public-evidence bridges, feeding the **existing** safety validators (`src/impact_relay/every_org.py`, `src/impact_relay/notion_public.py`) — HTTPS-only, bounded responses, host-owned bearer credentials, sanitized errors, and a deterministic mandatory PII firewall.
 - [x] Add the missing cross-boundary JSON Schemas: `agent-command`, `execution-receipt`, `validation-result` (`schemas/agents/` has only 3 of ~6 contracts).
 
@@ -182,7 +182,7 @@ Still open (needs credentials or live endpoints, not code):
 - [ ] Production observability, alerting, and audit explorer.
 - [ ] Live OIDC JWT validation in host gateway (library ports + RBAC already shipped).
 - [ ] Encrypted evidence storage and retention controls (object ports + SSE option exist).
-- [ ] Production email and push delivery.
+- [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/APNs/FCM adapter code already shipped).
 - [ ] Consent and preference center (model shipped; full UX deferred).
 - [ ] SLA/SLO definitions and incident response (runbooks drafted; SLOs not signed).
 - [ ] External security assessment.

@@ -87,7 +87,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add quiet-hour deferral (`DEFERRED_QUIET_HOURS`).
 - [x] Add deduplication keys.
 - [x] Add email adapter (fixture + `EmailAdapter` protocol).
-- [x] Add APNs/FCM adapter contract (placeholders + fixture push).
+- [x] Add APNs/FCM production adapters (fixture push remains default; credentials and device-token lookup are host-owned).
 - [x] Add delivery receipts and permanent-failure classification.
 - [x] Add unsubscribe and opt-out ingestion (preference enabled=False / consent revoke).
 
@@ -129,4 +129,4 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - Microservice decomposition.
 - Autonomous financial approval.
 - Host UI consoles (finance review / donor screens) — built in Hacker-Dojo app.
-- Live OIDC JWT validation (host IdP SDK) and live Postmark/APNs credentials.
+- Live OIDC JWT validation (host IdP SDK) and live SMTP/Postmark/APNs/FCM credentials.

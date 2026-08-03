@@ -67,7 +67,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Append-only correction and receipt lineage | domain + `workflows/corrections.py` |
 | Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
 | Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
-| Consent, preferences, fixture + SMTP email delivery | `domain/notifications.py` · `notifications/` |
+| Consent, preferences, fixture + SMTP/Postmark email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
 | Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
@@ -88,7 +88,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 - production Every.org donation ingestion (aggregate dry-run path exists);
 - production multi-region workflow DR and full observability (pilot local+SQL path shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
-- production SMTP credentials and host donor-address resolver; Postmark, push, and SMS clients remain open (SMTP + fixture delivery shipped);
+- production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);
 - self-service multi-nonprofit onboarding UI (clone-from-Hacker-Dojo template API shipped).
 

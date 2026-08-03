@@ -197,7 +197,10 @@ class APNsPushConfig:
             raise NotificationConfigurationError("APNs timeout must be numeric") from exc
         return cls(
             auth_token=values.get("IMPACT_RELAY_APNS_AUTH_TOKEN", ""),
-            topic=(values.get("IMPACT_RELAY_APNS_TOPIC", "") or values.get("IMPACT_RELAY_APNS_BUNDLE_ID", "")).strip(),
+            topic=(
+                values.get("IMPACT_RELAY_APNS_TOPIC", "")
+                or values.get("IMPACT_RELAY_APNS_BUNDLE_ID", "")
+            ).strip(),
             bundle_id=values.get("IMPACT_RELAY_APNS_BUNDLE_ID", "").strip(),
             endpoint=values.get("IMPACT_RELAY_APNS_ENDPOINT", "https://api.push.apple.com"),
             timeout_seconds=timeout,
@@ -332,7 +335,9 @@ def _validate_https_endpoint(endpoint: str, *, name: str, allow_path: bool = Tru
     if parsed.scheme != "https" or not parsed.hostname:
         raise NotificationConfigurationError(f"{name} must be an absolute HTTPS URL")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
-        raise NotificationConfigurationError(f"{name} must not contain userinfo, a query, or a fragment")
+        raise NotificationConfigurationError(
+            f"{name} must not contain userinfo, a query, or a fragment"
+        )
     if not allow_path and not parsed.path.startswith("/"):
         raise NotificationConfigurationError(f"{name} must be a valid endpoint path")
 
@@ -768,7 +773,9 @@ class APNsPushAdapter:
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
         if not _is_push_token_valid(device_token):
-            return DeliveryResult(False, "", "permanent: invalid APNs device token", permanent_failure=True)
+            return DeliveryResult(
+                False, "", "permanent: invalid APNs device token", permanent_failure=True
+            )
         safe_title = title
         safe_body = body
         if not _stringify_push_value(safe_title):
@@ -787,7 +794,7 @@ class APNsPushAdapter:
             **_safe_string_map(data or {}),
         }
         request = Request(
-            f"{self.config.endpoint.rstrip('/')}/3/device/{quote(device_token, safe='')}" ,
+            f"{self.config.endpoint.rstrip('/')}/3/device/{quote(device_token, safe='')}",
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self.config.auth_token}",
@@ -801,11 +808,11 @@ class APNsPushAdapter:
         )
         try:
             with self._opener(request, self.config.timeout_seconds) as response:
+                body = response.read(65_537)
                 content_type = str(response.headers.get("Content-Type", ""))
                 media_type = content_type.partition(";")[0].strip().lower()
-                if media_type != "application/json" and not media_type.endswith("+json"):
+                if body and media_type != "application/json" and not media_type.endswith("+json"):
                     return DeliveryResult(False, "", "temporary invalid APNs response")
-                body = response.read(65_537)
         except HTTPError as exc:
             permanent = 400 <= exc.code < 500 and exc.code != 429
             prefix = "permanent: " if permanent else ""
@@ -848,9 +855,7 @@ class APNsPushAdapter:
             or f"[{intent.message_class.value}] Impact Relay update"
         )
         body = str(
-            intent.payload.get("push_body")
-            or intent.payload.get("description")
-            or intent.source_id
+            intent.payload.get("push_body") or intent.payload.get("description") or intent.source_id
         )
         data = _safe_string_map(
             intent.payload.get("push_data")
@@ -862,7 +867,9 @@ class APNsPushAdapter:
                 "source-type": intent.source_type,
             },
         )
-        return self.send_push(device_token=device_token, title=title, body=body, data=data).as_tuple()
+        return self.send_push(
+            device_token=device_token, title=title, body=body, data=data
+        ).as_tuple()
 
 
 class FCMPushAdapter:
@@ -902,7 +909,9 @@ class FCMPushAdapter:
         data: dict[str, Any] | None = None,
     ) -> DeliveryResult:
         if not _is_push_token_valid(device_token):
-            return DeliveryResult(False, "", "permanent: invalid FCM device token", permanent_failure=True)
+            return DeliveryResult(
+                False, "", "permanent: invalid FCM device token", permanent_failure=True
+            )
         payload: dict[str, Any] = {
             "message": {
                 "token": device_token,
@@ -916,8 +925,12 @@ class FCMPushAdapter:
         if payload_data:
             payload["message"]["data"] = payload_data
 
+        send_url = (
+            f"{self.config.endpoint.rstrip('/')}/projects/"
+            f"{quote(self.config.project_id, safe='')}/messages:send"
+        )
         request = Request(
-            f"{self.config.endpoint.rstrip('/')}/projects/{quote(self.config.project_id, safe='')}/messages:send",
+            send_url,
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {self.config.server_token}",
@@ -976,9 +989,7 @@ class FCMPushAdapter:
             or f"[{intent.message_class.value}] Impact Relay update"
         )
         body = str(
-            intent.payload.get("push_body")
-            or intent.payload.get("description")
-            or intent.source_id
+            intent.payload.get("push_body") or intent.payload.get("description") or intent.source_id
         )
         data = _safe_string_map(
             intent.payload.get("push_data")
@@ -990,7 +1001,9 @@ class FCMPushAdapter:
                 "source-type": intent.source_type,
             },
         )
-        return self.send_push(device_token=device_token, title=title, body=body, data=data).as_tuple()
+        return self.send_push(
+            device_token=device_token, title=title, body=body, data=data
+        ).as_tuple()
 
 
 def open_push_adapter(
