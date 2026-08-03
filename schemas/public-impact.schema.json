@@ -60,6 +60,10 @@
           "impactEventId": { "type": "string" },
           "organizationName": { "type": "string" },
           "programName": { "type": "string" },
+          "allocationId": {
+            "type": "string",
+            "description": "Stable public allocation identifier for suite join with Fund-Intel and AGI (not a donor id)"
+          },
           "allocationName": { "type": "string" },
           "eventType": { "type": "string" },
           "eventDate": { "type": "string" },
