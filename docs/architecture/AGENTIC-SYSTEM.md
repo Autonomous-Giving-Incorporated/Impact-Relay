@@ -78,7 +78,7 @@ Do not split into microservices until independently scaling or isolating a bound
 | Identity | OIDC |
 | Policy | versioned YAML evaluated by deterministic application code |
 | Observability | OpenTelemetry, structured logs, Prometheus-compatible metrics |
-| Email | Postmark, SendGrid, or SES adapter |
+| Email | Shipped: standard-library SMTP adapter. Scale option: Postmark, SendGrid, or SES adapter |
 | SMS | Twilio adapter after explicit-consent validation |
 | Push | APNs and FCM adapters |
 

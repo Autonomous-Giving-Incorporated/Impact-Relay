@@ -43,6 +43,8 @@ class DeliveryAdapter(Protocol):
 class InProcessDeliveryAdapter:
     """Records delivery without calling external networks."""
 
+    fixture_consent_bootstrap = True
+
     def __init__(self, provider_name: str = "in_process_fixture", *, fail: bool = False) -> None:
         self.provider_name = provider_name
         self.fail = fail
@@ -315,6 +317,7 @@ class NotificationService:
         *,
         channel: NotificationChannel = NotificationChannel.EMAIL,
         deliver: bool = True,
+        payload_patch: dict[str, Any] | None = None,
     ) -> NotificationIntent:
         receipt = self.ledger.receipts.get(receipt_id)
         if receipt is None:
@@ -330,7 +333,7 @@ class NotificationService:
             message_class=msg,
             source_type="USE_OF_FUNDS" if not receipt.corrected else "CORRECTION",
             source_id=receipt_id,
-            payload=receipt.to_dict(),
+            payload={**receipt.to_dict(), **(payload_patch or {})},
             deliver=deliver,
         )
 

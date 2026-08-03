@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from impact_relay.domain.donor_views import DonorReadService
 from impact_relay.domain.impact import ImpactService
@@ -20,6 +20,10 @@ from impact_relay.domain.types import (
     Program,
     TenantIsolationError,
 )
+
+if TYPE_CHECKING:
+    from impact_relay.domain.notifications import DeliveryAdapter
+    from impact_relay.domain.types import NotificationChannel
 
 
 class TenantWorkspace:
@@ -44,6 +48,7 @@ class TenantWorkspace:
         self.intents: dict[str, NotificationIntent] = {}
         self.intents_by_dedup: dict[str, NotificationIntent] = {}
         self.deliveries: dict[str, NotificationDelivery] = {}
+        self.notification_adapters: dict[NotificationChannel, DeliveryAdapter] | None = None
 
     @property
     def organization(self) -> Organization:
@@ -56,7 +61,13 @@ class TenantWorkspace:
         return ImpactService(self)
 
     def notifications(self) -> NotificationService:
-        return NotificationService(self)
+        return NotificationService(self, adapters=self.notification_adapters)
+
+    def configure_notification_adapters(
+        self, adapters: dict[NotificationChannel, DeliveryAdapter]
+    ) -> None:
+        """Bind host-owned delivery transports to this tenant workspace."""
+        self.notification_adapters = dict(adapters)
 
 
 class Platform:

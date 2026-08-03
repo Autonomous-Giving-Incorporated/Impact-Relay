@@ -7,6 +7,8 @@
 - [ ] OIDC principal required for production approve (`require_principal_for_approve=True`)
 - [ ] SoD: no self-approve on corrections / expense approve
 - [ ] Secrets not in git (`.env` gitignored)
+- [ ] SMTP uses STARTTLS/SSL, credentials come from host secrets, and donor resolution remains host-owned
+- [ ] Production notification tests confirm missing consent performs no recipient lookup or network call
 - [ ] Backup restore dry-run documented
 - [ ] Incident contacts filled for Hacker Dojo tenant
 - [ ] Dependency audit (`pip` / supply chain)

@@ -28,7 +28,9 @@ from impact_relay.domain.types import (
     Expense,
     ExpenseState,
     NotificationChannel,
+    NotificationIntentStatus,
     NotificationPreference,
+    StateError,
     money,
 )
 from impact_relay.public_export import receipt_to_public
@@ -194,7 +196,13 @@ class LedgerCommandExecutor(CommandExecutor):
             raise AuthorityError("send payload receipt_hash does not match ledger receipt")
 
         ns = self.workspace.notifications()
-        if not self.workspace.consents.get((receipt.donor_id, NotificationChannel.EMAIL.value)):
+        email_adapter = ns.adapters.get(NotificationChannel.EMAIL)
+        is_fixture_adapter = bool(
+            email_adapter and getattr(email_adapter, "fixture_consent_bootstrap", False)
+        )
+        if is_fixture_adapter and not self.workspace.consents.get(
+            (receipt.donor_id, NotificationChannel.EMAIL.value)
+        ):
             ns.record_consent(
                 ConsentRecord(
                     donor_id=receipt.donor_id,
@@ -215,7 +223,18 @@ class LedgerCommandExecutor(CommandExecutor):
                 )
             )
 
-        intent = ns.evaluate_for_use_of_funds(receipt_id, deliver=True)
+        intent = ns.evaluate_for_use_of_funds(
+            receipt_id,
+            deliver=True,
+            payload_patch={
+                "email_subject": preview.subject,
+                "email_body_text": preview.body_text,
+                "email_template_version": preview.template_version,
+                "email_content_hash": preview.content_hash,
+            },
+        )
+        if intent.status != NotificationIntentStatus.DELIVERED:
+            raise StateError(f"notification delivery did not complete: {intent.status.value}")
         deliveries = [d for d in self.workspace.deliveries.values() if d.intent_id == intent.id]
         delivery = deliveries[-1] if deliveries else None
         refs = [intent.id]

@@ -6,6 +6,14 @@
 2. Do not invent live aggregates — reduce outside the repo (Every.org runbook).
 3. When feed returns, re-import via host adapter; workflows resume from WAITING_SIGNAL / PENDING.
 
+## SMTP outage or rejection
+
+1. Stop approving new notification sends if the provider is broadly unavailable.
+2. Inspect sanitized delivery status: 4xx/transport failures are temporary; authentication, sender rejection, recipient rejection, and 5xx responses are permanent for that attempt.
+3. Verify credentials and sender configuration in the host secret manager. Never paste passwords or raw provider responses into findings or tickets.
+4. Do not repeatedly invoke the same command: command and intent deduplication prevent duplicate sends. Preserve the failed delivery receipt.
+5. Correct the host configuration or donor contact record, confirm consent and preference remain active, then use host-owned recovery tooling to create a newly versioned, independently approved notification intent. Automated redelivery is not shipped in the library yet.
+
 ## Replay after crash
 
 ```bash

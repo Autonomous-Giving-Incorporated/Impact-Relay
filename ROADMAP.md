@@ -156,7 +156,8 @@ Still open (needs credentials or live endpoints, not code):
 ### Track C — Library completions (pure code; credentials remain ops)
 
 - [x] JWKS-based `OidcIdentityProvider` implementing the existing port (`src/impact_relay/auth/oidc.py`), as an optional extra (e.g. PyJWT) — keeps the zero-runtime-dependency base intact.
-- [ ] Real SMTP/Postmark email adapter and APNs/FCM clients behind the existing protocols in the notifications layer, env-configured, as optional extras; fixture adapters remain the test path.
+- [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
+- [ ] Postmark email adapter and APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
 - [ ] Optional HTTP fetchers for the Every.org aggregate and Notion public-evidence bridges, feeding the **existing** safety validators (`src/impact_relay/every_org.py`, `src/impact_relay/notion_public.py`) — the PII firewall stays deterministic and mandatory.
 - [x] Add the missing cross-boundary JSON Schemas: `agent-command`, `execution-receipt`, `validation-result` (`schemas/agents/` has only 3 of ~6 contracts).
 

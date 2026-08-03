@@ -36,6 +36,14 @@ Ops detail: [docs/ops/](docs/ops/) (threat model, incident response, security ch
 
 Local `--workflow-ops` sessions use a versioned JSON format with an explicit class allowlist and a corruption-detection checksum. The checksum is not a signature and does not authenticate the file. Legacy Python pickle sessions are rejected because deserializing an attacker-controlled pickle can execute code. Treat session files as sensitive operational state, and use the durable SQLite/Postgres workflow path for production or restart-sensitive deployments.
 
+## SMTP credentials and donor addresses
+
+- Keep `IMPACT_RELAY_SMTP_PASSWORD` in the host secret manager or process environment, never in policy files, fixtures, logs, delivery receipts, or git.
+- Donor email resolution is host-owned. The library receives an address only at the consent-checked delivery boundary and does not add email fields to the donor ledger or public exports.
+- SMTP provider response text is not persisted. Delivery details contain only sanitized classifications and status codes.
+- Production adapters never create consent. Missing or revoked consent blocks delivery before recipient resolution or network access.
+- Prefer `starttls` or `ssl`. Plain SMTP (`none`) is an explicit host decision and should be limited to a protected local relay.
+
 ## Incident response
 
 If personal data is accidentally committed:

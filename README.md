@@ -67,7 +67,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Append-only correction and receipt lineage | domain + `workflows/corrections.py` |
 | Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
 | Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
-| Consent, preferences, fixture delivery adapters | `domain/notifications.py` · `notifications/` |
+| Consent, preferences, fixture + SMTP email delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
 | Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
@@ -88,7 +88,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 - production Every.org donation ingestion (aggregate dry-run path exists);
 - production multi-region workflow DR and full observability (pilot local+SQL path shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
-- production email / push / SMS credentials (adapters + fixture delivery shipped);
+- production SMTP credentials and host donor-address resolver; Postmark, push, and SMS clients remain open (SMTP + fixture delivery shipped);
 - human finance live-cohort execution and findings fill (runbooks ready);
 - self-service multi-nonprofit onboarding UI (clone-from-Hacker-Dojo template API shipped).
 
@@ -297,6 +297,38 @@ pytest
 ```
 
 Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up`.
+
+### SMTP email adapter
+
+The library ships a standard-library SMTP adapter. Fixture email remains the default; selecting SMTP never falls back to fixtures when configuration is invalid.
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=smtp
+export IMPACT_RELAY_SMTP_HOST=smtp.example.org
+export IMPACT_RELAY_SMTP_PORT=587
+export IMPACT_RELAY_SMTP_FROM=impact@example.org
+export IMPACT_RELAY_SMTP_USERNAME=mailer
+export IMPACT_RELAY_SMTP_PASSWORD='from-your-secret-manager'
+export IMPACT_RELAY_SMTP_TLS=starttls  # starttls | ssl | none
+```
+
+Recipient lookup is deliberately host-owned because donor contact data must stay outside this repository. Bind the adapter to a tenant workspace with a resolver after the host has authenticated and loaded its private contact record:
+
+```python
+from impact_relay.domain.types import NotificationChannel
+from impact_relay.notifications import open_email_adapter
+from impact_relay.workflows.durable import open_workspace
+
+email = open_email_adapter(
+    address_resolver=lambda intent: private_contacts.email_for(intent.donor_id)
+)
+durable = open_workspace(".impact-relay/hacker-dojo")
+workspace = durable.binding.workspace(durable.tenant_id)
+assert workspace is not None
+workspace.configure_notification_adapters({NotificationChannel.EMAIL: email})
+```
+
+Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. SMTP sends the already-approved `EmailPreview` subject and body, records the generated Message-ID as the provider receipt, and sanitizes provider failures before durable recording.
 
 ## Pilot commands
 

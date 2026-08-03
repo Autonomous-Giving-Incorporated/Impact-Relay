@@ -5,7 +5,13 @@ Fixture adapters keep Hacker Dojo pilot offline and deterministic.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
+import smtplib
+import ssl
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
+from email.message import EmailMessage
+from email.utils import make_msgid
 from typing import Any, Protocol, runtime_checkable
 
 from impact_relay.domain.types import NotificationIntent
@@ -23,6 +29,67 @@ class DeliveryResult:
         if self.permanent_failure and "permanent" not in detail.lower():
             detail = f"permanent: {detail}" if detail else "permanent failure"
         return self.success, self.provider_receipt, detail
+
+
+class NotificationConfigurationError(ValueError):
+    """Invalid production notification configuration."""
+
+
+def _is_single_email_address(value: str) -> bool:
+    return bool(value and "@" in value and not any(ch.isspace() for ch in value))
+
+
+@dataclass(frozen=True)
+class SMTPConfig:
+    """Validated SMTP transport configuration without secret-bearing repr output."""
+
+    host: str
+    port: int
+    from_address: str
+    username: str = ""
+    password: str = field(default="", repr=False)
+    tls_mode: str = "starttls"
+    timeout_seconds: float = 10.0
+    reply_to: str = ""
+
+    def __post_init__(self) -> None:
+        mode = self.tls_mode.strip().lower()
+        object.__setattr__(self, "tls_mode", mode)
+        if not self.host.strip():
+            raise NotificationConfigurationError("SMTP host is required")
+        if not 1 <= self.port <= 65535:
+            raise NotificationConfigurationError("SMTP port must be between 1 and 65535")
+        if not _is_single_email_address(self.from_address):
+            raise NotificationConfigurationError("SMTP from address must be an email address")
+        if bool(self.username) != bool(self.password):
+            raise NotificationConfigurationError(
+                "SMTP username and password must either both be set or both be omitted"
+            )
+        if mode not in {"starttls", "ssl", "none"}:
+            raise NotificationConfigurationError("SMTP TLS mode must be starttls, ssl, or none")
+        if self.timeout_seconds <= 0:
+            raise NotificationConfigurationError("SMTP timeout must be positive")
+        if self.reply_to and not _is_single_email_address(self.reply_to):
+            raise NotificationConfigurationError("SMTP reply-to must be an email address")
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> SMTPConfig:
+        values = env if env is not None else os.environ
+        try:
+            port = int(values.get("IMPACT_RELAY_SMTP_PORT", "587"))
+            timeout = float(values.get("IMPACT_RELAY_SMTP_TIMEOUT_SECONDS", "10"))
+        except ValueError as exc:
+            raise NotificationConfigurationError("SMTP port and timeout must be numeric") from exc
+        return cls(
+            host=values.get("IMPACT_RELAY_SMTP_HOST", ""),
+            port=port,
+            from_address=values.get("IMPACT_RELAY_SMTP_FROM", ""),
+            username=values.get("IMPACT_RELAY_SMTP_USERNAME", ""),
+            password=values.get("IMPACT_RELAY_SMTP_PASSWORD", ""),
+            tls_mode=values.get("IMPACT_RELAY_SMTP_TLS", "starttls"),
+            timeout_seconds=timeout,
+            reply_to=values.get("IMPACT_RELAY_SMTP_REPLY_TO", ""),
+        )
 
 
 @runtime_checkable
@@ -64,6 +131,7 @@ class FixtureEmailAdapter:
     """In-process email — no network (pilot / tests)."""
 
     provider_name = "fixture_email"
+    fixture_consent_bootstrap = True
 
     def __init__(self, *, fail: bool = False, permanent: bool = False) -> None:
         self.fail = fail
@@ -102,6 +170,196 @@ class FixtureEmailAdapter:
         subject = f"[{intent.message_class.value}] Impact Relay update"
         body = str(intent.payload.get("description") or intent.source_id)
         return self.send_email(to_address=to, subject=subject, body_text=body).as_tuple()
+
+
+SMTPClientFactory = Callable[[SMTPConfig], Any]
+EmailAddressResolver = Callable[[NotificationIntent], str]
+
+
+def _open_smtp_client(config: SMTPConfig) -> Any:
+    if config.tls_mode == "ssl":
+        return smtplib.SMTP_SSL(
+            config.host,
+            config.port,
+            timeout=config.timeout_seconds,
+            context=ssl.create_default_context(),
+        )
+    return smtplib.SMTP(config.host, config.port, timeout=config.timeout_seconds)
+
+
+class SMTPEmailAdapter:
+    """Production-capable SMTP email transport using the standard library.
+
+    Recipient lookup remains host-owned. The resolver receives the consent-checked
+    ``NotificationIntent`` and must return one address for that donor.
+    """
+
+    provider_name = "smtp"
+
+    def __init__(
+        self,
+        config: SMTPConfig,
+        *,
+        address_resolver: EmailAddressResolver | None = None,
+        client_factory: SMTPClientFactory | None = None,
+    ) -> None:
+        self.config = config
+        self.address_resolver = address_resolver
+        self._client_factory = client_factory or _open_smtp_client
+
+    def _recipient_for(self, intent: NotificationIntent) -> str:
+        address = (
+            self.address_resolver(intent)
+            if self.address_resolver is not None
+            else str(intent.payload.get("donor_email") or "")
+        )
+        if not _is_single_email_address(address):
+            raise NotificationConfigurationError(
+                "SMTP delivery requires a host-provided donor email resolver"
+            )
+        return address
+
+    def send_email(
+        self,
+        *,
+        to_address: str,
+        subject: str,
+        body_text: str,
+        body_html: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> DeliveryResult:
+        message = EmailMessage()
+        message["From"] = self.config.from_address
+        message["To"] = to_address
+        message["Subject"] = subject
+        if self.config.reply_to:
+            message["Reply-To"] = self.config.reply_to
+        domain = self.config.from_address.rsplit("@", 1)[-1]
+        message_id = make_msgid(domain=domain)
+        message["Message-ID"] = message_id
+        for key, value in sorted((metadata or {}).items()):
+            safe_key = "".join(ch if ch.isalnum() else "-" for ch in key).strip("-")
+            if safe_key and "\n" not in value and "\r" not in value:
+                message[f"X-Impact-{safe_key}"] = value
+        message.set_content(body_text)
+        if body_html:
+            message.add_alternative(body_html, subtype="html")
+
+        try:
+            with self._client_factory(self.config) as client:
+                if self.config.tls_mode == "starttls":
+                    client.starttls(context=ssl.create_default_context())
+                if self.config.username:
+                    client.login(self.config.username, self.config.password)
+                refused = client.send_message(message)
+                if refused:
+                    return DeliveryResult(
+                        False,
+                        message_id,
+                        "permanent: recipient rejected by SMTP server",
+                        permanent_failure=True,
+                    )
+            return DeliveryResult(True, message_id, "accepted by SMTP server")
+        except smtplib.SMTPRecipientsRefused:
+            return DeliveryResult(
+                False,
+                message_id,
+                "permanent: recipient rejected by SMTP server",
+                permanent_failure=True,
+            )
+        except smtplib.SMTPSenderRefused:
+            return DeliveryResult(
+                False,
+                message_id,
+                "permanent: sender rejected by SMTP server",
+                permanent_failure=True,
+            )
+        except smtplib.SMTPAuthenticationError:
+            return DeliveryResult(
+                False,
+                message_id,
+                "permanent: SMTP authentication failed",
+                permanent_failure=True,
+            )
+        except smtplib.SMTPResponseException as exc:
+            permanent = exc.smtp_code >= 500
+            prefix = "permanent: " if permanent else ""
+            return DeliveryResult(
+                False,
+                message_id,
+                f"{prefix}SMTP server returned status {exc.smtp_code}",
+                permanent_failure=permanent,
+            )
+        except (OSError, TimeoutError, smtplib.SMTPException):
+            return DeliveryResult(False, message_id, "temporary SMTP transport failure")
+
+    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
+        try:
+            recipient = self._recipient_for(intent)
+        except NotificationConfigurationError as exc:
+            return DeliveryResult(
+                False,
+                "",
+                f"permanent: {exc}",
+                permanent_failure=True,
+            ).as_tuple()
+        except Exception:  # noqa: BLE001 - host resolver details may contain donor PII
+            return DeliveryResult(
+                False,
+                "",
+                "permanent: donor email resolution failed",
+                permanent_failure=True,
+            ).as_tuple()
+        subject = str(
+            intent.payload.get("email_subject")
+            or f"[{intent.message_class.value}] Impact Relay update"
+        )
+        body_text = str(
+            intent.payload.get("email_body_text")
+            or intent.payload.get("description")
+            or intent.source_id
+        )
+        body_html_raw = intent.payload.get("email_body_html")
+        body_html = str(body_html_raw) if body_html_raw else None
+        return self.send_email(
+            to_address=recipient,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+            metadata={
+                "intent-id": intent.id,
+                "tenant-id": intent.organization_id,
+                "source-id": intent.source_id,
+            },
+        ).as_tuple()
+
+
+def open_email_adapter(
+    *,
+    backend: str | None = None,
+    env: Mapping[str, str] | None = None,
+    address_resolver: EmailAddressResolver | None = None,
+    client_factory: SMTPClientFactory | None = None,
+) -> EmailAdapter:
+    """Open the explicit fixture or SMTP email backend.
+
+    SMTP configuration is validated immediately. No fallback to fixture delivery
+    occurs after ``smtp`` is selected.
+    """
+
+    values = env if env is not None else os.environ
+    kind = (backend or values.get("IMPACT_RELAY_EMAIL_BACKEND") or "fixture").lower().strip()
+    if kind == "fixture":
+        return FixtureEmailAdapter()
+    if kind == "smtp":
+        return SMTPEmailAdapter(
+            SMTPConfig.from_env(values),
+            address_resolver=address_resolver,
+            client_factory=client_factory,
+        )
+    raise NotificationConfigurationError(
+        f"unknown IMPACT_RELAY_EMAIL_BACKEND={kind!r} (use fixture or smtp)"
+    )
 
 
 class FixturePushAdapter:

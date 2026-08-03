@@ -10,7 +10,6 @@ from typing import Any
 from impact_relay.auth.principal import Principal
 from impact_relay.auth.rbac import AuthorizationError, Permission, assert_permission
 from impact_relay.domain.donor_views import DonorReadService
-from impact_relay.domain.notifications import NotificationService
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.domain.types import (
     NotificationChannel,
@@ -24,7 +23,7 @@ class DonorExperienceAPI:
     def __init__(self, workspace: TenantWorkspace) -> None:
         self.ws = workspace
         self.reads = DonorReadService(workspace)
-        self.notifications = NotificationService(workspace)
+        self.notifications = workspace.notifications()
 
     def _assert_donor_access(self, donor_id: str, principal: Principal | None) -> None:
         """Gate donor-scoped reads.
