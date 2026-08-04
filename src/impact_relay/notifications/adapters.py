@@ -588,7 +588,7 @@ class PostmarkEmailAdapter:
                 media_type = content_type.partition(";")[0].strip().lower()
                 if media_type != "application/json" and not media_type.endswith("+json"):
                     return DeliveryResult(False, "", "temporary invalid Postmark response")
-                body = response.read(65_537)
+                raw_body = response.read(65_537)
         except HTTPError as exc:
             permanent = 400 <= exc.code < 500 and exc.code != 429
             prefix = "permanent: " if permanent else ""
@@ -601,10 +601,10 @@ class PostmarkEmailAdapter:
         except (URLError, OSError, TimeoutError):
             return DeliveryResult(False, "", "temporary Postmark transport failure")
 
-        if len(body) > 65_536:
+        if len(raw_body) > 65_536:
             return DeliveryResult(False, "", "temporary invalid Postmark response")
         try:
-            result = json.loads(body.decode("utf-8"))
+            result = json.loads(raw_body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return DeliveryResult(False, "", "temporary invalid Postmark response")
         if not isinstance(result, dict):
@@ -808,10 +808,14 @@ class APNsPushAdapter:
         )
         try:
             with self._opener(request, self.config.timeout_seconds) as response:
-                body = response.read(65_537)
+                raw_body = response.read(65_537)
                 content_type = str(response.headers.get("Content-Type", ""))
                 media_type = content_type.partition(";")[0].strip().lower()
-                if body and media_type != "application/json" and not media_type.endswith("+json"):
+                if (
+                    raw_body
+                    and media_type != "application/json"
+                    and not media_type.endswith("+json")
+                ):
                     return DeliveryResult(False, "", "temporary invalid APNs response")
         except HTTPError as exc:
             permanent = 400 <= exc.code < 500 and exc.code != 429
@@ -825,11 +829,11 @@ class APNsPushAdapter:
         except (URLError, OSError, TimeoutError):
             return DeliveryResult(False, "", "temporary APNs transport failure")
 
-        if len(body) > 65_536:
+        if len(raw_body) > 65_536:
             return DeliveryResult(False, "", "temporary invalid APNs response")
-        if body:
+        if raw_body:
             try:
-                result = json.loads(body.decode("utf-8"))
+                result = json.loads(raw_body.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
                 return DeliveryResult(False, "", "temporary invalid APNs response")
             if not isinstance(result, dict):
@@ -945,7 +949,7 @@ class FCMPushAdapter:
                 media_type = content_type.partition(";")[0].strip().lower()
                 if media_type != "application/json" and not media_type.endswith("+json"):
                     return DeliveryResult(False, "", "temporary invalid FCM response")
-                body = response.read(65_537)
+                raw_body = response.read(65_537)
         except HTTPError as exc:
             permanent = 400 <= exc.code < 500 and exc.code != 429
             prefix = "permanent: " if permanent else ""
@@ -958,10 +962,10 @@ class FCMPushAdapter:
         except (URLError, OSError, TimeoutError):
             return DeliveryResult(False, "", "temporary FCM transport failure")
 
-        if len(body) > 65_536:
+        if len(raw_body) > 65_536:
             return DeliveryResult(False, "", "temporary invalid FCM response")
         try:
-            result = json.loads(body.decode("utf-8"))
+            result = json.loads(raw_body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             return DeliveryResult(False, "", "temporary invalid FCM response")
         if not isinstance(result, dict):

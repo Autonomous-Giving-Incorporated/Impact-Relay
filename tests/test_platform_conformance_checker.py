@@ -143,7 +143,7 @@ def test_run_evidence_commands_executes_unique_commands(
         "python3 -c "
         f"\"from pathlib import Path; p=Path(r'{counter}'); "
         "n=int(p.read_text() or '0') if p.exists() else 0; "
-        "p.write_text(str(n+1))\""
+        'p.write_text(str(n+1))"'
     )
     command_map = MODULE.collect_unique_commands(
         [
