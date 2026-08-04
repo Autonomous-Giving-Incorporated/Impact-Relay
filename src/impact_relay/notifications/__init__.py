@@ -5,8 +5,8 @@ from impact_relay.notifications.adapters import (
     APNsPushConfig,
     DeliveryResult,
     EmailAdapter,
-    FCMPushAdapter,
     FCMConfig,
+    FCMPushAdapter,
     FixtureEmailAdapter,
     FixturePushAdapter,
     NotificationConfigurationError,
@@ -15,17 +15,17 @@ from impact_relay.notifications.adapters import (
     PushAdapter,
     SMTPConfig,
     SMTPEmailAdapter,
-    open_push_adapter,
     open_email_adapter,
+    open_push_adapter,
 )
 
 __all__ = [
     "APNsPushAdapter",
+    "APNsPushConfig",
     "DeliveryResult",
     "EmailAdapter",
-    "FCMPushAdapter",
     "FCMConfig",
-    "APNsPushConfig",
+    "FCMPushAdapter",
     "FixtureEmailAdapter",
     "FixturePushAdapter",
     "NotificationConfigurationError",
@@ -34,6 +34,6 @@ __all__ = [
     "PushAdapter",
     "SMTPConfig",
     "SMTPEmailAdapter",
-    "open_push_adapter",
     "open_email_adapter",
+    "open_push_adapter",
 ]
