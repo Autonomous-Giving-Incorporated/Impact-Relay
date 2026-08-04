@@ -16,7 +16,9 @@ Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer
 
 ## Allocation middleware
 
-Suite product direction: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
+Suite product: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
+
+**Status:** MVP packages (pots → allocate → lightweight proof/packet) ship in [Fund-Intel `services/allocation-middleware/`](https://github.com/scrimshawlife-ctrl/Fund-Intel/tree/main/services/allocation-middleware). This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces; optional deeper binding is a later integration.
 
 See [docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md).
 

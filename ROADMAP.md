@@ -179,6 +179,17 @@ Still open (needs credentials or live endpoints, not code):
 
 **Exit gate:** unauthenticated or under-privileged requests cannot mutate anything even in pilot mode; CI enforces lint, types, and the Postgres path; every doc claim matches shipped code. All verifiable by `pytest` + CI — no credentials or human review required except the AGENTS.md PR.
 
+## Parallel — Allocation middleware (suite)
+
+Not a substitute for HD-IR / v1.0 gates. Fund-Intel hosts the transaction-light MVP; Impact Relay remains the evidence boundary.
+
+| Item | State |
+| --- | --- |
+| Role doc (proof / trail) | Documented ([docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md)) |
+| MVP allocate + light proof UI | Shipped in Fund-Intel (co-located modular monolith) |
+| Bind middleware allocation IDs to IR ledger / UOF | Later (when pilot needs full donor chain) |
+| Public aggregate `public-impact.json` | Unchanged separate surface |
+
 ## v1.0 — Production Release
 
 **Goal:** production-grade Hacker Dojo deployment.

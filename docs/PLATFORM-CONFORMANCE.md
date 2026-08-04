@@ -58,12 +58,15 @@ Cross-suite platform canon is pinned at **Specs v1.0.0**:
 
 This is distinct from the product inventory in `docs/platform-conformance.yml` (HD-IR / agent checks above).
 
-## Allocation middleware (product direction)
+## Allocation middleware
 
-Suite design for **transaction-light allocation middleware** (every.org → pots → human allocate → proof → packet):
+Suite product for **transaction-light allocation middleware** (every.org → pots → human allocate → proof → packet).
+
+**Status:** MVP package lives in Fund-Intel; Impact Relay remains the proof/trail discipline boundary (optional deeper ledger binding later).
 
 - [docs/ALLOCATION-MIDDLEWARE.md](ALLOCATION-MIDDLEWARE.md) — Impact Relay’s proof/trail role  
 - [Specs design](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/blob/main/docs/superpowers/specs/2026-08-03-allocation-middleware-design.md)  
+- [Fund-Intel pilot](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/HACKER-DOJO-ALLOCATION-PILOT.md)  
 
 Middleware does not replace HD-IR checks; it consumes the same evidence discipline without requiring deep financial system integration.
 
