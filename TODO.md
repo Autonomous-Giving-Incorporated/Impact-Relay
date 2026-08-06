@@ -2,6 +2,18 @@
 
 This backlog translates the roadmap into an implementation sequence. Items are ordered by dependency and risk.
 
+
+## AGI-001 — Documentation-only suite alignment
+
+- [x] Add concise architecture note: `docs/architecture/AGI-SUITE.md`.
+- [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the product suite around Fund-Intel and Impact Relay.
+- [x] Document Fund-Intel frontend target: GitHub Pages with Supabase auth and tenant metadata.
+- [x] Document Impact Relay backend recommendation: Cloud Run for hosted APIs and workers.
+- [x] Document shared `client_id == tenant_id` contract.
+- [x] Document `hacker-dojo` as the reference tenant.
+- [x] Clarify master admin versus tenant director boundaries.
+- [x] Note planned Supabase JWT validation before privileged backend calls.
+
 ## P0 — Governance and contracts
 
 - [x] Define `AuthorityLevel`, `AgentCommand`, `AgentProposal`, `ValidationResult`, `ApprovalReceipt`, `ExecutionReceipt`, and `AgentRunReceipt`.

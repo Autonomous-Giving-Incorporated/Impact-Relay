@@ -46,6 +46,20 @@ Still open (needs credentials or live endpoints, not code):
 - SMTP/Postmark/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
 - authorized Every.org and Notion aggregate endpoints for the shipped HTTPS fetchers.
 
+## AGI-001 — A.G.I. suite documentation
+
+**Goal:** document the suite boundary between Fund Intel and Impact Relay without changing runtime code.
+
+- [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the governed product suite name.
+- [x] Document Fund Intel as the AGI decision workspace (Vercel path `/fund-intel/` + platform Supabase).
+- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers; public aggregate surface on `autogive.app/impact-relay/`.
+- [x] Define the shared `client_id == tenant_id` contract.
+- [x] Identify `hacker-dojo` / `org_hacker_dojo` as the **reference tenant** (fixture and template), not product identity.
+- [x] Clarify master admin versus tenant director boundaries.
+- [x] Track planned Supabase JWT validation at the backend gateway.
+
+**Exit gate:** docs consistently describe A.G.I., Fund Intel, Cloud Run, Hacker Dojo as tenant, shared tenancy, admin boundaries, and planned Supabase JWT validation. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
+
 ## v0.5 — Agent Framework and Governance
 
 **Goal:** establish bounded agent contracts without changing financial authority.
