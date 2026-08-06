@@ -25,3 +25,5 @@ htmlcov/
 
 # Local dev tooling (project uses pip)
 uv.lock
+.vercel
+.env*
