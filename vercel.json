@@ -5,7 +5,7 @@
   "buildCommand": "echo skip-build",
   "outputDirectory": ".",
   "cleanUrls": true,
-  "trailingSlash": true,
+  "trailingSlash": false,
   "headers": [
     {
       "source": "/(.*)",
