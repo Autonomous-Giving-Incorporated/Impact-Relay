@@ -19,6 +19,7 @@ from typing import Any
 from impact_relay.domain.ledger import Ledger
 from impact_relay.domain.types import (
     Allocation,
+    AttributionMethod,
     Donation,
     DonationAllocation,
     Donor,
@@ -32,7 +33,6 @@ from impact_relay.domain.types import (
     UseOfFundsReceipt,
     money,
 )
-from impact_relay.domain.types import AttributionMethod
 
 
 class LedgerLogError(ValueError):
@@ -69,14 +69,10 @@ def snapshot_ledger_entities(ledger: Ledger) -> dict[str, Any]:
         "evidence": {k: entity_to_jsonable(v) for k, v in ledger.evidence.items()},
         "attributions": {k: entity_to_jsonable(v) for k, v in ledger.attributions.items()},
         "receipts": {k: entity_to_jsonable(v) for k, v in ledger.receipts.items()},
-        "receipt_snapshots": dict(ledger._receipt_snapshots),  # noqa: SLF001
-        "expense_receipts": {
-            k: list(v) for k, v in ledger._expense_receipts.items()  # noqa: SLF001
-        },
+        "receipt_snapshots": dict(ledger._receipt_snapshots),
+        "expense_receipts": {k: list(v) for k, v in ledger._expense_receipts.items()},
         "external_index": {
-            e.external_source_id: e.id
-            for e in ledger.expenses.values()
-            if e.external_source_id
+            e.external_source_id: e.id for e in ledger.expenses.values() if e.external_source_id
         },
         "organization": entity_to_jsonable(ledger.organization),
     }
@@ -113,7 +109,9 @@ def _expense_from_dict(d: dict[str, Any]) -> Expense:
         purchase_date=d["purchase_date"],
         category=d["category"],
         description=d.get("description", ""),
-        state=ExpenseState(d["state"] if not isinstance(d["state"], ExpenseState) else d["state"].value),
+        state=ExpenseState(
+            d["state"] if not isinstance(d["state"], ExpenseState) else d["state"].value
+        ),
         external_source_id=d.get("external_source_id"),
         approved_by=d.get("approved_by"),
         reconciled_at=d.get("reconciled_at"),
@@ -166,9 +164,7 @@ def apply_result_json(ledger: Ledger, result: dict[str, Any]) -> None:
     # Organization (last write wins; must match ledger org)
     org = entities.get("organization")
     if org and org.get("id") and org["id"] != ledger.organization.id:
-        raise LedgerLogError(
-            f"org mismatch in log: {org.get('id')} vs {ledger.organization.id}"
-        )
+        raise LedgerLogError(f"org mismatch in log: {org.get('id')} vs {ledger.organization.id}")
 
     for did, raw in (entities.get("donors") or {}).items():
         ledger.donors[did] = Donor(
@@ -246,10 +242,10 @@ def apply_result_json(ledger: Ledger, result: dict[str, Any]) -> None:
         ledger.receipts[rid] = _receipt_from_dict(raw)
 
     for rid, snap in (entities.get("receipt_snapshots") or {}).items():
-        ledger._receipt_snapshots[rid] = snap  # noqa: SLF001
+        ledger._receipt_snapshots[rid] = snap
 
     for eid, rids in (entities.get("expense_receipts") or {}).items():
-        ledger._expense_receipts[eid] = list(rids)  # noqa: SLF001
+        ledger._expense_receipts[eid] = list(rids)
 
 
 class FileLedgerCommandLog:
@@ -325,8 +321,6 @@ class FileLedgerCommandLog:
         for row in self.iter_rows(tenant_id=organization.id):
             result = row.get("result_json")
             if not result:
-                raise LedgerLogError(
-                    f"missing result_json for {row.get('idempotency_key')}"
-                )
+                raise LedgerLogError(f"missing result_json for {row.get('idempotency_key')}")
             apply_result_json(ledger, result)
         return ledger

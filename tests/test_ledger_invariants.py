@@ -47,9 +47,7 @@ def _ledger() -> Ledger:
             received_at="2026-01-01",
         )
     )
-    led.assign_donation_allocation(
-        donation_id="don1", allocation_id="a1", amount=Decimal("100.00")
-    )
+    led.assign_donation_allocation(donation_id="don1", allocation_id="a1", amount=Decimal("100.00"))
     return led
 
 
@@ -109,16 +107,12 @@ def test_expense_allocations_must_sum_to_expense_amount_on_approve() -> None:
     )
     # Manually plant a bad split by using allocate then mutating store is not possible;
     # allocate_expense_splits enforces sum. Force bad state via partial allocate + approve.
-    led.allocate_expense(
-        expense_id="e1", allocation_id="a1", amount=Decimal("40.00")
-    )
+    led.allocate_expense(expense_id="e1", allocation_id="a1", amount=Decimal("40.00"))
     # Tamper: replace with under-allocation to prove approve enforces invariant on shipped path.
     ea_id = next(iter(led.expense_allocations))
     from impact_relay.domain.types import ExpenseAllocation
 
-    bad = ExpenseAllocation(
-        id=ea_id, expense_id="e1", allocation_id="a1", amount=Decimal("10.00")
-    )
+    bad = ExpenseAllocation(id=ea_id, expense_id="e1", allocation_id="a1", amount=Decimal("10.00"))
     led.expense_allocations[ea_id] = bad
     with pytest.raises(InvariantError, match="must equal expense amount"):
         led.approve_expense("e1", approved_by="finance")
@@ -139,9 +133,7 @@ def test_restricted_balance_cannot_go_negative_on_approve() -> None:
             state=ExpenseState.IMPORTED,
         )
     )
-    led.allocate_expense(
-        expense_id="e_big", allocation_id="a1", amount=Decimal("100.01")
-    )
+    led.allocate_expense(expense_id="e_big", allocation_id="a1", amount=Decimal("100.01"))
     with pytest.raises(InvariantError, match="would go negative"):
         led.approve_expense("e_big", approved_by="finance")
 
@@ -167,9 +159,7 @@ def test_verified_receipt_blocked_for_draft_and_pending() -> None:
             )
         )
         if state != ExpenseState.DRAFT:
-            led.allocate_expense(
-                expense_id=eid, allocation_id="a1", amount=Decimal("10.00")
-            )
+            led.allocate_expense(expense_id=eid, allocation_id="a1", amount=Decimal("10.00"))
         # APPROVAL_PENDING after allocate; DRAFT stays draft without allocate.
         if state == ExpenseState.APPROVAL_PENDING:
             assert led.expenses[eid].state == ExpenseState.APPROVAL_PENDING
@@ -201,7 +191,7 @@ def test_attribution_none_rejected() -> None:
         )
     )
     led.allocate_expense(expense_id="e1", allocation_id="a1", amount=Decimal("10.00"))
-    with pytest.raises(AttributionError, match="disallowed|phantom"):
+    with pytest.raises(AttributionError, match=r"disallowed|phantom"):
         led.attribute_donor_to_expense(
             donor_id="d1",
             donation_id="don1",
@@ -260,7 +250,7 @@ def test_silent_approved_expense_mutation_forbidden() -> None:
     )
     led.allocate_expense(expense_id="e1", allocation_id="a1", amount=Decimal("10.00"))
     led.approve_expense("e1", approved_by="finance")
-    with pytest.raises(StateError, match="silent mutation|forbidden"):
+    with pytest.raises(StateError, match=r"silent mutation|forbidden"):
         led.mutate_approved_expense("e1", amount=Decimal("1.00"))
 
 
@@ -328,9 +318,7 @@ def test_donor_attribution_cannot_exceed_donation_allocation_across_expenses() -
                 state=ExpenseState.IMPORTED,
             )
         )
-        led.allocate_expense(
-            expense_id=eid, allocation_id="a1", amount=Decimal(amt)
-        )
+        led.allocate_expense(expense_id=eid, allocation_id="a1", amount=Decimal(amt))
         led.approve_expense(eid, approved_by="finance")
 
     led.attribute_donor_to_expense(
@@ -362,11 +350,7 @@ def test_donor_attribution_cannot_exceed_donation_allocation_across_expenses() -
 
     # No second receipt; donor remaining never goes negative via public path.
     assert led.donor_remaining_on_allocation("don_primary", "a1") == Decimal("40.00")
-    live = [
-        r
-        for r in led.receipts.values()
-        if not r.corrected and r.donation_id == "don_primary"
-    ]
+    live = [r for r in led.receipts.values() if not r.corrected and r.donation_id == "don_primary"]
     assert len(live) == 1
     assert live[0].receipt_id == r1.receipt_id
     assert all(r.remaining_designated_balance >= Decimal("0.00") for r in live)

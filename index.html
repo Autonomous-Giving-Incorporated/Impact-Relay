@@ -1,14 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <base href="/impact-relay/" />
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Impact Relay — public donation progress and impact milestone notifications. Aggregate totals only.">
   <meta name="robots" content="index,follow">
-  <title>Impact Relay · Donation Tracker</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="canonical" href="https://autogive.app/impact-relay/">
+  <title>Impact Relay · AGI</title>
+  <link rel="icon" href="assets/brand/agi-mark.png" type="image/png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,11 +17,19 @@
   <div class="page">
     <header class="site-header">
       <div>
-        <p class="brand-mark">Impact Relay</p>
+        <a class="suite-brand" href="https://autogive.app/" aria-label="Autonomously Giving Incorporated, home">
+          <img src="assets/brand/agi-wordmark.png" alt="Autonomously Giving Incorporated" width="1200" height="290">
+          <span><small>AGI product</small><strong>Impact Relay</strong></span>
+        </a>
+        <p class="brand-mark">AGI Impact Relay · public evidence for the active tenant</p>
+        <p class="tenant-chip" id="tenantChip"><span class="tenant-label">Tenant</span> <strong id="tenantName">Hacker Dojo</strong> <span class="tenant-note">(reference)</span></p>
         <h1 id="orgName">Hacker Dojo</h1>
         <p id="orgTagline" class="lede">Keep the room where builders become possible.</p>
       </div>
       <nav class="header-actions" aria-label="Page">
+        <a class="nav-link suite-link" href="https://autogive.app/">AGI</a>
+        <a class="nav-link suite-link" href="https://autogive.app/fund-intel/">Fund Intel</a>
+        <a class="nav-link suite-link" href="https://autogive.app/fund-intel/workspace.html">Sign in</a>
         <a class="nav-link" href="#public-evidence">Evidence</a>
         <a class="nav-link" href="#digests">Digests</a>
         <a class="nav-link" href="#use-of-funds">Funds</a>
@@ -106,7 +114,7 @@
           </div>
         </div>
         <p id="evidenceNote" class="note"></p>
-        <div id="evidence990" class="table-wrap"></div>
+        <div id="evidence990" class="table-wrap" tabindex="0" role="region" aria-label="Form 990 financial records"></div>
         <div id="evidenceHistorical" class="record-list"></div>
       </section>
 
@@ -174,12 +182,12 @@
 
     <footer class="site-footer">
       <div class="footer-row">
-        <span>Impact Relay · public aggregate surface</span>
+        <span class="footer-suite"><img src="assets/brand/agi-mark.png" alt="" width="28" height="28">Autonomously Giving Incorporated · Impact Relay</span>
         <span id="updatedAt">Updated —</span>
       </div>
       <div class="footer-row">
         <span>Source: processor aggregates · Form 990 evidence · verified fixtures</span>
-        <a href="https://github.com/scrimshawlife-ctrl/Impact-Relay">Repository</a>
+        <span class="footer-legal"><span>Software by Zero State</span><a href="https://autogive.app/brand#tokens">Tokens</a><a href="https://autogive.app/brand#logo">Logo use</a><a href="https://autogive.app/legal">Legal</a></span>
       </div>
     </footer>
   </div>

@@ -58,13 +58,9 @@ def assert_execution_authorized(
     if not requires_human_approval(command):
         return
     if approval is None:
-        raise AuthorityError(
-            f"command {command.command_type} requires human ApprovalReceipt"
-        )
+        raise AuthorityError(f"command {command.command_type} requires human ApprovalReceipt")
     if approval.decision != "APPROVE":
-        raise AuthorityError(
-            f"approval decision is {approval.decision}, not APPROVE"
-        )
+        raise AuthorityError(f"approval decision is {approval.decision}, not APPROVE")
     if approval.command_idempotency_key != command.idempotency_key:
         raise AuthorityError("approval does not match command idempotency_key")
     if approval.tenant_id != command.tenant_id:

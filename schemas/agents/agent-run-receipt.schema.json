@@ -21,29 +21,91 @@
     "output_hash",
     "started_at",
     "completed_at",
-    "status"
+    "status",
+    "prompt_version"
   ],
   "properties": {
-    "run_id": { "type": "string" },
-    "tenant_id": { "type": "string" },
-    "workflow": { "type": "string" },
-    "agent": { "type": "string" },
-    "agent_version": { "type": "string" },
-    "policy_version": { "type": "string" },
-    "prompt_version": { "type": ["string", "null"] },
-    "input_refs": { "type": "array", "items": { "type": "string" } },
-    "input_hash": { "type": "string" },
-    "proposed_actions": { "type": "array", "items": { "type": "string" } },
-    "accepted_actions": { "type": "array", "items": { "type": "string" } },
-    "rejected_actions": { "type": "array", "items": { "type": "string" } },
-    "human_approvals": { "type": "array", "items": { "type": "string" } },
-    "output_refs": { "type": "array", "items": { "type": "string" } },
-    "output_hash": { "type": "string" },
-    "started_at": { "type": "string" },
-    "completed_at": { "type": "string" },
+    "run_id": {
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "workflow": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "agent_version": {
+      "type": "string"
+    },
+    "policy_version": {
+      "type": "string"
+    },
+    "prompt_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "input_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "input_hash": {
+      "type": "string"
+    },
+    "proposed_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "accepted_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rejected_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "human_approvals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_hash": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
-      "enum": ["SUCCEEDED", "FAILED", "PARTIAL", "BLOCKED", "SIMULATED"]
+      "enum": [
+        "SUCCEEDED",
+        "FAILED",
+        "PARTIAL",
+        "BLOCKED",
+        "SIMULATED"
+      ]
     }
   }
 }

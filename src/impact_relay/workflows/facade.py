@@ -13,6 +13,8 @@ from impact_relay.agents.authority import AuthorityError
 from impact_relay.agents.base import AgentContext, build_run_receipt
 from impact_relay.agents.expense_workflow import (
     ExpenseSliceResult,
+)
+from impact_relay.agents.expense_workflow import (
     run_expense_approval_slice_legacy as legacy_run_expense_approval_slice,
 )
 from impact_relay.agents.ledger_binding import InMemoryLedgerBinding
@@ -45,7 +47,7 @@ def facade_mode() -> str:
 
 
 def run_expense_approval_slice(
-    ledger: "Ledger",
+    ledger: Ledger,
     *,
     expense_rows: list[dict[str, Any]],
     human_approver_id: str,
@@ -90,7 +92,7 @@ def run_expense_approval_slice(
 
 
 def run_expense_approval_slice_via_runtime(
-    ledger: "Ledger",
+    ledger: Ledger,
     *,
     expense_rows: list[dict[str, Any]],
     human_approver_id: str,
@@ -105,7 +107,6 @@ def run_expense_approval_slice_via_runtime(
 ) -> ExpenseSliceResult:
     """Runtime path: batch intake once, then one workflow instance per expense."""
     from impact_relay.agents.executor import LedgerCommandExecutor
-    from impact_relay.agents.types import AgentCommand, AuthorityLevel
     from impact_relay.workflows.expense_to_receipt import step_intake
 
     started = utc_now_iso()
@@ -174,7 +175,7 @@ def run_expense_approval_slice_via_runtime(
 
     # Map external ids → expense ids
     imported: list[tuple[str, dict[str, Any]]] = []
-    for i, row in enumerate(expense_rows):
+    for row in expense_rows:
         ext = row.get("external_source_id") or row.get("id")
         if simulation:
             imported.append((f"sim_{ext}", row))
@@ -217,9 +218,7 @@ def run_expense_approval_slice_via_runtime(
         if evidence_flags:
             inst.context["evidence_flags"] = dict(evidence_flags)
             runtime.store.update_instance(inst)
-        inst = runtime.run_until_wait_or_terminal(
-            inst.workflow_id, tenant_id=tenant_id
-        )
+        inst = runtime.run_until_wait_or_terminal(inst.workflow_id, tenant_id=tenant_id)
 
         # Harvest success receipts from store (parity with linear executor.receipts)
         for (tid, _), rec in getattr(store, "_receipts", {}).items():
@@ -242,9 +241,7 @@ def run_expense_approval_slice_via_runtime(
                     category=row.get("category", ""),
                     description=row.get("description", ""),
                     proposed_allocation_id=row.get("allocation_id"),
-                    evidence_sufficiency=inst.context.get(
-                        "evidence_sufficiency", "CONTRADICTORY"
-                    ),
+                    evidence_sufficiency=inst.context.get("evidence_sufficiency", "CONTRADICTORY"),
                     evidence_summaries=[],
                     classifier_confidence=None,
                     warnings=[inst.context.get("evidence_sufficiency", "BLOCKED")],
@@ -280,9 +277,7 @@ def run_expense_approval_slice_via_runtime(
                 runtime.signal_approval(
                     tenant_id=tenant_id, workflow_id=inst.workflow_id, approval=ar
                 )
-                inst = runtime.run_until_wait_or_terminal(
-                    inst.workflow_id, tenant_id=tenant_id
-                )
+                inst = runtime.run_until_wait_or_terminal(inst.workflow_id, tenant_id=tenant_id)
                 for (tid, _), rec in getattr(store, "_receipts", {}).items():
                     if tid == tenant_id and rec not in executions:
                         executions.append(rec)
@@ -308,9 +303,7 @@ def run_expense_approval_slice_via_runtime(
                 runtime.signal_approval(
                     tenant_id=tenant_id, workflow_id=inst.workflow_id, approval=ar
                 )
-                inst = runtime.run_until_wait_or_terminal(
-                    inst.workflow_id, tenant_id=tenant_id
-                )
+                inst = runtime.run_until_wait_or_terminal(inst.workflow_id, tenant_id=tenant_id)
                 for (tid, _), rec in getattr(store, "_receipts", {}).items():
                     if tid == tenant_id and rec not in executions:
                         executions.append(rec)
@@ -336,9 +329,7 @@ def run_expense_approval_slice_via_runtime(
                 runtime.signal_approval(
                     tenant_id=tenant_id, workflow_id=inst.workflow_id, approval=ar
                 )
-                inst = runtime.run_until_wait_or_terminal(
-                    inst.workflow_id, tenant_id=tenant_id
-                )
+                inst = runtime.run_until_wait_or_terminal(inst.workflow_id, tenant_id=tenant_id)
                 for (tid, _), rec in getattr(store, "_receipts", {}).items():
                     if tid == tenant_id and rec not in executions:
                         executions.append(rec)
@@ -395,9 +386,7 @@ def run_expense_approval_slice_via_runtime(
         instance_states.append((inst.workflow_id, inst.workflow_state))
 
     # K18: last instance state
-    workflow_state = (
-        instance_states[-1][1] if instance_states else WorkflowState.BLOCKED
-    )
+    workflow_state = instance_states[-1][1] if instance_states else WorkflowState.BLOCKED
 
     run = build_run_receipt(
         run_id=f"run_{started}",

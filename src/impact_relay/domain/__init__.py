@@ -13,14 +13,14 @@ from impact_relay.domain.types import (
 )
 
 __all__ = [
-    "Ledger",
-    "Platform",
-    "TenantWorkspace",
     "Allocation",
     "AttributionMethod",
     "Donation",
     "Expense",
     "ExpenseState",
+    "Ledger",
+    "Platform",
     "RestrictionType",
+    "TenantWorkspace",
     "UseOfFundsReceipt",
 ]

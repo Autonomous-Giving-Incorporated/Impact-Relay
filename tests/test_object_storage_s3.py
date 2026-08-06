@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -10,9 +12,12 @@ import pytest
 
 from impact_relay.storage.objects import (
     LocalObjectStorage,
+    ObjectRetentionPolicy,
     ObjectStorageError,
+    RetentionPurgeReceipt,
     S3ObjectStorage,
     open_object_storage,
+    retention_metadata,
     validate_object_ref,
 )
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
@@ -105,6 +110,130 @@ def test_s3_key_prefix_and_sse() -> None:
     assert fake.objects[("bkt", key)]["ServerSideEncryption"] == "AES256"
 
 
+def test_retention_policy_metadata_validates_and_merges() -> None:
+    now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+    policy = ObjectRetentionPolicy.for_days(
+        classification="evidence",
+        days=30,
+        now=now,
+        legal_hold=True,
+    )
+    assert policy.metadata() == {
+        "retention_classification": "evidence",
+        "retain_until": "2026-08-31T12:00:00+00:00",
+        "legal_hold": "true",
+    }
+    assert retention_metadata(policy, {"source": "fixture"}) == {
+        "source": "fixture",
+        "retention_classification": "evidence",
+        "retain_until": "2026-08-31T12:00:00+00:00",
+        "legal_hold": "true",
+    }
+    with pytest.raises(ObjectStorageError, match="days"):
+        ObjectRetentionPolicy.for_days(classification="evidence", days=-1, now=now)
+    with pytest.raises(ObjectStorageError, match="classification"):
+        ObjectRetentionPolicy(classification="bad\nclass", retain_until="2026-08-31T00:00:00+00:00")
+    with pytest.raises(ObjectStorageError, match="ISO"):
+        ObjectRetentionPolicy(classification="evidence", retain_until="not-a-date")
+
+
+def test_local_put_with_retention_and_purge_expired(tmp_path: Path) -> None:
+    store = LocalObjectStorage(tmp_path / "obj")
+    now = datetime(2026, 8, 1, 12, 0, tzinfo=UTC)
+    expired = ObjectRetentionPolicy.for_days(classification="evidence", days=0, now=now)
+    retained = ObjectRetentionPolicy.for_days(classification="evidence", days=2, now=now)
+    held = ObjectRetentionPolicy.for_days(
+        classification="evidence", days=0, now=now, legal_hold=True
+    )
+
+    store.put_with_retention(
+        CANONICAL_PILOT_TENANT_ID,
+        "evidence/expired.pdf",
+        b"expired",
+        retention=expired,
+        content_type="application/pdf",
+        meta={"source": "fixture"},
+    )
+    store.put_with_retention(
+        CANONICAL_PILOT_TENANT_ID,
+        "evidence/retained.pdf",
+        b"retained",
+        retention=retained,
+    )
+    store.put_with_retention(
+        CANONICAL_PILOT_TENANT_ID,
+        "evidence/held.pdf",
+        b"held",
+        retention=held,
+    )
+    store.put(CANONICAL_PILOT_TENANT_ID, "evidence/no-retention.pdf", b"keep")
+
+    meta_path = tmp_path / "obj" / CANONICAL_PILOT_TENANT_ID / "evidence" / "expired.pdf.meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert meta["content_type"] == "application/pdf"
+    assert meta["meta"]["source"] == "fixture"
+    assert meta["meta"]["retain_until"] == "2026-08-01T12:00:00+00:00"
+
+    dry_run = store.purge_expired(CANONICAL_PILOT_TENANT_ID, now=now, dry_run=True)
+    assert dry_run == RetentionPurgeReceipt(
+        tenant_id=CANONICAL_PILOT_TENANT_ID,
+        scanned=4,
+        purged=1,
+        retained=2,
+        held=1,
+        purged_keys=("evidence/expired.pdf",),
+    )
+    assert store.exists(CANONICAL_PILOT_TENANT_ID, "evidence/expired.pdf")
+
+    receipt = store.purge_expired(CANONICAL_PILOT_TENANT_ID, now=now)
+    assert receipt.to_dict()["purged_keys"] == ["evidence/expired.pdf"]
+    assert not store.exists(CANONICAL_PILOT_TENANT_ID, "evidence/expired.pdf")
+    assert store.exists(CANONICAL_PILOT_TENANT_ID, "evidence/retained.pdf")
+    assert store.exists(CANONICAL_PILOT_TENANT_ID, "evidence/held.pdf")
+    assert store.exists(CANONICAL_PILOT_TENANT_ID, "evidence/no-retention.pdf")
+
+
+def test_local_purge_empty_tenant_and_invalid_tenant(tmp_path: Path) -> None:
+    store = LocalObjectStorage(tmp_path / "obj")
+    assert store.purge_expired("org_empty").to_dict() == {
+        "tenant_id": "org_empty",
+        "scanned": 0,
+        "purged": 0,
+        "retained": 0,
+        "held": 0,
+        "purged_keys": [],
+    }
+    with pytest.raises(ObjectStorageError):
+        store.purge_expired("bad/tenant")
+
+
+def test_s3_put_with_retention_keeps_sse_and_metadata() -> None:
+    fake = FakeS3Client()
+    s3 = S3ObjectStorage("bkt", prefix="impact-relay", client=fake)
+    policy = ObjectRetentionPolicy(
+        classification="receipt",
+        retain_until="2026-12-31T00:00:00+00:00",
+    )
+    s3.put_with_retention(
+        CANONICAL_PILOT_TENANT_ID,
+        "receipts/r-1.json",
+        b"{}",
+        retention=policy,
+        content_type="application/json",
+        meta={"source": "fixture"},
+    )
+    key = f"impact-relay/{CANONICAL_PILOT_TENANT_ID}/receipts/r-1.json"
+    stored = fake.objects[("bkt", key)]
+    assert stored["ContentType"] == "application/json"
+    assert stored["ServerSideEncryption"] == "AES256"
+    assert stored["Metadata"] == {
+        "source": "fixture",
+        "retention_classification": "receipt",
+        "retain_until": "2026-12-31T00:00:00+00:00",
+        "legal_hold": "false",
+    }
+
+
 def test_s3_sse_disabled() -> None:
     fake = FakeS3Client()
     s3 = S3ObjectStorage("bkt", client=fake, server_side_encryption=None)
@@ -158,8 +287,8 @@ def test_storage_bundle_uses_s3_when_configured(
     monkeypatch.setenv("IMPACT_RELAY_S3_BUCKET", "bundle-bkt")
     # Force object store via open_storage path: open_object_storage reads env
     # but creates real boto3 without client. Inject by constructing bundle manually.
-    from impact_relay.storage.sql import StorageBundle
     from impact_relay.storage.objects import S3ObjectStorage
+    from impact_relay.storage.sql import StorageBundle
 
     bundle = StorageBundle(
         tmp_path / "st",

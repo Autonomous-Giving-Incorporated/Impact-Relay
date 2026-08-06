@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://impact-relay.local/schemas/agents/execution-receipt.schema.json",
+  "title": "ExecutionReceipt",
+  "description": "Immutable record of one command execution against the ledger or a projection. A FAILED receipt must never be stored for idempotency reuse.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "execution_id",
+    "tenant_id",
+    "command_type",
+    "idempotency_key",
+    "status",
+    "output_refs",
+    "output_hash",
+    "executed_at"
+  ],
+  "properties": {
+    "execution_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "command_type": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["SUCCEEDED", "FAILED", "SKIPPED", "SIMULATED"]
+    },
+    "output_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "output_hash": { "type": "string" },
+    "executed_at": { "type": "string", "minLength": 1 },
+    "simulated": { "type": "boolean" },
+    "error": { "type": ["string", "null"] },
+    "approval_id": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "comment": "A simulated run must be labelled as such in both fields, so a dry run can never be replayed as a real execution.",
+      "if": {
+        "properties": { "status": { "const": "SIMULATED" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "simulated": { "const": true } },
+        "required": ["simulated"]
+      }
+    },
+    {
+      "comment": "Failures must carry a reason.",
+      "if": {
+        "properties": { "status": { "const": "FAILED" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "error": { "type": "string", "minLength": 1 } },
+        "required": ["error"]
+      }
+    }
+  ]
+}

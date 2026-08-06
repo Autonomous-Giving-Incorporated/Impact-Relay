@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from impact_relay.http_json import HTTPOpener, fetch_json_object
 from impact_relay.reconcile import ReconcileError, _assert_aggregate_safe
 
 DEFAULT_EVERY_ORG_FIXTURE = (
@@ -58,10 +59,8 @@ def _assert_every_org_safe(payload: Any, path: str = "$") -> None:
                 )
 
 
-def load_every_org_summary(path: Path | str | None = None) -> dict[str, Any]:
-    fixture_path = Path(path) if path else DEFAULT_EVERY_ORG_FIXTURE
-    with fixture_path.open(encoding="utf-8") as f:
-        data = json.load(f)
+def validate_every_org_summary(data: dict[str, Any]) -> dict[str, Any]:
+    """Enforce the aggregate-only Every.org input contract."""
     _assert_every_org_safe(data)
     if data.get("exportKind") not in (None, "aggregate_summary", "public_totals"):
         raise ReconcileError("exportKind must be aggregate_summary or public_totals")
@@ -70,11 +69,41 @@ def load_every_org_summary(path: Path | str | None = None) -> dict[str, Any]:
     return data
 
 
+def load_every_org_summary(path: Path | str | None = None) -> dict[str, Any]:
+    fixture_path = Path(path) if path else DEFAULT_EVERY_ORG_FIXTURE
+    with fixture_path.open(encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ReconcileError("Every.org summary JSON root must be an object")
+    return validate_every_org_summary(data)
+
+
+def fetch_every_org_summary(
+    url: str,
+    *,
+    bearer_token: str | None = None,
+    timeout_seconds: float = 10.0,
+    max_response_bytes: int = 1_048_576,
+    opener: HTTPOpener | None = None,
+) -> dict[str, Any]:
+    """Fetch an operator-provided aggregate endpoint, then apply local privacy rules."""
+    data = fetch_json_object(
+        url,
+        bearer_token=bearer_token,
+        timeout_seconds=timeout_seconds,
+        max_response_bytes=max_response_bytes,
+        opener=opener,
+    )
+    return validate_every_org_summary(data)
+
+
 def every_org_to_reconcile_aggregate(summary: dict[str, Any]) -> dict[str, Any]:
     """Map an Every.org-style aggregate summary into reconcile_file input."""
     _assert_every_org_safe(summary)
     totals = summary.get("totals") or {}
-    if not totals and all(k in summary for k in ("raisedPublic", "committedPublic", "donorCountPublic")):
+    if not totals and all(
+        k in summary for k in ("raisedPublic", "committedPublic", "donorCountPublic")
+    ):
         # Already in reconcile shape.
         aggregate = {
             "source": summary.get("source") or "every.org/aggregate",
@@ -116,6 +145,25 @@ def load_every_org_as_reconcile_aggregate(path: Path | str | None = None) -> dic
     return every_org_to_reconcile_aggregate(load_every_org_summary(path))
 
 
+def fetch_every_org_as_reconcile_aggregate(
+    url: str,
+    *,
+    bearer_token: str | None = None,
+    timeout_seconds: float = 10.0,
+    max_response_bytes: int = 1_048_576,
+    opener: HTTPOpener | None = None,
+) -> dict[str, Any]:
+    return every_org_to_reconcile_aggregate(
+        fetch_every_org_summary(
+            url,
+            bearer_token=bearer_token,
+            timeout_seconds=timeout_seconds,
+            max_response_bytes=max_response_bytes,
+            opener=opener,
+        )
+    )
+
+
 # Required fields for an operator live OBSERVED aggregate file.
 LIVE_OBSERVED_REQUIRED_FIELDS: tuple[str, ...] = (
     "processor",
@@ -146,17 +194,21 @@ def validate_live_aggregate(
         lower = source_path.lower()
         for marker in ("fixture", "template", "pilot", "synthetic"):
             if marker in lower:
-                raise ReconcileError(
-                    f"refusing path that looks like {marker!r}: {source_path}"
-                )
+                raise ReconcileError(f"refusing path that looks like {marker!r}: {source_path}")
 
     _assert_every_org_safe(summary)
-    missing = [f for f in LIVE_OBSERVED_REQUIRED_FIELDS if f not in summary or summary[f] in (None, "")]
+    missing = [
+        f for f in LIVE_OBSERVED_REQUIRED_FIELDS if f not in summary or summary[f] in (None, "")
+    ]
     if missing:
         raise ReconcileError(f"live aggregate missing required fields: {missing}")
 
     totals = summary.get("totals") or {}
-    if totals.get("raised") is None and totals.get("raisedUsd") is None and totals.get("amountRaised") is None:
+    if (
+        totals.get("raised") is None
+        and totals.get("raisedUsd") is None
+        and totals.get("amountRaised") is None
+    ):
         raise ReconcileError("totals.raised is required")
     if (
         totals.get("donorCount") is None
@@ -179,13 +231,10 @@ def validate_live_aggregate(
     }
     if require_observed and raised_source != "processor_aggregate":
         raise ReconcileError(
-            "live aggregate did not resolve to processor_aggregate/OBSERVED: "
-            f"{report}"
+            f"live aggregate did not resolve to processor_aggregate/OBSERVED: {report}"
         )
     if require_observed and claim_label != "OBSERVED":
-        raise ReconcileError(
-            f"live aggregate claim label must be OBSERVED, got {claim_label}"
-        )
+        raise ReconcileError(f"live aggregate claim label must be OBSERVED, got {claim_label}")
     return report
 
 

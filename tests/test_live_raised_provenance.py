@@ -102,7 +102,8 @@ def test_cli_require_observed_rejects_fixture(tmp_path: Path, monkeypatch) -> No
         ]
     )
     assert code == 2
-    # File may still be written only on success path — with require_observed fail, we return before write
+    # File is written only on the success path; a require_observed failure
+    # returns before the write.
     # Actually current code applies then checks then write — wait, we check before write. Good.
     remaining = json.loads(state_dst.read_text(encoding="utf-8"))
     # Unchanged pilot state still on disk
@@ -118,7 +119,7 @@ def test_validate_live_aggregate_rejects_fixture_path() -> None:
     from impact_relay.reconcile import ReconcileError
 
     root = Path(__file__).resolve().parents[1]
-    with pytest.raises(ReconcileError, match="refusing path|fixture"):
+    with pytest.raises(ReconcileError, match=r"refusing path|fixture"):
         validate_live_aggregate_file(
             root / "fixtures" / "every_org_aggregate_v1.json",
             require_observed=True,

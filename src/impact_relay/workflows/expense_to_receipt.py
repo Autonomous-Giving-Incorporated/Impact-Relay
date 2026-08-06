@@ -6,9 +6,10 @@ Pure orchestration of existing agents. Domain mutation only via
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from impact_relay.agents.base import AgentContext
@@ -28,7 +29,6 @@ from impact_relay.agents.types import (
     ValidationResult,
     ValidationStatus,
     WorkflowState,
-    stable_hash,
 )
 from impact_relay.workflows.machine import assert_transition, default_run_status
 from impact_relay.workflows.types import (
@@ -47,9 +47,7 @@ def _new_id(prefix: str) -> str:
 
 
 def _expires(hours: int = 24) -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 @dataclass
@@ -58,13 +56,9 @@ class HandlerBundle:
 
     intake: ExpenseIntakeAgent = field(default_factory=ExpenseIntakeAgent)
     evidence: EvidenceValidatorAgent = field(default_factory=EvidenceValidatorAgent)
-    classifier: AllocationClassifierAgent = field(
-        default_factory=AllocationClassifierAgent
-    )
+    classifier: AllocationClassifierAgent = field(default_factory=AllocationClassifierAgent)
     review: FinanceReviewAgent = field(default_factory=FinanceReviewAgent)
-    composer: NotificationComposerAgent = field(
-        default_factory=NotificationComposerAgent
-    )
+    composer: NotificationComposerAgent = field(default_factory=NotificationComposerAgent)
 
 
 @dataclass
@@ -203,10 +197,8 @@ def step_evidence(
     prop = agents.evidence.evaluate(ctx, ev_cmd)
     validation = agents.evidence.validate(ctx, prop)
     if prop.warnings:
-        try:
+        with contextlib.suppress(ValueError):
             sufficiency = EvidenceSufficiency(prop.warnings[0])
-        except ValueError:
-            pass
 
     if not validation.ok or sufficiency in (
         EvidenceSufficiency.CONTRADICTORY,
@@ -421,8 +413,7 @@ def step_review(
         assert_transition(current, nxt) if current != nxt else None
         # current may already be REVIEW_PENDING
         if current != nxt and not (
-            current == WorkflowState.CLASSIFICATION_PENDING
-            and nxt == WorkflowState.BLOCKED
+            current == WorkflowState.CLASSIFICATION_PENDING and nxt == WorkflowState.BLOCKED
         ):
             # from CLASSIFICATION we go REVIEW first then block — allow REVIEW_PENDING stay
             pass
@@ -442,12 +433,8 @@ def step_review(
         )
 
     l3 = prop.proposed_commands[0]
-    frozen = freeze_command(
-        l3, proposal_id=prop.proposal_id, agent_name=agents.review.name
-    )
-    wait_deadline = (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=7)
-    ).isoformat()
+    frozen = freeze_command(l3, proposal_id=prop.proposal_id, agent_name=agents.review.name)
+    wait_deadline = (datetime.now(UTC).replace(microsecond=0) + timedelta(days=7)).isoformat()
     nxt = WorkflowState.REVIEW_PENDING
     # CLASSIFICATION_PENDING → REVIEW_PENDING
     if current != nxt:
@@ -521,9 +508,7 @@ def step_compose_send(
             validations=[validation],
         )
     send_cmd = prop.proposed_commands[0]
-    frozen = freeze_command(
-        send_cmd, proposal_id=prop.proposal_id, agent_name=agents.composer.name
-    )
+    frozen = freeze_command(send_cmd, proposal_id=prop.proposal_id, agent_name=agents.composer.name)
     return StepOutcome(
         step=StepResult(
             next_state=nxt,
@@ -534,7 +519,7 @@ def step_compose_send(
                 "proposal_id": prop.proposal_id,
             },
             wait_deadline=(
-                datetime.now(timezone.utc).replace(microsecond=0) + timedelta(days=7)
+                datetime.now(UTC).replace(microsecond=0) + timedelta(days=7)
             ).isoformat(),
             context_patch={
                 "wait": {

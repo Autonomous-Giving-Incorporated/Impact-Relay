@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, datetime, timedelta
 
 from impact_relay.agents.authority import AuthorityError
 from impact_relay.agents.types import (
-    AgentCommand,
     ApprovalReceipt,
-    AuthorityLevel,
     ExecutionReceipt,
     WorkflowState,
     utc_now_iso,
@@ -20,7 +16,6 @@ from impact_relay.workflows import (
     CLAIMABLE_RUN_STATUSES,
     TERMINAL_RUN_STATUSES,
     AdvanceCommitBundle,
-    ClassifiedError,
     ErrorClass,
     FrozenProposedCommand,
     RetryPolicy,
@@ -107,7 +102,7 @@ def test_step_result_human_gate_shape() -> None:
         run_status=WorkflowRunStatus.WAITING_SIGNAL,
         wait_for=SignalType.APPROVAL,
         wait_payload={"frozen_command": frozen.to_dict()},
-        wait_deadline=datetime.now(timezone.utc) + timedelta(days=7),
+        wait_deadline=datetime.now(UTC) + timedelta(days=7),
         events=[
             WorkflowEventWrite(
                 event_type=WorkflowEventType.STATE_CHANGED,

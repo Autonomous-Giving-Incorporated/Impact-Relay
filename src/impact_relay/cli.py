@@ -2,7 +2,8 @@
 
 Usage:
   python -m impact_relay
-  python -m impact_relay --all-phases --digests-from-domain --write-digests data/impact-digests-public.json
+  python -m impact_relay --all-phases --digests-from-domain \
+      --write-digests data/impact-digests-public.json
   python -m impact_relay --every-org-aggregate fixtures/every_org_aggregate_v1.json \\
       --write-impact-state data/impact-state.json
   python -m impact_relay --publish-pages
@@ -22,11 +23,13 @@ from impact_relay.digest import (
     write_public_digests,
 )
 from impact_relay.every_org import (
+    fetch_every_org_as_reconcile_aggregate,
     load_every_org_as_reconcile_aggregate,
     validate_live_aggregate_file,
 )
 from impact_relay.notion_public import (
     build_public_evidence_document,
+    fetch_notion_public_evidence,
     load_notion_public_evidence,
     notion_campaign_targets_patch,
     write_public_evidence,
@@ -127,7 +130,7 @@ def _run_workflow_ops(args: argparse.Namespace) -> int:
     from impact_relay.workflows.runtime import WorkflowRuntime
 
     op = args.workflow_ops
-    session_path = args.workflow_session or Path(".impact-relay-workflow-session.pkl")
+    session_path = args.workflow_session or Path(".impact-relay-workflow-session.json")
 
     if op == "seed":
         batch_path = args.expense_batch or Path("fixtures/expense_intake_batch_v1.json")
@@ -210,9 +213,7 @@ def _run_workflow_ops(args: argparse.Namespace) -> int:
         inst = store.get(tenant_id, args.workflow_id)
         if inst is None:
             print(
-                _json.dumps(
-                    {"error": "workflow_not_found", "workflow_id": args.workflow_id}
-                ),
+                _json.dumps({"error": "workflow_not_found", "workflow_id": args.workflow_id}),
                 file=sys.stderr,
             )
             return 2
@@ -399,6 +400,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--every-org-aggregate-url",
+        default=None,
+        help=(
+            "HTTPS endpoint returning an aggregate-only Every.org summary. "
+            "Also reads IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL."
+        ),
+    )
+    parser.add_argument(
         "--require-observed",
         action="store_true",
         help=(
@@ -521,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
         "--workflow-session",
         type=Path,
         default=None,
-        help="Pickle session path for ops list/signal across CLI invocations",
+        help="Versioned JSON session path for ops list/signal across CLI invocations",
     )
     parser.add_argument(
         "--workflow-filter",
@@ -555,6 +564,14 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Notion-exported public evidence JSON (Form 990 / historical aggregates only)",
+    )
+    parser.add_argument(
+        "--notion-public-evidence-url",
+        default=None,
+        help=(
+            "HTTPS endpoint returning pre-aggregated public evidence JSON. "
+            "Also reads IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL."
+        ),
     )
     parser.add_argument(
         "--write-public-evidence",
@@ -633,9 +650,7 @@ def main(argv: list[str] | None = None) -> int:
         ledger = build_ledger_from_fixture(data)
         store = InMemoryWorkflowStore()
         binding = InMemoryLedgerBinding()
-        binding.register(
-            ledger, TenantWorkspace(ledger.organization, ledger=ledger)
-        )
+        binding.register(ledger, TenantWorkspace(ledger.organization, ledger=ledger))
         runtime = WorkflowRuntime(store, binding)
         rows = batch.get("expenses") or []
         started_ids: list[str] = []
@@ -682,7 +697,11 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:  # noqa: BLE001
             print(
                 json.dumps(
-                    {"ok": False, "error": str(exc), "path": str(args.validate_every_org_aggregate)},
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "path": str(args.validate_every_org_aggregate),
+                    },
                     indent=2,
                 ),
                 file=sys.stderr,
@@ -713,15 +732,15 @@ def main(argv: list[str] | None = None) -> int:
             human_approver_id=args.actor,
             approve=not args.no_approve,
             simulation=args.simulate_agents,
-            publish_specs=None if args.no_approve or args.simulate_agents else [
+            publish_specs=None
+            if args.no_approve or args.simulate_agents
+            else [
                 {
                     "donor_id": "donor_alice",
                     "donation_id": "don_1000_alice",
                     "allocation_id": "alloc_community_hardware",
                     "attribution_method": "DIRECT_RESTRICTED",
-                    "attributed_amount": str(
-                        (batch.get("expenses") or [{}])[0].get("amount", "0")
-                    ),
+                    "attributed_amount": str((batch.get("expenses") or [{}])[0].get("amount", "0")),
                 }
             ],
             send_email=bool(args.send_email and not args.no_approve and not args.simulate_agents),
@@ -734,24 +753,36 @@ def main(argv: list[str] | None = None) -> int:
         env_agg = os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE", "").strip()
         if env_agg:
             args.every_org_aggregate = Path(env_agg)
+    args.every_org_aggregate_url = (
+        args.every_org_aggregate_url
+        or os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL", "").strip()
+        or None
+    )
+    args.notion_public_evidence_url = (
+        args.notion_public_evidence_url
+        or os.environ.get("IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL", "").strip()
+        or None
+    )
+    if args.every_org_aggregate is not None and args.every_org_aggregate_url is not None:
+        parser.error("choose either --every-org-aggregate or --every-org-aggregate-url")
+    if args.notion_public_evidence is not None and args.notion_public_evidence_url is not None:
+        parser.error("choose either --notion-public-evidence or --notion-public-evidence-url")
 
     if args.publish_pages:
         # Prefer live operator path via env; fall back to pilot fixture for demos.
-        args.every_org_aggregate = args.every_org_aggregate or Path(
-            "fixtures/every_org_aggregate_v1.json"
-        )
-        args.notion_public_evidence = args.notion_public_evidence or Path(
-            "fixtures/notion_public_evidence_v1.json"
-        )
+        if args.every_org_aggregate_url is None:
+            args.every_org_aggregate = args.every_org_aggregate or Path(
+                "fixtures/every_org_aggregate_v1.json"
+            )
+        if args.notion_public_evidence_url is None:
+            args.notion_public_evidence = args.notion_public_evidence or Path(
+                "fixtures/notion_public_evidence_v1.json"
+            )
         args.write_impact_state = args.write_impact_state or Path("data/impact-state.json")
         args.write_public = args.write_public or Path("data/use-of-funds-public.json")
         args.write_digests = args.write_digests or Path("data/impact-digests-public.json")
-        args.write_public_evidence = args.write_public_evidence or Path(
-            "data/public-evidence.json"
-        )
-        args.write_public_impact = args.write_public_impact or Path(
-            "data/public-impact.json"
-        )
+        args.write_public_evidence = args.write_public_evidence or Path("data/public-evidence.json")
+        args.write_public_impact = args.write_public_impact or Path("data/public-impact.json")
         args.digests_from_domain = True
         args.merge_fixture_digests = True
         args.all_phases = True
@@ -762,8 +793,14 @@ def main(argv: list[str] | None = None) -> int:
     # --- Aggregate reconciliation (Every.org or generic) ---
     impact_state = None
     target_state = args.write_impact_state or Path("data/impact-state.json")
-    if args.every_org_aggregate is not None:
-        aggregate = load_every_org_as_reconcile_aggregate(args.every_org_aggregate)
+    if args.every_org_aggregate is not None or args.every_org_aggregate_url is not None:
+        if args.every_org_aggregate_url is not None:
+            aggregate = fetch_every_org_as_reconcile_aggregate(
+                args.every_org_aggregate_url,
+                bearer_token=os.environ.get("IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN") or None,
+            )
+        else:
+            aggregate = load_every_org_as_reconcile_aggregate(args.every_org_aggregate)
         current = load_impact_state(target_state)
         impact_state = apply_aggregate_reconciliation(current, aggregate)
         if args.require_observed:
@@ -794,16 +831,15 @@ def main(argv: list[str] | None = None) -> int:
         write_impact_state(target_state, impact_state)
     elif args.reconcile_from is not None:
         impact_state = reconcile_file(args.reconcile_from, target_state, write=True)
-        if args.require_observed and impact_state.get("campaign", {}).get(
-            "raisedSource"
-        ) != "processor_aggregate":
+        if (
+            args.require_observed
+            and impact_state.get("campaign", {}).get("raisedSource") != "processor_aggregate"
+        ):
             print(
                 json.dumps(
                     {
                         "error": "require_observed_failed",
-                        "raisedSource": impact_state.get("campaign", {}).get(
-                            "raisedSource"
-                        ),
+                        "raisedSource": impact_state.get("campaign", {}).get("raisedSource"),
                     },
                     indent=2,
                 ),
@@ -815,12 +851,20 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Notion public evidence (does not invent live raised totals) ---
     public_evidence = None
-    if args.notion_public_evidence is not None or args.write_public_evidence is not None:
-        notion_src = (
-            load_notion_public_evidence(args.notion_public_evidence)
-            if args.notion_public_evidence is not None
-            else load_notion_public_evidence()
-        )
+    if (
+        args.notion_public_evidence is not None
+        or args.notion_public_evidence_url is not None
+        or args.write_public_evidence is not None
+    ):
+        if args.notion_public_evidence_url is not None:
+            notion_src = fetch_notion_public_evidence(
+                args.notion_public_evidence_url,
+                bearer_token=os.environ.get("IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_TOKEN") or None,
+            )
+        elif args.notion_public_evidence is not None:
+            notion_src = load_notion_public_evidence(args.notion_public_evidence)
+        else:
+            notion_src = load_notion_public_evidence()
         public_evidence = build_public_evidence_document(notion_src)
         if args.write_public_evidence:
             write_public_evidence(args.write_public_evidence, public_evidence)
@@ -861,7 +905,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     # --- Digests ---
-    if args.digests_from_domain and platform is not None:
+    if args.digests_from_domain and platform is not None and all_phases_payload is not None:
         primary_id = all_phases_payload.get("primary", {}).get("organization_id")
         ws = platform.get_workspace(primary_id)
         extra = None
@@ -876,9 +920,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     else:
         events_doc = (
-            load_events_fixture(args.events_fixture)
-            if args.events_fixture is not None
-            else None
+            load_events_fixture(args.events_fixture) if args.events_fixture is not None else None
         )
         digests = build_public_digests(events_doc)
 
@@ -890,13 +932,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     # --- Use-of-funds public export ---
-    if args.all_phases and platform is not None:
+    if args.all_phases and platform is not None and all_phases_payload is not None:
         primary_id = all_phases_payload.get("primary", {}).get("organization_id")
         ws = platform.get_workspace(primary_id)
         receipts = [r for r in ws.ledger.receipts.values() if not r.corrected]
-        public_payload = build_public_export(
-            receipts, source="hd_ir_all_phases_pilot_fixture"
-        )
+        public_payload = build_public_export(receipts, source="hd_ir_all_phases_pilot_fixture")
         impact_public = build_public_impact_export(
             list(ws.impact_receipts.values()),
             source="domain_impact_receipts",
@@ -935,9 +975,7 @@ def main(argv: list[str] | None = None) -> int:
             else impact_state.get("campaign", {}).get("raisedSource"),
         }
         all_phases_payload["public_evidence"] = {
-            "written": str(args.write_public_evidence)
-            if args.write_public_evidence
-            else None,
+            "written": str(args.write_public_evidence) if args.write_public_evidence else None,
             "summary": None if public_evidence is None else public_evidence.get("summary"),
             "liveRaisedState": None
             if public_evidence is None

@@ -1,5 +1,7 @@
 # Impact Relay Agent Contract
 
+> **Scope note:** this document is the runtime governance contract for the AI agents *inside* Impact Relay (authority levels, human gates, proposal contracts). It is **not** contributor instructions for coding agents or humans working on this repository — see `CLAUDE.md` for that.
+
 Impact Relay uses bounded agents to collect evidence, propose classifications, prepare receipts, and route human decisions. Agents do not own financial truth.
 
 ## Prime directive
@@ -61,11 +63,9 @@ class Agent:
     version: str
     authority_level: AuthorityLevel
 
-    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal:
-        ...
+    def evaluate(self, context: AgentContext, command: AgentCommand) -> AgentProposal: ...
 
-    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult:
-        ...
+    def validate(self, context: AgentContext, proposal: AgentProposal) -> ValidationResult: ...
 ```
 
 Execution is separate:
@@ -74,11 +74,18 @@ Execution is separate:
 class CommandExecutor:
     def execute(
         self,
-        proposal: ApprovedProposal,
-        approval: ApprovalReceipt | None,
-    ) -> ExecutionReceipt:
-        ...
+        command: AgentCommand,
+        *,
+        approval: ApprovalReceipt | None = None,
+        agent_name: str | None = None,
+        proposal: AgentProposal | None = None,
+    ) -> ExecutionReceipt: ...
 ```
+
+The executor takes the **command**, not the proposal: a proposal is a
+recommendation, and only a command carrying an `ApprovalReceipt` may reach the
+ledger. L3 commands without a valid approval are rejected by
+`impact_relay.agents.authority`.
 
 An agent cannot propose and approve the same action.
 
@@ -144,8 +151,8 @@ Logical expense-to-receipt progression (agent / domain view):
 ```text
 RECEIVED
 → NORMALIZED
-→ CLASSIFICATION_PENDING
 → EVIDENCE_PENDING
+→ CLASSIFICATION_PENDING
 → REVIEW_PENDING
 → APPROVED
 → LEDGER_COMMITTED
@@ -156,17 +163,22 @@ RECEIVED
 → DELIVERED
 ```
 
-Exception states:
+Evidence is gathered before classification: a classifier must not propose an
+allocation split for an expense whose evidence is missing or contradictory.
+
+Exception states (the complete `WorkflowState` exception set):
 
 ```text
 BLOCKED
 REJECTED
 DUPLICATE
 NEEDS_INFORMATION
-DELIVERY_FAILED
-SUPERSEDED
-REVERSED
 ```
+
+`SUPERSEDED` and `REVERSED` are **expense** states (`ExpenseState`), not
+workflow states — a correction supersedes the expense while its workflow
+completes normally. Delivery failure is carried on the notification intent, not
+as a workflow state.
 
 Durable runtime uses a parallel `WorkflowState` / `RunStatus` model (wait signals, retries, dead-letter) so human gates and worker restarts are safe. See [docs/architecture/DURABLE-WORKFLOWS.md](docs/architecture/DURABLE-WORKFLOWS.md) and [docs/DURABLE-QUICKSTART.md](docs/DURABLE-QUICKSTART.md). Agents still do not own financial truth: only approved commands reach the ledger.
 

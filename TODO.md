@@ -17,7 +17,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 ## P0 — Governance and contracts
 
 - [x] Define `AuthorityLevel`, `AgentCommand`, `AgentProposal`, `ValidationResult`, `ApprovalReceipt`, `ExecutionReceipt`, and `AgentRunReceipt`.
-- [x] Add JSON Schemas for every cross-boundary contract.
+- [x] Add JSON Schemas for every cross-boundary contract (agent-command, agent-proposal, agent-run-receipt, approval-receipt, execution-receipt, validation-result), with dataclass parity enforced by `tests/test_agent_contract_schemas.py`.
 - [x] Add policy-version and prompt-version fields to run receipts.
 - [x] Implement deterministic authority checks.
 - [x] Implement proposal expiration and idempotency keys.
@@ -30,6 +30,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 ## P0 — First vertical slice
 
 - [x] Define normalized expense import contract.
+- [x] Add provider-neutral HTTPS JSON accounting source adapter for host-owned live expense exports.
 - [x] Implement fixture-backed Expense Intake Agent.
 - [x] Implement Allocation Classifier proposal output.
 - [x] Implement Evidence Validator states: `MISSING`, `PARTIAL`, `SUFFICIENT`, `CONTRADICTORY`, `EXPIRED`, `REDACTION_REQUIRED`.
@@ -99,9 +100,10 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add quiet-hour deferral (`DEFERRED_QUIET_HOURS`).
 - [x] Add deduplication keys.
 - [x] Add email adapter (fixture + `EmailAdapter` protocol).
-- [x] Add APNs/FCM adapter contract (placeholders + fixture push).
+- [x] Add APNs/FCM production adapters (fixture push remains default; credentials and device-token lookup are host-owned).
 - [x] Add delivery receipts and permanent-failure classification.
 - [x] Add unsubscribe and opt-out ingestion (preference enabled=False / consent revoke).
+- [x] Add donor data export and mutable notification-state deletion primitives (ledger facts preserved).
 
 ## P2 — Hacker Dojo pilot
 
@@ -125,10 +127,12 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 
 - [x] Threat model agent, finance, evidence, notification, and tenant boundaries.
 - [x] Add structured logs for workflows (worker tick metrics); OTel reserved for v1.0.
+- [x] Add deterministic operational snapshots for storage, workflows, outbox, object backend, and ledger/audit counts.
 - [x] Add audit explorer primitives (command log + entity list + events via stores).
 - [x] Add incident response runbook.
 - [x] Add provider outage and replay runbook.
 - [x] Add retention and deletion policy (runbook).
+- [x] Add object storage retention metadata, legal holds, and local expired-object purge receipts.
 - [x] Add backup and restoration test (rehydrate + snapshot tests).
 - [x] Add security review checklist.
 
@@ -141,4 +145,4 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - Microservice decomposition.
 - Autonomous financial approval.
 - Host UI consoles (finance review / donor screens) — built in Hacker-Dojo app.
-- Live OIDC JWT validation (host IdP SDK) and live Postmark/APNs credentials.
+- Live OIDC JWT validation (host IdP SDK) and live SMTP/Postmark/APNs/FCM credentials.

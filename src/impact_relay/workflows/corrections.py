@@ -12,7 +12,7 @@ Behavioral oracle: tests/test_receipts_and_corrections.py.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from impact_relay.agents.types import (
@@ -39,16 +39,12 @@ def _new_id(prefix: str) -> str:
 
 
 def _expires(hours: int = 72) -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 def _deadline(hours: int = 168) -> str:
     """Default 7-day human gate for corrections."""
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0) + timedelta(hours=hours)
-    ).isoformat()
+    return (datetime.now(UTC).replace(microsecond=0) + timedelta(hours=hours)).isoformat()
 
 
 def build_reverse_command(
@@ -86,7 +82,10 @@ def build_supersede_command(
             "splits": list(splits),
         },
         required_authority=AuthorityLevel.L3_HUMAN_APPROVAL,
-        idempotency_key=f"supersede:{expense_id}:{replacement.get('id') or replacement.get('expense_id') or 'new'}",
+        idempotency_key=(
+            f"supersede:{expense_id}:"
+            f"{replacement.get('id') or replacement.get('expense_id') or 'new'}"
+        ),
         expires_at=_expires(),
     )
 
@@ -105,9 +104,7 @@ def step_propose_correction(
     assert_correction_transition(current, WorkflowState.REVIEW_PENDING)
 
     if kind == "REVERSE":
-        cmd = build_reverse_command(
-            tenant_id=tenant_id, expense_id=expense_id, reason=reason
-        )
+        cmd = build_reverse_command(tenant_id=tenant_id, expense_id=expense_id, reason=reason)
     elif kind == "SUPERSEDE":
         if not replacement or not splits:
             return StepResult(
@@ -144,9 +141,7 @@ def step_propose_correction(
         )
 
     proposal_id = _new_id("prop_corr")
-    frozen = freeze_command(
-        cmd, proposal_id=proposal_id, agent_name="CorrectionWorkflow"
-    )
+    frozen = freeze_command(cmd, proposal_id=proposal_id, agent_name="CorrectionWorkflow")
     wait = {
         "signal_type": SignalType.APPROVAL.value,
         "command_idempotency_key": cmd.idempotency_key,

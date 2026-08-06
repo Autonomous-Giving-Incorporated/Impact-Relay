@@ -84,6 +84,17 @@ python -m impact_relay --every-org-aggregate "$IMPACT_RELAY_EVERY_ORG_AGGREGATE"
   --require-observed --write-impact-state data/impact-state.json
 ```
 
+Or fetch a pre-aggregated document from an operator-owned HTTPS bridge:
+
+```bash
+export IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL=https://bridge.example/every-org
+export IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN="$(secret-tool lookup service impact-relay-every-org)"
+python -m impact_relay --require-observed \
+  --write-impact-state data/impact-state.json
+```
+
+The bridge must return the same aggregate-only JSON shape documented above. The client requires HTTPS and JSON, caps the body at 1 MiB, sanitizes transport errors, and runs the local Every.org privacy and provenance validators before any write. Do not expose a donor-detail or transaction endpoint through this bridge. Keep the bearer token in the host secret manager and prefer an egress/domain allowlist.
+
 4. Confirm `data/impact-state.json`:
 
 ```yaml

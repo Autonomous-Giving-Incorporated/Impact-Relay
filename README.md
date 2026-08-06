@@ -6,9 +6,21 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://autogive.app/impact-relay/) · [GitHub Pages fallback](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+
+Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder. Hacker Dojo is the **reference tenant**, not product identity (tenant assets live with Fund Intel under `assets/tenants/hacker-dojo/`).
+
+**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) and [Fund Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
 
 ---
+
+## Allocation middleware
+
+Suite product: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
+
+**Status:** MVP packages (pots → allocate → lightweight proof/packet) ship in [Fund-Intel `services/allocation-middleware/`](https://github.com/scrimshawlife-ctrl/Fund-Intel/tree/main/services/allocation-middleware). This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces; optional deeper binding is a later integration.
+
+See [docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md).
 
 ## Why Impact Relay
 
@@ -53,9 +65,9 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 
 ## Current maturity
 
-**Package version:** `0.5.0` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
+**Package version:** `0.9.1` (capability gates through **v0.7 library + pilot host path** are implemented; live production ops remain open).
 
-**Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
+**Current state:** reusable multi-tenant Python library with durable SQLite/Postgres workflows, L0–L3 agent contracts, donor and finance console APIs, S3-capable object storage ports, and deterministic observability summaries, plus a Hacker Dojo host bridge (static screens + Supabase role mapping). Public Pages stay fixture/aggregate-only until authorized OBSERVED aggregates are applied. **Ops remaining:** execute live cohort and fill [FINDINGS](docs/pilot/FINDINGS.md); production IdP JWT validation and live notification credentials stay host-owned.
 
 ### Shipped capabilities
 
@@ -65,30 +77,32 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Append-only correction and receipt lineage | domain + `workflows/corrections.py` |
 | Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
 | Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
-| Consent, preferences, fixture delivery adapters | `domain/notifications.py` · `notifications/` |
+| Donor-scoped data export and notification-state deletion primitives | `privacy_ops.py` |
+| Consent, preferences, fixture + SMTP/Postmark email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
-| Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · [HD-IR-007](docs/HD-IR-007.md) |
+| Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · `accounting.py` · [HD-IR-007](docs/HD-IR-007.md) |
 | Durable workflows (memory + SQLite/Postgres) | `workflows/` · [DURABLE-QUICKSTART](docs/DURABLE-QUICKSTART.md) |
 | Ledger command log rehydrate (K11/K17) | `domain/ledger_log.py` · `storage/command_log.py` |
 | Tenant registry, SQL ledger entities, outbox | `storage/` · [STORAGE](docs/architecture/STORAGE.md) |
-| Object storage (local FS + S3/MinIO) | `storage/objects.py` |
+| Object storage (local FS + S3/MinIO, SSE + retention purge controls) | `storage/objects.py` |
 | RBAC roles, SoD, OIDC ports, HD role map | `auth/` |
 | Host façade + finance/donor consoles | `host/` · `console_server.py` |
 | Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
 | Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
+| Operational health and metrics summaries | `observability.py` |
 | Ops threat model, runbooks, pilot findings template | `docs/ops/` · `docs/pilot/` |
 
 ### Deferred / host-owned production capabilities
 
-- live accounting provider adapter (beyond fixture batch);
+- live accounting provider credentials/authorized endpoint mapping (HTTPS JSON adapter boundary shipped; fixture batch remains default);
 - production Every.org donation ingestion (aggregate dry-run path exists);
-- production multi-region workflow DR and full observability (pilot local+SQL path shipped);
+- production multi-region workflow DR and production alerting/SLO dashboards (pilot local+SQL path, object retention controls, and deterministic observability summaries shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
-- production email / push / SMS credentials (adapters + fixture delivery shipped);
+- production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);
-- self-service multi-nonprofit onboarding UI (clone-from-Hacker-Dojo template API shipped).
+- self-service multi-nonprofit onboarding UI and full privacy self-service UX (clone-from-Hacker-Dojo template API plus donor data export/deletion primitives shipped).
 
 ---
 
@@ -259,7 +273,7 @@ Impact-Relay/
 │   ├── DURABLE-QUICKSTART.md
 │   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
-│   ├── HD-IR-00x.md                     # milestone notes
+│   ├── HD-IR-001.md … HD-IR-007.md      # milestone notes
 │   ├── architecture/
 │   │   ├── AGENTIC-SYSTEM.md
 │   │   ├── DURABLE-WORKFLOWS.md
@@ -268,16 +282,17 @@ Impact-Relay/
 │   └── pilot/                           # HD pilot + FINDINGS template
 ├── src/impact_relay/
 │   ├── domain/                          # ledger, impact, notifications, tenant
-│   ├── agents/                          # L0–L3 contracts + expense slice
+│   ├── agents/                          # L0–L3 contracts, executor, privacy sentinel
 │   ├── workflows/                       # durable runtime, worker, corrections
 │   ├── storage/                         # SQL store, objects, tenants, template
-│   ├── auth/                            # principal, RBAC, OIDC ports, role map
+│   ├── auth/                            # principal, RBAC, OIDC ports + JWKS, role map
 │   ├── host/                            # session façade, finance/donor console
 │   ├── donor/                           # donor experience API
 │   ├── notifications/                   # delivery adapters
 │   ├── console_server.py                # pilot HTTP API for host UIs
-│   ├── pilot.py · cli.py · public_export.py
-│   └── every_org.py · notion_public.py
+│   ├── pilot.py · cli.py · policy.py    # phases, CLI, versioned policy packs
+│   ├── public_export.py · public_impact.py · digest.py · reconcile.py
+│   └── every_org.py · notion_public.py  # aggregate + evidence bridges
 ├── policies/tenants/                    # e.g. hacker-dojo.v1.0.yaml
 ├── fixtures/ · schemas/ · data/
 ├── tests/ · scripts/
@@ -304,6 +319,48 @@ pytest
 
 Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up`.
 
+### Production email adapters
+
+The library ships standard-library SMTP and Postmark adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid.
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=smtp
+export IMPACT_RELAY_SMTP_HOST=smtp.example.org
+export IMPACT_RELAY_SMTP_PORT=587
+export IMPACT_RELAY_SMTP_FROM=impact@example.org
+export IMPACT_RELAY_SMTP_USERNAME=mailer
+export IMPACT_RELAY_SMTP_PASSWORD='from-your-secret-manager'
+export IMPACT_RELAY_SMTP_TLS=starttls  # starttls | ssl | none
+```
+
+Postmark uses its transactional `/email` API without adding a runtime SDK dependency:
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=postmark
+export IMPACT_RELAY_POSTMARK_SERVER_TOKEN='from-your-secret-manager'
+export IMPACT_RELAY_POSTMARK_FROM=impact@example.org
+export IMPACT_RELAY_POSTMARK_REPLY_TO=reply@example.org       # optional
+export IMPACT_RELAY_POSTMARK_MESSAGE_STREAM=outbound          # optional
+```
+
+Recipient lookup is deliberately host-owned because donor contact data must stay outside this repository. Bind the adapter to a tenant workspace with a resolver after the host has authenticated and loaded its private contact record:
+
+```python
+from impact_relay.domain.types import NotificationChannel
+from impact_relay.notifications import open_email_adapter
+from impact_relay.workflows.durable import open_workspace
+
+email = open_email_adapter(
+    address_resolver=lambda intent: private_contacts.email_for(intent.donor_id)
+)
+durable = open_workspace(".impact-relay/hacker-dojo")
+workspace = durable.binding.workspace(durable.tenant_id)
+assert workspace is not None
+workspace.configure_notification_adapters({NotificationChannel.EMAIL: email})
+```
+
+Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Both production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections.
+
 ## Pilot commands
 
 Use-of-funds pilot:
@@ -327,6 +384,16 @@ python -m impact_relay --durable help
 python -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo
 python -m impact_relay --durable worker --once --data-dir .impact-relay/hacker-dojo
 ```
+
+Local operator-session demo:
+
+```bash
+python -m impact_relay --workflow-ops seed \
+  --workflow-session .impact-relay-workflow-session.json \
+  --expense-batch fixtures/expense_intake_batch_v1.json
+```
+
+Operator sessions use a versioned JSON graph with a fixed class allowlist and a corruption-detection checksum. The checksum does not authenticate a session file. Legacy pickle sessions are intentionally rejected and must not be loaded or converted from untrusted sources. Production and restart-sensitive deployments should use the durable SQLite/Postgres path instead.
 
 Library API:
 
@@ -360,11 +427,23 @@ python -m impact_relay \
 python -m impact_relay \
   --notion-public-evidence fixtures/notion_public_evidence_v1.json \
   --write-public-evidence data/public-evidence.json
+
+# Optional operator-owned HTTPS aggregate bridges
+IMPACT_RELAY_EVERY_ORG_AGGREGATE_URL=https://bridge.example/every-org \
+IMPACT_RELAY_EVERY_ORG_AGGREGATE_TOKEN="$EVERY_ORG_BRIDGE_TOKEN" \
+  python -m impact_relay --require-observed \
+  --write-impact-state data/impact-state.json
+
+IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_URL=https://bridge.example/notion-public \
+IMPACT_RELAY_NOTION_PUBLIC_EVIDENCE_TOKEN="$NOTION_BRIDGE_TOKEN" \
+  python -m impact_relay --write-public-evidence data/public-evidence.json
 ```
+
+HTTP sources must be absolute HTTPS URLs returning a JSON object. Responses are capped at 1 MiB, bearer credentials stay in host configuration, transport errors are sanitized, and fetched documents pass the same mandatory aggregate-only privacy validators as local files. These are bridges for pre-aggregated documents, not direct donor, transaction, or Notion-row clients.
 
 ## Applying authorized live aggregates
 
-Published totals remain `raisedSource: pilot_synthetic` and `PILOT` until finance provides an authorized aggregate file.
+Published totals remain `raisedSource: pilot_synthetic` and `PILOT` until finance provides an authorized aggregate file or HTTPS bridge response.
 
 ```bash
 cp fixtures/templates/every_org_live_aggregate.template.json ~/private/every_org_live.json

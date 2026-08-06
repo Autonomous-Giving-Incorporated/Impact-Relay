@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-from impact_relay.digest import DigestError, digests_from_workspace
+from impact_relay.digest import digests_from_workspace
 from impact_relay.every_org import (
     every_org_to_reconcile_aggregate,
     load_every_org_as_reconcile_aggregate,

@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from impact_relay.domain.types import (
+    VERIFIED_EXPENSE_STATES,
     AssetLifecycle,
     FundedAsset,
     ImpactEvent,
@@ -17,7 +18,6 @@ from impact_relay.domain.types import (
     NotFoundError,
     Program,
     StateError,
-    VERIFIED_EXPENSE_STATES,
 )
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
 def _new_id(prefix: str) -> str:
@@ -145,7 +145,6 @@ class ImpactService:
             exp = self.ledger.expenses.get(attr.expense_id)
             if exp is None or exp.state not in VERIFIED_EXPENSE_STATES:
                 continue
-            key = (attr.donation_id, attr.expense_id, attr.allocation_id)
             # Prefer one IMPACT receipt per donor+allocation+event
             dkey = (attr.donor_id, attr.allocation_id, event_id)
             if dkey in seen:
@@ -197,7 +196,10 @@ class ImpactService:
                 receipt_hash=receipt_hash,
                 created_at=created,
                 description=event.description,
-                provenance={"actor": actor, "policy_version": self.ledger.organization.policy_version},
+                provenance={
+                    "actor": actor,
+                    "policy_version": self.ledger.organization.policy_version,
+                },
             )
             self.ws.impact_receipts[receipt_id] = ir
             receipts.append(ir)

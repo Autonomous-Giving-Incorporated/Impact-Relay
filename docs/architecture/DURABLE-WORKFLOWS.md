@@ -362,7 +362,7 @@ src/impact_relay/workflows/
   runtime.py            # start / signal_approval / advance / list
   worker.py             # claim loop, lease renewal, timeout sweeper
   store_memory.py
-  store_postgres.py     # pilot track
+  store_sql.py          # SQLite default + Postgres (SKIP LOCKED) — pilot track
   exceptions.py         # retryable vs terminal classification
   facade.py             # ExpenseSliceResult aggregation
   corrections.py        # later track
@@ -384,10 +384,10 @@ Extend `tests/test_agent_import_boundaries.py` to scan `src/impact_relay/workflo
 
 ```python
 class WorkflowRunStatus(str, Enum):
-    PENDING = "PENDING"                 # claimable
-    RUNNING = "RUNNING"                 # lease held
-    WAITING_SIGNAL = "WAITING_SIGNAL"   # NOT claimable until wake
-    RETRY_SCHEDULED = "RETRY_SCHEDULED" # claimable when next_run_at <= now
+    PENDING = "PENDING"  # claimable
+    RUNNING = "RUNNING"  # lease held
+    WAITING_SIGNAL = "WAITING_SIGNAL"  # NOT claimable until wake
+    RETRY_SCHEDULED = "RETRY_SCHEDULED"  # claimable when next_run_at <= now
     COMPLETED = "COMPLETED"
     FAILED_TERMINAL = "FAILED_TERMINAL"
     DEAD_LETTER = "DEAD_LETTER"
@@ -457,14 +457,16 @@ stateDiagram-v2
 @dataclass(frozen=True)
 class FrozenProposedCommand:
     """Snapshot stored at wait time — never regenerate idempotency keys on resume."""
+
     command_type: str
     tenant_id: str
-    payload: dict[str, Any]       # as proposed (may lack approved_by)
+    payload: dict[str, Any]  # as proposed (may lack approved_by)
     idempotency_key: str
     expires_at: str | None
     required_authority: str
     proposal_id: str
     agent_name: str
+
 
 @dataclass(frozen=True)
 class StepResult:
@@ -473,11 +475,12 @@ class StepResult:
     events: list[WorkflowEventWrite]
     commands_to_execute: list[ExecutableCommand]
     wait_for: SignalType | None
-    wait_payload: dict[str, Any]   # includes frozen_command snapshot
+    wait_payload: dict[str, Any]  # includes frozen_command snapshot
     wait_deadline: datetime | None  # for approval timeout sweeper
     retryable_error: str | None = None
     terminal_reason: str | None = None
     context_patch: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(frozen=True)
 class ExecutableCommand:
@@ -529,7 +532,11 @@ def build_executable_command(
     elif frozen.command_type == "send_notification":
         # frozen payload already has preview_id, content_hash, receipt_hash, receipt_id
         payload["approved_by"] = approval.approver_id
-    elif frozen.command_type in ("reverse_expense", "supersede_expense", "correct_published_amount"):
+    elif frozen.command_type in (
+        "reverse_expense",
+        "supersede_expense",
+        "correct_published_amount",
+    ):
         payload["actor"] = approval.approver_id
         payload.setdefault("approved_by", approval.approver_id)
     return AgentCommand(
@@ -800,6 +807,7 @@ def default_executor_factory(ledger_binding: LedgerBinding):
             workspace=ledger_binding.workspace(instance.tenant_id),
             receipt_store=...,  # optional
         )
+
     return factory
 ```
 
@@ -959,12 +967,8 @@ class WorkflowStore(Protocol):
         next_run_at: datetime,
         clear_lease: bool,
     ) -> None: ...
-    def take_unconsumed_signals(
-        self, tenant_id: str, workflow_id: str
-    ) -> list[WorkflowSignal]: ...
-    def mark_signal_consumed(
-        self, tenant_id: str, signal_id: str, result: str
-    ) -> None: ...
+    def take_unconsumed_signals(self, tenant_id: str, workflow_id: str) -> list[WorkflowSignal]: ...
+    def mark_signal_consumed(self, tenant_id: str, signal_id: str, result: str) -> None: ...
     def put_execution_receipt(
         self, receipt: ExecutionReceipt, *, workflow_id: str
     ) -> None: ...  # raises if status not in SUCCEEDED|SIMULATED|SKIPPED
@@ -1259,17 +1263,19 @@ DISCREPANCY_REPORTED → CORRECTION_PROPOSED → REVIEW_PENDING (WAIT L3)
 **L3 command types (K15)** — update `types.py` `L3_COMMAND_TYPES` and `AuthorityPolicy.l3_command_types`:
 
 ```python
-L3_COMMAND_TYPES = frozenset({
-    "approve_expense",
-    "reject_expense",
-    "publish_use_of_funds_receipt",
-    "send_notification",
-    "publish_public_evidence",
-    "change_attribution_policy",
-    "correct_published_amount",  # generic amount correction if needed
-    "reverse_expense",           # NEW — maps ledger.reverse_expense
-    "supersede_expense",         # NEW — maps ledger.supersede_expense
-})
+L3_COMMAND_TYPES = frozenset(
+    {
+        "approve_expense",
+        "reject_expense",
+        "publish_use_of_funds_receipt",
+        "send_notification",
+        "publish_public_evidence",
+        "change_attribution_policy",
+        "correct_published_amount",  # generic amount correction if needed
+        "reverse_expense",  # NEW — maps ledger.reverse_expense
+        "supersede_expense",  # NEW — maps ledger.supersede_expense
+    }
+)
 ```
 
 `LedgerCommandExecutor._dispatch`:
@@ -1298,11 +1304,11 @@ Skip MVP; consumers use `list` / events.
 
 | Test | Covers |
 |---|---|
-| `test_workflow_machine.py` | Transitions; atomic L3; no park on APPROVED |
-| `test_workflow_replay.py` | Crash injection between commit substeps (memory fault injector); resume |
-| `test_workflow_signals.py` | Wake PENDING; wrong tenant; agent approver; key mismatch; invalid consume; no matching signal → repark (no busy-loop); REJECTED_INVALID → WAITING_SIGNAL |
-| `test_workflow_retry.py` | Retryable vs terminal taxonomy; DLQ; FAILED not in receipt store |
-| `test_workflow_timeout.py` | wait_deadline cleared; sweeper idempotent (no re-fire); late APPROVE rejected; NEEDS_INFORMATION |
+| `test_workflow_machine_and_steps.py` | Transitions; atomic L3; no park on APPROVED |
+| `test_workflow_memory_runtime.py` | Crash injection between commit substeps (memory fault injector); resume |
+| `test_workflow_memory_runtime.py`, `test_workflow_sql_store.py` | Wake PENDING; wrong tenant; agent approver; key mismatch; invalid consume; no matching signal → repark (no busy-loop); REJECTED_INVALID → WAITING_SIGNAL |
+| `test_workflow_worker.py` | Retryable vs terminal taxonomy; DLQ; FAILED not in receipt store |
+| `test_workflow_sql_store.py` | wait_deadline cleared; sweeper idempotent (no re-fire); late APPROVE rejected; NEEDS_INFORMATION |
 | `test_expense_approval_slice.py` | Façade parity when flag runtime; last-row workflow_state (K18) |
 | `test_agent_import_boundaries.py` | executor.py gateway + workflows ban |
 | T2 integration | K17 fold rehydrate: same expense_id after kill; signal → LEDGER_COMMITTED; no duplicate entities |
@@ -1334,7 +1340,7 @@ flowchart LR
 
 ## References
 
-- `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith; Temporal preferred / PG OK; **note evidence/classify order drift vs this doc**
+- `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith; the bounded SQL worker is the pilot default (Temporal remains a later option). Evidence-before-classify ordering now agrees across AGENTS.md, AGENTIC-SYSTEM.md, and `workflows/machine.py`.
 - `AGENTS.md`, `ENGINEERING_PRINCIPLES.md`, `ROADMAP.md`, `TODO.md`
 - `src/impact_relay/agents/expense_workflow.py`, `types.py`, `base.py`, `authority.py`
 - `src/impact_relay/domain/ledger.py` — mutations and corrections
@@ -1411,7 +1417,7 @@ Split into **MVP (v0.6)**, **Pilot**, and **Later**. Each PR independently revie
 #### PR-P2 — PostgreSQL WorkflowStore + Alembic
 
 - **Title:** `workflows: PostgreSQL store, claim SQL, schema`
-- **Files:** `store_postgres.py`, migrations, optional `db` deps; skip tests without DSN
+- **Files:** `store_sql.py`, migrations, optional `db` deps; CI runs these against a Postgres service container
 - **Dependencies:** PR-M3 (protocol), PR-P1 for non-sim e2e
 - **Description:** SKIP LOCKED claim; `enqueue_signal_and_wake` TX; execution_receipts CHECK status; tenant isolation tests.
 

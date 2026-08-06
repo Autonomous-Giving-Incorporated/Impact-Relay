@@ -10,8 +10,6 @@ from impact_relay.agents.base import AgentContext
 from impact_relay.agents.types import WorkflowState
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 from impact_relay.workflows.expense_to_receipt import (
-    HandlerBundle,
-    step_classify,
     step_evidence,
     step_intake,
     step_review,
@@ -23,25 +21,21 @@ from impact_relay.workflows.machine import (
 )
 from impact_relay.workflows.types import WorkflowRunStatus
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_evidence_before_classify_transitions() -> None:
     assert can_transition(WorkflowState.NORMALIZED, WorkflowState.EVIDENCE_PENDING)
-    assert can_transition(
-        WorkflowState.EVIDENCE_PENDING, WorkflowState.CLASSIFICATION_PENDING
-    )
-    assert can_transition(
-        WorkflowState.CLASSIFICATION_PENDING, WorkflowState.REVIEW_PENDING
-    )
+    assert can_transition(WorkflowState.EVIDENCE_PENDING, WorkflowState.CLASSIFICATION_PENDING)
+    assert can_transition(WorkflowState.CLASSIFICATION_PENDING, WorkflowState.REVIEW_PENDING)
     assert is_human_gate(WorkflowState.REVIEW_PENDING)
     assert not can_transition(WorkflowState.DELIVERED, WorkflowState.RECEIVED)
 
 
 def test_illegal_transition_raises() -> None:
-    from impact_relay.workflows.exceptions import WorkflowStateError
     import pytest
+
+    from impact_relay.workflows.exceptions import WorkflowStateError
 
     with pytest.raises(WorkflowStateError):
         assert_transition(WorkflowState.DELIVERED, WorkflowState.RECEIVED)
@@ -55,10 +49,7 @@ def test_step_intake_emits_import_commands() -> None:
     out = step_intake(ctx, rows)
     assert out.step.next_state == WorkflowState.NORMALIZED
     assert out.step.commands_to_execute
-    assert (
-        out.step.commands_to_execute[0].command.command_type
-        == "import_normalized_expense"
-    )
+    assert out.step.commands_to_execute[0].command.command_type == "import_normalized_expense"
 
 
 def test_step_evidence_sufficient_path() -> None:
@@ -66,9 +57,7 @@ def test_step_evidence_sufficient_path() -> None:
     out = step_evidence(
         ctx,
         expense_id="exp_1",
-        evidence_items=[
-            {"id": "ev1", "kind": "invoice", "summary": "inv", "donor_visible": True}
-        ],
+        evidence_items=[{"id": "ev1", "kind": "invoice", "summary": "inv", "donor_visible": True}],
         current=WorkflowState.NORMALIZED,
     )
     assert out.step.next_state == WorkflowState.CLASSIFICATION_PENDING

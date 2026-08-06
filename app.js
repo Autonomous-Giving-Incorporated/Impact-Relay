@@ -62,7 +62,12 @@ function render(state) {
 
   text('orgName', organization.name);
   text('orgTagline', organization.tagline);
+  text('tenantName', organization.name);
   text('campaignName', campaign.name);
+  const tenantChip = document.getElementById('tenantChip');
+  if (tenantChip) {
+    tenantChip.setAttribute('aria-label', `AGI tenant: ${organization.name}`);
+  }
 
   const raisedLabel = campaign.raisedClaimLabel || 'PILOT';
   const raisedSource = campaign.raisedSource || 'pilot_synthetic';

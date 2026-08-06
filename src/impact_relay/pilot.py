@@ -56,9 +56,7 @@ def build_ledger_from_fixture(data: dict[str, Any]) -> Ledger:
     return ledger
 
 
-def _load_donors_allocations_donations_expenses(
-    ledger: Ledger, data: dict[str, Any]
-) -> None:
+def _load_donors_allocations_donations_expenses(ledger: Ledger, data: dict[str, Any]) -> None:
     for d in data.get("donors", []):
         ledger.register_donor(
             Donor(
@@ -163,8 +161,8 @@ def run_pilot(
     ledger = build_ledger_from_fixture(data)
     receipts: list[UseOfFundsReceipt] = []
     publish_plan = data.get("publish", [])
-    expense_ids = {p["expense_id"] for p in publish_plan} if publish_plan else set(
-        ledger.expenses.keys()
+    expense_ids = (
+        {p["expense_id"] for p in publish_plan} if publish_plan else set(ledger.expenses.keys())
     )
 
     if approve:
@@ -218,8 +216,8 @@ def _populate_workspace_from_org_block(
     }
 
     publish_uof = block.get("publish_uof") or block.get("publish") or []
-    expense_ids = {p["expense_id"] for p in publish_uof} if publish_uof else set(
-        ledger.expenses.keys()
+    expense_ids = (
+        {p["expense_id"] for p in publish_uof} if publish_uof else set(ledger.expenses.keys())
     )
     for eid in expense_ids:
         exp = ledger.expenses[eid]
@@ -408,9 +406,7 @@ def run_all_phases_pilot(
             "impact_receipts": primary.get("impact_receipts", []),
             "notification_intents": primary.get("notification_intents", []),
             "notification_deliveries": primary.get("notification_deliveries", []),
-            "donor_dashboard_alice": (primary.get("donor_dashboards") or {}).get(
-                "donor_alice"
-            ),
+            "donor_dashboard_alice": (primary.get("donor_dashboards") or {}).get("donor_alice"),
         },
     }
     return platform, payload

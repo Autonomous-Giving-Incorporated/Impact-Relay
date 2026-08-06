@@ -24,7 +24,6 @@ from impact_relay.agents.types import (
 )
 from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 
@@ -147,7 +146,9 @@ def test_missing_evidence_marked() -> None:
     agent = EvidenceValidatorAgent()
     assert agent.assess([]) == EvidenceSufficiency.MISSING
     assert agent.assess([{"kind": "note"}]) == EvidenceSufficiency.PARTIAL
-    assert agent.assess([{"kind": "invoice", "donor_visible": True}]) == EvidenceSufficiency.SUFFICIENT
+    assert (
+        agent.assess([{"kind": "invoice", "donor_visible": True}]) == EvidenceSufficiency.SUFFICIENT
+    )
 
 
 def test_approve_without_human_receipt_fails() -> None:
@@ -155,8 +156,8 @@ def test_approve_without_human_receipt_fails() -> None:
     # Import one expense manually via executor L2
     ex = LedgerCommandExecutor(ledger, simulation=False)
     row = _batch_rows()[0]
-    from impact_relay.agents.types import to_jsonable
     from impact_relay.agents.expense_workflow import normalize_expense_row
+    from impact_relay.agents.types import to_jsonable
 
     n = normalize_expense_row(row, tenant_id=ledger.organization.id)
     cmd = AgentCommand(

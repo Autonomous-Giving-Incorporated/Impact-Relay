@@ -28,9 +28,7 @@ class InMemoryLedgerBinding:
         if workspace is not None:
             self._workspaces[tid] = workspace
         elif tid not in self._workspaces:
-            self._workspaces[tid] = TenantWorkspace(
-                ledger.organization, ledger=ledger
-            )
+            self._workspaces[tid] = TenantWorkspace(ledger.organization, ledger=ledger)
 
     def for_tenant(self, tenant_id: str) -> Ledger:
         if tenant_id not in self._ledgers:

@@ -7,9 +7,12 @@ template for other nonprofits. See ``docs/HACKER-DOJO-INTEGRATION.md``.
 from impact_relay.storage.ledger_repo import LedgerEntityRepository
 from impact_relay.storage.objects import (
     LocalObjectStorage,
+    ObjectRetentionPolicy,
     ObjectStorageError,
+    RetentionPurgeReceipt,
     S3ObjectStorage,
     open_object_storage,
+    retention_metadata,
 )
 from impact_relay.storage.ports import (
     ObjectStorage,
@@ -31,10 +34,12 @@ __all__ = [
     "CANONICAL_POLICY_SLUG",
     "LedgerEntityRepository",
     "LocalObjectStorage",
+    "ObjectRetentionPolicy",
     "ObjectStorage",
     "ObjectStorageError",
     "OutboxEvent",
     "OutboxStore",
+    "RetentionPurgeReceipt",
     "S3ObjectStorage",
     "StorageBundle",
     "TenantRecord",
@@ -43,4 +48,5 @@ __all__ = [
     "ensure_canonical_hacker_dojo_tenant",
     "open_object_storage",
     "open_storage",
+    "retention_metadata",
 ]

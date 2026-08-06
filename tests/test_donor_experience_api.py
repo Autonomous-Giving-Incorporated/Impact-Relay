@@ -7,19 +7,18 @@ from decimal import Decimal
 import pytest
 
 from impact_relay.auth.principal import principal_from_fixture
-from impact_relay.auth.roles import Role
 from impact_relay.auth.rbac import AuthorizationError
-from impact_relay.donor import DonorExperienceAPI, open_donor_api
+from impact_relay.auth.roles import Role
+from impact_relay.domain.notifications import NotificationService
+from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.domain.types import (
     NotificationChannel,
     NotificationIntentStatus,
-    NotificationMessageClass,
+    NotificationPreference,
 )
-from impact_relay.domain.notifications import NotificationService
-from impact_relay.domain.types import NotificationPreference
+from impact_relay.donor import DonorExperienceAPI, open_donor_api
 from impact_relay.notifications import FixtureEmailAdapter
 from impact_relay.pilot import run_pilot
-from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID
 
 
@@ -83,8 +82,8 @@ def test_notification_preferences_and_quiet_hours() -> None:
     assert prefs and prefs[0]["quiet_hours_start"] == "00:00"
 
     # Consent required for delivery path
-    from impact_relay.domain.types import ConsentRecord
     from impact_relay.agents.types import utc_now_iso
+    from impact_relay.domain.types import ConsentRecord
 
     ns = NotificationService(ws, adapters={NotificationChannel.EMAIL: FixtureEmailAdapter()})
     ns.record_consent(

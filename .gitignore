@@ -1,4 +1,6 @@
 node_modules/
+test-results/
+playwright-report/
 .DS_Store
 .env
 .env.*
@@ -20,3 +22,8 @@ htmlcov/
 .impact-relay-workflow-session.pkl
 *.workflow-session.pkl
 .impact-relay/
+
+# Local dev tooling (project uses pip)
+uv.lock
+.vercel
+.env*

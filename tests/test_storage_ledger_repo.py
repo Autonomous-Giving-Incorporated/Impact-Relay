@@ -71,9 +71,7 @@ def test_tenant_isolation_other_nonprofit_empty(tmp_path: Path) -> None:
     # Other tenant has no entities
     assert store.ledger.load_ledger(tenant_id="org_other_makerspace") is None
     assert store.ledger.list_expenses("org_other_makerspace") == []
-    assert (
-        store.ledger.get_expense("org_other_makerspace", "exp_soldering_842") is None
-    )
+    assert store.ledger.get_expense("org_other_makerspace", "exp_soldering_842") is None
 
 
 def test_save_replaces_snapshot(tmp_path: Path) -> None:

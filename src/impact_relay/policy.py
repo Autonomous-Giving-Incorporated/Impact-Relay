@@ -217,9 +217,7 @@ def load_policy_document(path: Path | str) -> dict[str, Any]:
     return data
 
 
-def parse_tenant_policy(
-    data: dict[str, Any], *, source_path: str | None = None
-) -> TenantPolicy:
+def parse_tenant_policy(data: dict[str, Any], *, source_path: str | None = None) -> TenantPolicy:
     version = str(data.get("version") or data.get("policy_version") or "")
     tenant_id = str(data.get("tenant_id") or data.get("organization_id") or "")
     if not version:
@@ -254,23 +252,17 @@ def parse_tenant_policy(
         ),
         attribution=AttributionPolicy(
             default_method=str(attr.get("default_method", "DIRECT_RESTRICTED")),
-            allowed_methods=tuple(
-                attr.get("allowed_methods") or defaults_attr.allowed_methods
-            ),
+            allowed_methods=tuple(attr.get("allowed_methods") or defaults_attr.allowed_methods),
         ),
         notifications=NotificationPolicy(
-            require_separate_send_approval=bool(
-                notif.get("require_separate_send_approval", True)
-            ),
+            require_separate_send_approval=bool(notif.get("require_separate_send_approval", True)),
             default_email_topics=tuple(
                 notif.get("default_email_topics") or ("MONEY_USED", "CORRECTION")
             ),
             fixture_consent_allowed=bool(notif.get("fixture_consent_allowed", True)),
         ),
         authority=AuthorityPolicy(
-            l3_command_types=tuple(
-                auth.get("l3_command_types") or defaults_auth.l3_command_types
-            ),
+            l3_command_types=tuple(auth.get("l3_command_types") or defaults_auth.l3_command_types),
         ),
         source_path=source_path,
     )
@@ -303,9 +295,7 @@ def resolve_policy_path(
     for c in candidates:
         if c.is_file():
             return c
-    raise PolicyError(
-        f"no policy file for tenant_id={tenant_id!r} version={version!r} in {base}"
-    )
+    raise PolicyError(f"no policy file for tenant_id={tenant_id!r} version={version!r} in {base}")
 
 
 def _tenant_ids_compatible(policy_tenant: str, requested: str) -> bool:
@@ -317,9 +307,7 @@ def _tenant_ids_compatible(policy_tenant: str, requested: str) -> bool:
         return True
     if b == f"org_{a}" or a == f"org_{b}":
         return True
-    if b.endswith(a) or a.endswith(b.replace("org_", "")):
-        return True
-    return False
+    return b.endswith(a) or a.endswith(b.replace("org_", ""))
 
 
 def load_tenant_policy(
@@ -332,19 +320,13 @@ def load_tenant_policy(
     data = load_policy_document(path)
     policy = parse_tenant_policy(data, source_path=str(path))
     if not _tenant_ids_compatible(policy.tenant_id, tenant_id):
-        raise PolicyError(
-            f"policy tenant_id {policy.tenant_id!r} does not match {tenant_id!r}"
-        )
+        raise PolicyError(f"policy tenant_id {policy.tenant_id!r} does not match {tenant_id!r}")
     return policy
 
 
-def default_policy(
-    tenant_id: str = "org_hacker_dojo", version: str = "v1.0"
-) -> TenantPolicy:
+def default_policy(tenant_id: str = "org_hacker_dojo", version: str = "v1.0") -> TenantPolicy:
     """Load file-backed policy, or built-in defaults if missing."""
     try:
         return load_tenant_policy(tenant_id, version)
     except PolicyError:
-        return TenantPolicy(
-            version=version, tenant_id=tenant_id, display_name=tenant_id
-        )
+        return TenantPolicy(version=version, tenant_id=tenant_id, display_name=tenant_id)

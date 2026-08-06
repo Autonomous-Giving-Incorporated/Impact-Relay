@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,88 @@ _SAFE_KEY = re.compile(r"^[A-Za-z0-9._/\-]+$")
 
 class ObjectStorageError(ValueError):
     """Invalid tenant, key, path escape, or backend misconfiguration."""
+
+
+@dataclass(frozen=True)
+class ObjectRetentionPolicy:
+    """Per-object retention metadata for evidence and receipt artifacts."""
+
+    classification: str
+    retain_until: str
+    legal_hold: bool = False
+
+    @classmethod
+    def for_days(
+        cls,
+        *,
+        classification: str,
+        days: int,
+        now: datetime | None = None,
+        legal_hold: bool = False,
+    ) -> ObjectRetentionPolicy:
+        if days < 0:
+            raise ObjectStorageError("retention days must be non-negative")
+        base = now or datetime.now(UTC)
+        if base.tzinfo is None:
+            base = base.replace(tzinfo=UTC)
+        retain_until = (base + timedelta(days=days)).replace(microsecond=0).isoformat()
+        return cls(classification=classification, retain_until=retain_until, legal_hold=legal_hold)
+
+    def __post_init__(self) -> None:
+        if not self.classification.strip():
+            raise ObjectStorageError("retention classification is required")
+        if any(ch in self.classification for ch in "\r\n"):
+            raise ObjectStorageError("retention classification must be a single metadata value")
+        _parse_retention_time(self.retain_until)
+
+    def metadata(self) -> dict[str, str]:
+        return {
+            "retention_classification": self.classification,
+            "retain_until": self.retain_until,
+            "legal_hold": "true" if self.legal_hold else "false",
+        }
+
+
+@dataclass(frozen=True)
+class RetentionPurgeReceipt:
+    tenant_id: str
+    scanned: int
+    purged: int
+    retained: int
+    held: int
+    purged_keys: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tenant_id": self.tenant_id,
+            "scanned": self.scanned,
+            "purged": self.purged,
+            "retained": self.retained,
+            "held": self.held,
+            "purged_keys": list(self.purged_keys),
+        }
+
+
+def _parse_retention_time(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ObjectStorageError("retain_until must be an ISO datetime") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def retention_metadata(
+    policy: ObjectRetentionPolicy | None,
+    meta: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Merge caller metadata with normalized retention metadata."""
+
+    merged = {str(k): str(v) for k, v in (meta or {}).items()}
+    if policy is not None:
+        merged.update(policy.metadata())
+    return merged
 
 
 def validate_object_ref(tenant_id: str, key: str) -> None:
@@ -74,6 +158,24 @@ class LocalObjectStorage:
         )
         return object_storage_id(tenant_id, key)
 
+    def put_with_retention(
+        self,
+        tenant_id: str,
+        key: str,
+        data: bytes,
+        *,
+        retention: ObjectRetentionPolicy,
+        content_type: str = "application/octet-stream",
+        meta: dict[str, str] | None = None,
+    ) -> str:
+        return self.put(
+            tenant_id,
+            key,
+            data,
+            content_type=content_type,
+            meta=retention_metadata(retention, meta),
+        )
+
     def get(self, tenant_id: str, key: str) -> bytes | None:
         path = self._resolve(tenant_id, key)
         if not path.is_file():
@@ -93,6 +195,66 @@ class LocalObjectStorage:
         if meta.is_file():
             meta.unlink()
         return deleted
+
+    def purge_expired(
+        self,
+        tenant_id: str,
+        *,
+        now: datetime | None = None,
+        dry_run: bool = False,
+    ) -> RetentionPurgeReceipt:
+        validate_object_ref(tenant_id, "retention-scan")
+        tenant_root = (self.root / tenant_id).resolve()
+        if not tenant_root.exists():
+            return RetentionPurgeReceipt(tenant_id, 0, 0, 0, 0, ())
+        if not str(tenant_root).startswith(str(self.root.resolve())):
+            raise ObjectStorageError("path escape rejected")
+
+        cutoff = now or datetime.now(UTC)
+        if cutoff.tzinfo is None:
+            cutoff = cutoff.replace(tzinfo=UTC)
+        cutoff = cutoff.astimezone(UTC)
+
+        scanned = purged = retained = held = 0
+        purged_keys: list[str] = []
+        for meta_path in sorted(tenant_root.rglob("*.meta.json")):
+            object_path = Path(str(meta_path)[: -len(".meta.json")])
+            if not object_path.is_file():
+                continue
+            key = object_path.relative_to(tenant_root).as_posix()
+            validate_object_ref(tenant_id, key)
+            scanned += 1
+            try:
+                meta_doc = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                retained += 1
+                continue
+            metadata = meta_doc.get("meta") if isinstance(meta_doc, dict) else None
+            if not isinstance(metadata, dict):
+                retained += 1
+                continue
+            if str(metadata.get("legal_hold", "")).lower() == "true":
+                held += 1
+                continue
+            retain_until = metadata.get("retain_until")
+            if not isinstance(retain_until, str) or not retain_until:
+                retained += 1
+                continue
+            if _parse_retention_time(retain_until) > cutoff:
+                retained += 1
+                continue
+            purged += 1
+            purged_keys.append(key)
+            if not dry_run:
+                self.delete(tenant_id, key)
+        return RetentionPurgeReceipt(
+            tenant_id=tenant_id,
+            scanned=scanned,
+            purged=purged,
+            retained=retained,
+            held=held,
+            purged_keys=tuple(purged_keys),
+        )
 
 
 class S3ObjectStorage:
@@ -141,9 +303,7 @@ class S3ObjectStorage:
         try:
             import boto3
         except ImportError as exc:
-            raise ObjectStorageError(
-                "S3 support requires: pip install 'impact-relay[s3]'"
-            ) from exc
+            raise ObjectStorageError("S3 support requires: pip install 'impact-relay[s3]'") from exc
         kwargs: dict[str, Any] = {}
         if self._region_name:
             kwargs["region_name"] = self._region_name
@@ -178,24 +338,41 @@ class S3ObjectStorage:
             "",
         ):
             extra["ServerSideEncryption"] = self.server_side_encryption
-        self.client.put_object(
-            Bucket=self.bucket, Key=s3_key, Body=data, **extra
-        )
+        self.client.put_object(Bucket=self.bucket, Key=s3_key, Body=data, **extra)
         return object_storage_id(tenant_id, key)
+
+    def put_with_retention(
+        self,
+        tenant_id: str,
+        key: str,
+        data: bytes,
+        *,
+        retention: ObjectRetentionPolicy,
+        content_type: str = "application/octet-stream",
+        meta: dict[str, str] | None = None,
+    ) -> str:
+        return self.put(
+            tenant_id,
+            key,
+            data,
+            content_type=content_type,
+            meta=retention_metadata(retention, meta),
+        )
 
     def get(self, tenant_id: str, key: str) -> bytes | None:
         s3_key = self._s3_key(tenant_id, key)
         try:
             resp = self.client.get_object(Bucket=self.bucket, Key=s3_key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # botocore ClientError NoSuchKey / 404
             code = getattr(exc, "response", {}).get("Error", {}).get("Code", "")
             if code in ("NoSuchKey", "404", "NotFound") or "NoSuchKey" in str(exc):
                 return None
             # Also handle 404 status
-            if getattr(exc, "response", {}).get("ResponseMetadata", {}).get(
-                "HTTPStatusCode"
-            ) == 404:
+            if (
+                getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                == 404
+            ):
                 return None
             raise ObjectStorageError(f"S3 get failed: {exc}") from exc
         body = resp["Body"].read()
@@ -206,13 +383,14 @@ class S3ObjectStorage:
         try:
             self.client.head_object(Bucket=self.bucket, Key=s3_key)
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             code = getattr(exc, "response", {}).get("Error", {}).get("Code", "")
             if code in ("404", "NoSuchKey", "NotFound") or "Not Found" in str(exc):
                 return False
-            if getattr(exc, "response", {}).get("ResponseMetadata", {}).get(
-                "HTTPStatusCode"
-            ) == 404:
+            if (
+                getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+                == 404
+            ):
                 return False
             raise ObjectStorageError(f"S3 head failed: {exc}") from exc
 
@@ -255,15 +433,13 @@ def open_object_storage(
     if kind in ("s3", "minio", "r2"):
         bkt = bucket or os.environ.get("IMPACT_RELAY_S3_BUCKET")
         if not bkt:
-            raise ObjectStorageError(
-                "S3 object store requires IMPACT_RELAY_S3_BUCKET or bucket="
-            )
+            raise ObjectStorageError("S3 object store requires IMPACT_RELAY_S3_BUCKET or bucket=")
         pref = prefix if prefix is not None else os.environ.get("IMPACT_RELAY_S3_PREFIX", "")
         ep = endpoint_url or os.environ.get("IMPACT_RELAY_S3_ENDPOINT_URL")
-        region = region_name or os.environ.get("IMPACT_RELAY_S3_REGION") or os.environ.get(
-            "AWS_REGION"
+        region = (
+            region_name or os.environ.get("IMPACT_RELAY_S3_REGION") or os.environ.get("AWS_REGION")
         )
-        sse = (
+        sse: str | None = (
             server_side_encryption
             if server_side_encryption is not None
             else os.environ.get("IMPACT_RELAY_S3_SSE", "AES256")
@@ -279,6 +455,4 @@ def open_object_storage(
             server_side_encryption=sse,
         )
 
-    raise ObjectStorageError(
-        f"unknown IMPACT_RELAY_OBJECT_STORE={kind!r} (use local or s3)"
-    )
+    raise ObjectStorageError(f"unknown IMPACT_RELAY_OBJECT_STORE={kind!r} (use local or s3)")

@@ -68,9 +68,7 @@ def register_cloned_tenant(
     if tenant_id == CANONICAL_PILOT_TENANT_ID:
         rec = ensure_canonical_hacker_dojo_tenant(store)
         return load_tenant_policy(CANONICAL_PILOT_TENANT_ID), rec
-    policy = clone_tenant_from_hacker_dojo(
-        tenant_id=tenant_id, display_name=display_name
-    )
+    policy = clone_tenant_from_hacker_dojo(tenant_id=tenant_id, display_name=display_name)
     rec = store.tenants.upsert_from_policy(
         policy,
         template_source=CANONICAL_PILOT_TENANT_ID,

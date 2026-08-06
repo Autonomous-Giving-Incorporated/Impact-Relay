@@ -10,12 +10,10 @@ from typing import Any
 from impact_relay.auth.principal import Principal
 from impact_relay.auth.rbac import AuthorizationError, Permission, assert_permission
 from impact_relay.domain.donor_views import DonorReadService
-from impact_relay.domain.notifications import NotificationService
 from impact_relay.domain.tenant import TenantWorkspace
 from impact_relay.domain.types import (
     NotificationChannel,
     NotificationPreference,
-    NotFoundError,
 )
 
 
@@ -25,16 +23,19 @@ class DonorExperienceAPI:
     def __init__(self, workspace: TenantWorkspace) -> None:
         self.ws = workspace
         self.reads = DonorReadService(workspace)
-        self.notifications = NotificationService(workspace)
+        self.notifications = workspace.notifications()
 
-    def _assert_donor_access(
-        self, donor_id: str, principal: Principal | None
-    ) -> None:
+    def _assert_donor_access(self, donor_id: str, principal: Principal | None) -> None:
+        """Gate donor-scoped reads.
+
+        ``principal is None`` means a trusted in-process caller (CLI, pilot
+        scripts, tests) and skips checks. Network boundaries must never pass
+        ``None`` on behalf of a remote caller — ``console_server`` requires a
+        resolved principal unless explicitly run in unauthenticated pilot mode.
+        """
         if principal is None:
             return
-        assert_permission(
-            principal, Permission.RECEIPT_READ, tenant_id=self.ws.organization.id
-        )
+        assert_permission(principal, Permission.RECEIPT_READ, tenant_id=self.ws.organization.id)
         from impact_relay.auth.roles import Role
 
         staff = any(
@@ -50,12 +51,17 @@ class DonorExperienceAPI:
         )
         if staff:
             return
-        # Donor-only principals must bind claims.donor_id to the requested donor
+        # Donor-only principals must bind claims.donor_id to the requested donor.
+        # Fail closed when the claim is absent: an unbound donor principal would
+        # otherwise read every donor's receipts.
         claim_donor = principal.raw_claims.get("donor_id")
-        if claim_donor is not None and claim_donor != donor_id:
+        if claim_donor is None:
             raise AuthorizationError(
-                f"donor principal cannot access donor_id={donor_id!r}"
+                f"donor principal {principal.email!r} has no donor_id claim; "
+                "the host must bind claims.donor_id at login"
             )
+        if claim_donor != donor_id:
+            raise AuthorizationError(f"donor principal cannot access donor_id={donor_id!r}")
 
     def get_receipt(
         self,
@@ -105,9 +111,7 @@ class DonorExperienceAPI:
         self._assert_donor_access(donor_id, principal)
         return self.reads.evidence_safe_attachments(donor_id, receipt_id)
 
-    def dashboard(
-        self, donor_id: str, *, principal: Principal | None = None
-    ) -> dict[str, Any]:
+    def dashboard(self, donor_id: str, *, principal: Principal | None = None) -> dict[str, Any]:
         self._assert_donor_access(donor_id, principal)
         return self.reads.donor_dashboard(donor_id)
 

@@ -6,9 +6,6 @@ from decimal import Decimal
 
 import pytest
 
-from impact_relay.domain.impact import ImpactService
-from impact_relay.domain.ledger import Ledger
-from impact_relay.domain.notifications import NotificationService
 from impact_relay.domain.tenant import Platform, TenantWorkspace
 from impact_relay.domain.types import (
     Allocation,
@@ -22,6 +19,7 @@ from impact_relay.domain.types import (
     FundedAsset,
     ImpactEvent,
     ImpactEventState,
+    NotFoundError,
     NotificationChannel,
     NotificationIntentStatus,
     NotificationMessageClass,
@@ -78,9 +76,7 @@ def _hd_workspace() -> TenantWorkspace:
             state=ExpenseState.IMPORTED,
         )
     )
-    led.allocate_expense(
-        expense_id="exp1", allocation_id="alloc_hw", amount=Decimal("842.17")
-    )
+    led.allocate_expense(expense_id="exp1", allocation_id="alloc_hw", amount=Decimal("842.17"))
     led.approve_expense("exp1", approved_by="finance")
     led.reconcile_expense("exp1", actor="finance")
     led.attribute_donor_to_expense(
@@ -281,9 +277,7 @@ def test_phase3_correction_intent_after_reversal() -> None:
     assert corrs
     corr = corrs[0]
     assert ws.ledger.get_receipt(prior.receipt_id).receipt_hash == prior_hash
-    intent = notify.evaluate_for_use_of_funds(
-        corr.receipt_id, channel=NotificationChannel.EMAIL
-    )
+    intent = notify.evaluate_for_use_of_funds(corr.receipt_id, channel=NotificationChannel.EMAIL)
     assert intent.message_class == NotificationMessageClass.CORRECTION
     assert intent.source_type == "CORRECTION"
     assert intent.status == NotificationIntentStatus.DELIVERED
@@ -293,19 +287,15 @@ def test_multi_tenant_isolation() -> None:
     platform = Platform()
     a = platform.register_organization(Organization(id="org_a", name="A"))
     b = platform.register_organization(Organization(id="org_b", name="B"))
-    a.ledger.register_donor(
-        Donor(id="donor_a", organization_id="org_a", display_name="A")
-    )
-    b.ledger.register_donor(
-        Donor(id="donor_b", organization_id="org_b", display_name="B")
-    )
+    a.ledger.register_donor(Donor(id="donor_a", organization_id="org_a", display_name="A"))
+    b.ledger.register_donor(Donor(id="donor_b", organization_id="org_b", display_name="B"))
     # Cross-tenant read denied
     with pytest.raises(TenantIsolationError):
         platform.donor_dashboard("org_b", "donor_a")
     with pytest.raises(TenantIsolationError):
         platform.donor_dashboard("org_a", "donor_b")
     # Donor a does not exist on org b ledger
-    with pytest.raises(Exception):
+    with pytest.raises(NotFoundError):
         b.donor_reads().allocation_balances("donor_a")
 
 
@@ -351,7 +341,7 @@ def test_all_phases_pilot_fixture_happy_path() -> None:
 
 
 def test_hd_ir_001_still_works_via_run_pilot() -> None:
-    ledger, receipts = run_pilot()
+    _ledger, receipts = run_pilot()
     assert len(receipts) == 1
     assert receipts[0].remaining_designated_balance == Decimal("157.83")
 
