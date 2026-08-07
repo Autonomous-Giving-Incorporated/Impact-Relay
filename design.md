@@ -1,6 +1,6 @@
 # Design — Impact Relay public evidence surface
 
-Impact Relay is the public proof layer of the **AGI suite** (Autonomously Giving Incorporated). It keeps an evidence-led, stat-first information architecture while adopting the **shared corporate brand foundation** used by AGI and Fund Intel.
+Impact Relay is the public proof layer of the **AGI suite** (Autonomously Giving Incorporated). It keeps an evidence-led, stat-first information architecture while adopting the **shared corporate brand foundation** used by AGI and Portfolio Signals.
 
 **Suite UI/UX is not optional.** Identity, palette, type, focus, status language, suite navigation, and footer governance must stay consistent with the companion repos. Product-specific layout and density may differ; branding may not. Full contract: [`docs/AGI-DESIGN-SYSTEM.md`](docs/AGI-DESIGN-SYSTEM.md).
 
@@ -28,7 +28,7 @@ Implementation: `tokens.css` (`--agi-*` primitives + local aliases) → `styles.
 
 ## Identity and actions
 
-The masthead reads **AGI → Impact Relay → campaign context** and provides reciprocal links to AGI and Fund Intel (`autogive.app`). The primary Donate action uses AGI ink with a gold edge; suite navigation uses AGI green. The footer repeats the AGI mark and product identity, then credits “Software by Zero State” beside Tokens, Logo use, and Legal.
+The masthead reads **AGI → Impact Relay → campaign context** and provides reciprocal links to AGI and Portfolio Signals (`autogive.app`). The primary Donate action uses AGI ink with a gold edge; suite navigation uses AGI green. The footer repeats the AGI mark and product identity, then credits “Software by Zero State” beside Tokens, Logo use, and Legal.
 
 ## Guardrails
 
@@ -37,7 +37,7 @@ The masthead reads **AGI → Impact Relay → campaign context** and provides re
 - Status and provenance must remain explicit in text.
 - Public evidence and donation controls must work at narrow viewports without hiding authority context.
 - Never replace AGI identity with tenant or builder branding in the masthead.
-- When shared suite tokens change in AGI or Fund Intel, update this surface in the same change window.
+- When shared suite tokens change in AGI or Portfolio Signals, update this surface in the same change window.
 
 ## QA
 

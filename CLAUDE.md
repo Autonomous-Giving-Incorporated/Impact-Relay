@@ -48,7 +48,7 @@ Changes to `AGENTS.md`, `policies/`, `schemas/`, or attribution/evidence/notific
 
 ## Public UI / brand (AGI suite)
 
-Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated)) and **Fund Intel** ([Fund-Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
+Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated)) and **Portfolio Signals** ([Fund-Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
 
 - Contract and checklist: [`docs/AGI-DESIGN-SYSTEM.md`](docs/AGI-DESIGN-SYSTEM.md)
 - Product layout (evidence-led IA): [`design.md`](design.md)
@@ -58,4 +58,4 @@ Host finance/donor screens still follow the same shell rules when they surface I
 
 ## Out of scope (sibling repo)
 
-Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Fund Intel / the Hacker-Dojo host path. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.
+Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals / the Hacker-Dojo host path. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.
