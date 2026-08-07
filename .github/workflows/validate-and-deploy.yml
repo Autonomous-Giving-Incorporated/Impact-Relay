@@ -264,6 +264,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v5
+      # Repo source keeps /impact-relay/ for Vercel path rewrites; GH Pages project
+      # site lives at /Impact-Relay/ and needs a matching <base href> so relative
+      # CSS/JS/data resolve (interim until suite returns to autogive.app).
+      - name: Point static base at GitHub Pages project path
+        run: |
+          set -euo pipefail
+          if ! grep -q 'href="/impact-relay/"' index.html; then
+            echo "Expected <base href=\"/impact-relay/\"> in index.html" >&2
+            exit 1
+          fi
+          sed -i 's|href="/impact-relay/"|href="/Impact-Relay/"|g' index.html
+          grep -q 'href="/Impact-Relay/"' index.html
+          echo "Rewrote base href for GitHub Pages project site."
       - uses: actions/upload-pages-artifact@v5
         with:
           path: .
