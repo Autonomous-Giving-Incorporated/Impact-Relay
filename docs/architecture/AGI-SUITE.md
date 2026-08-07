@@ -1,6 +1,6 @@
 # AGI Suite Architecture
 
-AGI-001 defines the documentation boundary for **Autonomously Giving Incorporated (A.G.I.)**: a governed donor-impact suite that pairs Fund Intel (decision workspace) with Impact Relay (financial transparency and impact evidence). A.G.I. is a product suite name, not a claim that agents own financial authority.
+AGI-001 defines the documentation boundary for **Autonomously Giving Incorporated (A.G.I.)**: a governed donor-impact suite that pairs Portfolio Signals (decision workspace) with Impact Relay (financial transparency and impact evidence). A.G.I. is a product suite name, not a claim that agents own financial authority.
 
 Zero State is credited only as the software builder.
 
@@ -9,16 +9,16 @@ Zero State is credited only as the software builder.
 | Component | Role | Hosting (canonical) |
 |-----------|------|---------------------|
 | **AGI public site** | Brand, narrative, suite entry | `https://autogive.app/` (Vercel) |
-| **Fund Intel** | Decision workspace, tenant admin shell, authenticated operator UI | `https://autogive.app/fund-intel/` · platform Supabase Auth/RLS |
+| **Portfolio Signals** | Decision workspace, tenant admin shell, authenticated operator UI | `https://autogive.app/portfolio-signals/` · platform Supabase Auth/RLS |
 | **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` |
 | **Impact Relay (backend)** | Deterministic ledger, receipts, workflows, audit | Library + Cloud Run (recommended for APIs/workers) |
 | **Supabase (platform)** | Identity, multi-tenant Postgres, RLS, Storage | Project ref `utdioxwiskzatwoejgiu` |
 
-Fund Intel presents campaign, donor, and review workflows without becoming the ledger of record. Impact Relay is the financial truth surface after human approval.
+Portfolio Signals presents campaign, donor, and review workflows without becoming the ledger of record. Impact Relay is the financial truth surface after human approval.
 
 ## Shared tenant contract
 
-Fund Intel and Impact Relay share one tenancy key:
+Portfolio Signals and Impact Relay share one tenancy key:
 
 ```text
 client_id == tenant_id
@@ -30,8 +30,8 @@ The frontend sends `client_id`; the backend treats it as `tenant_id` for policy 
 
 `hacker-dojo` / `org_hacker_dojo` is the **reference tenant** and canonical pilot template. It anchors example policies, fixture data, role mapping, public aggregate exports, and host-screen integration.
 
-- Product chrome and suite tokens are **AGI / Fund Intel / Impact Relay**.
-- Hacker Dojo brand (mark, red palette) is **tenant assets** — in Fund Intel: `assets/tenants/hacker-dojo/`.
+- Product chrome and suite tokens are **AGI / Portfolio Signals / Impact Relay**.
+- Hacker Dojo brand (mark, red palette) is **tenant assets** — in Portfolio Signals: `assets/tenants/hacker-dojo/`.
 - Other nonprofit deployments clone the tenant shape rather than forking financial rules or rebranding the product as Hacker Dojo.
 
 ## Administrative boundaries
@@ -46,7 +46,7 @@ Preferred AGI public + operator shape:
 
 ```text
 autogive.app/                 AGI brand site
-autogive.app/fund-intel/     Fund Intel UI + workspace
+autogive.app/portfolio-signals/     Portfolio Signals UI + workspace
 autogive.app/impact-relay/    public aggregate tracker
         │
         │  Supabase session + client_id (platform project)
@@ -61,8 +61,19 @@ GitHub Pages remains optional fallback only.
 
 Planned Supabase JWT validation must verify issuer, audience, expiry, signature, role claims, and the `client_id == tenant_id` binding before privileged requests reach finance, donor, publication, or notification APIs. Until that validation is active, production hosts must validate JWTs before forwarding trusted principals.
 
+## Phase status (2026-08-07)
+
+| Phase | Status |
+| --- | --- |
+| Public path suite on autogive.app | Live |
+| Portfolio Signals workspace + platform Supabase | Operator-complete |
+| Allocation middleware production host | Pending (local pilot green) |
+| IR live OBSERVED cohort | Operator-owned |
+
 ## Related
 
-- Fund Intel platform canon: Fund-Intel `docs/PLATFORM.md`
-- Fund Intel suite architecture: Fund-Intel `docs/AGI-SUITE-ARCHITECTURE.md`
+- Suite phase map: [AGI docs/PLATFORM.md](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md)
+- Portfolio Signals live receipt: Fund-Intel `docs/CURRENT-STATE.md`
+- Portfolio Signals platform canon: Fund-Intel `docs/PLATFORM.md`
+- Portfolio Signals suite architecture: Fund-Intel `docs/AGI-SUITE-ARCHITECTURE.md`
 - Design system: [AGI-DESIGN-SYSTEM.md](../AGI-DESIGN-SYSTEM.md)

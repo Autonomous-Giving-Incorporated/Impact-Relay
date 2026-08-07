@@ -8,9 +8,9 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 [Live public tracker](https://autogive.app/impact-relay/) · [GitHub Pages fallback](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
-Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder. Hacker Dojo is the **reference tenant**, not product identity (tenant assets live with Fund Intel under `assets/tenants/hacker-dojo/`).
+Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder. Hacker Dojo is the **reference tenant**, not product identity (tenant assets live with Portfolio Signals under `assets/tenants/hacker-dojo/`).
 
-**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) and [Fund Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
+**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) and [Portfolio Signals](https://github.com/scrimshawlife-ctrl/Fund-Intel) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
 
 ---
 
@@ -18,7 +18,7 @@ Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer
 
 Suite product: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
 
-**Status:** MVP packages (pots → allocate → lightweight proof/packet) ship in [Fund-Intel `services/allocation-middleware/`](https://github.com/scrimshawlife-ctrl/Fund-Intel/tree/main/services/allocation-middleware). This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces; optional deeper binding is a later integration.
+**Status (2026-08-07):** MVP packages ship in [Fund-Intel `services/allocation-middleware/`](https://github.com/scrimshawlife-ctrl/Fund-Intel/tree/main/services/allocation-middleware) with **local pilot smoke** against platform Supabase. This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces (`autogive.app/impact-relay/`); optional deeper IR ledger binding is a later integration.
 
 See [docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md).
 
