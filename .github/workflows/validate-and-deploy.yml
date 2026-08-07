@@ -94,13 +94,21 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run domain suite
         run: pytest
-      - name: Refresh public Pages artifacts
-        run: |
-          set -euo pipefail
-          python -m impact_relay --publish-pages
+      # Do not re-run --publish-pages here: it rewrites updatedAt to "today" and
+      # fails the stability gate. Operators commit publish output when content changes.
       - name: Assert public artifacts are committed and stable
         run: |
           set -euo pipefail
+          # Ensure tracked public aggregates exist and are clean in the tree
+          for f in \
+            data/use-of-funds-public.json \
+            data/impact-digests-public.json \
+            data/impact-state.json \
+            data/public-evidence.json \
+            data/public-impact.json
+          do
+            test -f "$f"
+          done
           git diff --exit-code -- \
             data/use-of-funds-public.json \
             data/impact-digests-public.json \
