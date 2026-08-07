@@ -127,6 +127,8 @@ with open_host_session(
 
 ## Onboarding another nonprofit (template pattern)
 
+**Suite operator path (FI + IR):** Portfolio Signals commercial lifecycle, then this clone — see Fund-Intel [`docs/SECOND-TENANT-ONBOARDING.md`](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/SECOND-TENANT-ONBOARDING.md) (slice D). Shared id contract: **`client_id` == `tenant_id`** (`org_*`).
+
 1. Clone policy from Hacker Dojo (same confidence / evidence / L3 set; new ids).
 2. Register tenant in storage registry.
 3. Point durable data-dir (or Postgres schema) at that tenant only.
