@@ -1,24 +1,18 @@
 {
   "version": "1.0.0",
   "updatedAt": "2026-08-08",
-  "source": "domain_impact_service+fixture",
+  "source": "gated:public_shell",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "attendeeNamesAllowed": false,
-    "contactDataAllowed": false,
-    "note": "Tenant-canonical evidence is not exposed on the public feed."
+    "contactDataAllowed": false
   },
   "summary": {
-    "eventCount": 4,
-    "totalAttendancePublic": 149,
-    "classCounts": {
-      "class_session": 1,
-      "fundraiser": 1,
-      "workshop": 1,
-      "open_lab": 1
-    }
+    "eventCount": 0,
+    "totalAttendancePublic": 0,
+    "classCounts": {}
   },
   "events": []
 }

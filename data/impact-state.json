@@ -1,29 +1,53 @@
 {
+  "$schema": "../schemas/impact-state.schema.json",
   "version": "1.0.0",
-  "updatedAt": "2026-08-08T00:00:00Z",
+  "updatedAt": "2026-08-08",
+  "authority": "public_aggregate_only",
   "organization": {
     "name": "AGI Impact Relay",
     "tagline": "Tenant-specific evidence is available to authorized operators after sign-in.",
+    "homepage": "https://autogive.app/impact-relay/",
+    "donationUrl": "https://autogive.app/",
     "processor": "none"
   },
   "campaign": {
     "name": "No public campaign feed",
-    "status": "awaiting_authorization",
     "eventDate": null,
+    "currency": "USD",
+    "minimumTarget": 0,
+    "stretchTarget": 0,
     "raisedPublic": 0,
     "committedPublic": 0,
-    "minimumTarget": 0,
+    "donorCountPublic": 0,
+    "lastReconciledAt": null,
+    "status": "awaiting_live_reconciliation",
     "raisedSource": "not_available",
-    "raisedClaimLabel": "NOT_PUBLIC",
-    "lastReconciledAt": null
+    "raisedClaimLabel": "NOT_COMPUTABLE",
+    "aggregateSource": ""
   },
-  "milestones": [],
-  "notifications": [],
+  "milestones": [
+    {
+      "id": "awaiting_authorization",
+      "label": "Awaiting tenant authorization",
+      "threshold": 0,
+      "state": "deferred",
+      "impact": "Canonical tenant campaign milestones are not published on the unauthenticated feed."
+    }
+  ],
+  "notifications": [
+    {
+      "id": "public-feed-gated",
+      "severity": "info",
+      "title": "Public feed is product shell only",
+      "body": "Canonical Hacker Dojo and other tenant impact data requires authenticated membership. This document remains schema-valid with zero public aggregates.",
+      "publishedAt": "2026-08-08T00:00:00Z"
+    }
+  ],
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "donorNamesAllowed": false,
-    "attendeeNamesAllowed": false,
-    "note": "Canonical Hacker Dojo impact data is not published on the unauthenticated feed."
+    "individualAmountsAllowed": false,
+    "contactDataAllowed": false
   }
 }

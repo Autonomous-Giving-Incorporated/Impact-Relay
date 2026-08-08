@@ -1,15 +1,14 @@
 {
   "version": "1.0.0",
   "updatedAt": "2026-08-08",
-  "source": "none",
+  "source": "gated:public_shell",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "donorNamesAllowed": false,
     "individualDonorAttributionAllowed": false,
-    "operatorIdentityAllowed": false,
-    "note": "Tenant-specific impact outcomes require authenticated access; public feed is empty by policy."
+    "operatorIdentityAllowed": false
   },
   "summary": {
     "outcomeCount": 0,

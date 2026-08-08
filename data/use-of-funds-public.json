@@ -1,11 +1,19 @@
 {
   "version": "1.0.0",
   "updatedAt": "2026-08-08",
+  "source": "gated:public_shell",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
-    "piiAllowed": false
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualDonorAttributionAllowed": false,
+    "operatorIdentityAllowed": false
   },
-  "funds": [],
-  "note": "Canonical tenant use-of-funds detail is not published on the unauthenticated surface."
+  "summary": {
+    "receiptCount": 0,
+    "totalAttributed": "0.00",
+    "currency": "USD"
+  },
+  "receipts": []
 }
