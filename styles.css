@@ -50,6 +50,8 @@ a:hover { text-decoration-thickness: 2px; }
 .page {
   width: min(100% - 2 * var(--space-md), var(--page-max));
   margin-inline: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .site-header {
@@ -499,7 +501,10 @@ main { padding-bottom: var(--space-2xl); }
 .notification-card.critical .severity-dot { background: var(--color-danger); }
 
 .table-wrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   margin: var(--space-md) 0;
   border: 1px solid var(--color-rule);
   border-radius: var(--radius-md);
@@ -510,6 +515,7 @@ main { padding-bottom: var(--space-2xl); }
 }
 .workspace-table {
   width: 100%;
+  min-width: 36rem;
   border-collapse: collapse;
   font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
@@ -580,12 +586,27 @@ main { padding-bottom: var(--space-2xl); }
 .site-footer a:hover { color: var(--color-ink); }
 
 @media (max-width: 768px) {
-  .page { width: min(100% - 2 * var(--space-sm), var(--page-max)); }
+  .page { width: min(100% - 2 * var(--space-sm), var(--page-max)); min-width: 0; }
   .site-header {
     flex-direction: column;
     align-items: flex-start;
   }
   .suite-link + .nav-link:not(.suite-link) { padding-left: 0; border-left: 0; }
+  .suite-link,
+  .nav-link,
+  .header-actions .button,
+  .site-footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .suite-link,
+  .nav-link {
+    padding: .45rem .55rem;
+  }
+  .site-footer a {
+    padding: .35rem .4rem;
+  }
   .metric-row {
     grid-template-columns: 1fr;
     gap: var(--space-sm);
@@ -602,6 +623,10 @@ main { padding-bottom: var(--space-2xl); }
   }
   .uof-summary { text-align: left; }
   .uof-head { align-items: flex-start; }
+  main, section, .evidence-panel, .panel {
+    min-width: 0;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 414px) {
@@ -611,7 +636,7 @@ main { padding-bottom: var(--space-2xl); }
     grid-template-columns: 1fr;
   }
   .header-actions { width: 100%; }
-  .button { flex: 1 1 auto; }
+  .button { flex: 1 1 auto; min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
