@@ -211,6 +211,7 @@ Impact Relay is a **library**. Hacker Dojo is the **canonical host** (UX, Supaba
 
 ```bash
 # Console API for host static pages
+# Default-deny; host bridge uses Bearer JWT/fixture — no --trusted-proxy on open ports
 python -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787
 ```
 

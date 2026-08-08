@@ -90,6 +90,12 @@ client-supplied copies of those headers may set them. Without that flag the
 headers are ignored and requests are anonymous — which the default posture
 rejects.
 
+**Hacker Dojo / Portfolio Signals host path:** the browser bridge sends only
+`Authorization: Bearer <Supabase JWT>` or a fixture Bearer pilot email. It does
+**not** require `--trusted-proxy`. Prefer that path for local and production-like
+host screens. Enable `--trusted-proxy` only when a real gateway injects identity
+headers after authentication.
+
 ### Roles (platform vocabulary)
 
 | Role | Can approve expenses | Notes |
@@ -199,6 +205,7 @@ Host-only UI tests can mock Impact Relay; money truth tests should call the real
 
 ```bash
 # terminal 1 — from Impact-Relay checkout
+# Prefer default (no --trusted-proxy) with Bearer JWT or fixture email
 python -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787
 
 # seed queue
