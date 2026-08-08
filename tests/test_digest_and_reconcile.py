@@ -21,6 +21,38 @@ from impact_relay.reconcile import (
 )
 
 
+def _state_with_pilot_milestones() -> dict:
+    """Public data/impact-state.json is intentionally empty (auth-gated HD feed).
+
+    Reconcile milestone tests use a synthetic pilot ladder independent of that file.
+    """
+    state = load_impact_state()
+    state = {
+        **state,
+        "campaign": {
+            **state.get("campaign", {}),
+            "name": "Pilot ladder (test)",
+            "minimumTarget": 420000,
+        },
+        "milestones": [
+            {
+                "id": "stabilize-ops",
+                "label": "Stabilize operations",
+                "threshold": 420000,
+                "state": "open",
+            },
+            {
+                "id": "stretch-program",
+                "label": "Stretch program",
+                "threshold": 2000000,
+                "state": "open",
+            },
+        ],
+        "notifications": [],
+    }
+    return state
+
+
 def test_digests_build_from_pilot_fixture() -> None:
     digests = build_public_digests()
     assert digests["summary"]["eventCount"] == 3
@@ -56,7 +88,7 @@ def test_write_public_digests(tmp_path: Path) -> None:
 
 
 def test_reconcile_updates_aggregates_and_milestones() -> None:
-    state = load_impact_state()
+    state = _state_with_pilot_milestones()
     aggregate = load_aggregate_fixture()
     updated = apply_aggregate_reconciliation(state, aggregate)
 
@@ -68,12 +100,13 @@ def test_reconcile_updates_aggregates_and_milestones() -> None:
     assert updated["privacy"]["piiAllowed"] is False
 
     # 12840 is below first milestone threshold 420000 → still open
+    assert updated["milestones"], "pilot ladder must be present for this test"
     assert all(m["state"] == "open" for m in updated["milestones"])
     assert any(n["id"].startswith("reconcile-") for n in updated["notifications"])
 
 
 def test_reconcile_marks_reached_milestones() -> None:
-    state = load_impact_state()
+    state = _state_with_pilot_milestones()
     aggregate = {
         "source": "test",
         "raisedPublic": 500000,
@@ -86,6 +119,7 @@ def test_reconcile_marks_reached_milestones() -> None:
     updated = apply_aggregate_reconciliation(state, aggregate)
     reached = [m for m in updated["milestones"] if m["state"] == "reached"]
     assert any(m["id"] == "stabilize-ops" for m in reached)
+    assert all(m["id"] != "stretch-program" or m["state"] == "open" for m in updated["milestones"])
 
 
 def test_reconcile_rejects_donor_lists() -> None:
