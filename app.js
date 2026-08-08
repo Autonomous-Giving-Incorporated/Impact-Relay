@@ -60,13 +60,14 @@ function showError(message) {
 function render(state) {
   const { organization, campaign, milestones, notifications, privacy, updatedAt } = state;
 
+  // Public surface: show organization/campaign as content, never multi-tenant "Tenant" chrome.
   text('orgName', organization.name);
   text('orgTagline', organization.tagline);
-  text('tenantName', organization.name);
   text('campaignName', campaign.name);
   const tenantChip = document.getElementById('tenantChip');
   if (tenantChip) {
-    tenantChip.setAttribute('aria-label', `AGI tenant: ${organization.name}`);
+    tenantChip.hidden = true;
+    tenantChip.setAttribute('aria-hidden', 'true');
   }
 
   const raisedLabel = campaign.raisedClaimLabel || 'PILOT';
