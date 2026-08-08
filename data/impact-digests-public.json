@@ -1,13 +1,14 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-08-06",
+  "updatedAt": "2026-08-08",
   "source": "domain_impact_service+fixture",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "attendeeNamesAllowed": false,
-    "contactDataAllowed": false
+    "contactDataAllowed": false,
+    "note": "Tenant-canonical evidence is not exposed on the public feed."
   },
   "summary": {
     "eventCount": 4,
@@ -19,46 +20,5 @@
       "open_lab": 1
     }
   },
-  "events": [
-    {
-      "eventId": "imp_class_2026_09_02",
-      "title": "Beginner Electronics Class \u2014 Class Held",
-      "class": "class_session",
-      "occurredOn": "2026-09-02",
-      "attendeeCountPublic": 18,
-      "impactSummary": "Beginner electronics class using donated equipment",
-      "linkedAllocationName": "Community Hardware Fund",
-      "locationLabel": "domain_verified"
-    },
-    {
-      "eventId": "evt_supperhappy_briefing",
-      "title": "SupperHappyFundHouse Campaign Briefing",
-      "class": "fundraiser",
-      "occurredOn": "2026-07-28",
-      "attendeeCountPublic": 61,
-      "impactSummary": "Public campaign briefing with aggregate fundraising milestones only.",
-      "linkedAllocationName": null,
-      "locationLabel": "Main hall"
-    },
-    {
-      "eventId": "evt_intro_electronics",
-      "title": "Intro to Electronics Workshop",
-      "class": "workshop",
-      "occurredOn": "2026-07-22",
-      "attendeeCountPublic": 22,
-      "impactSummary": "Beginner workshop using classroom tools funded by the hardware allocation.",
-      "linkedAllocationName": "Community Hardware Fund",
-      "locationLabel": "Classroom A"
-    },
-    {
-      "eventId": "evt_open_lab_july",
-      "title": "Hardware Lab Open Night",
-      "class": "open_lab",
-      "occurredOn": "2026-07-15",
-      "attendeeCountPublic": 48,
-      "impactSummary": "Community access session for soldering stations and safety training.",
-      "linkedAllocationName": "Community Hardware Fund",
-      "locationLabel": "Hacker Dojo main floor"
-    }
-  ]
+  "events": []
 }

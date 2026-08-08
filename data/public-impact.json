@@ -1,35 +1,19 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-08-06",
-  "source": "domain_impact_receipts",
+  "updatedAt": "2026-08-08",
+  "source": "none",
   "authority": "public_aggregate_only",
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "donorNamesAllowed": false,
     "individualDonorAttributionAllowed": false,
-    "operatorIdentityAllowed": false
+    "operatorIdentityAllowed": false,
+    "note": "Tenant-specific impact outcomes require authenticated access; public feed is empty by policy."
   },
   "summary": {
-    "outcomeCount": 1,
-    "totalParticipantsPublic": 18
+    "outcomeCount": 0,
+    "totalParticipantsPublic": 0
   },
-  "outcomes": [
-    {
-      "publicId": "imp_46fa8774a326",
-      "impactEventId": "imp_class_2026_09_02",
-      "organizationName": "Hacker Dojo",
-      "programName": "Beginner Electronics Class",
-      "allocationId": "alloc_community_hardware",
-      "allocationName": "Community Hardware Fund",
-      "eventType": "CLASS_HELD",
-      "eventDate": "2026-09-02",
-      "participantsPublic": 18,
-      "evidenceState": "VERIFIED",
-      "description": "Beginner electronics class using donated equipment",
-      "attributionMethod": "DIRECT_RESTRICTED",
-      "receiptHash": "46fa8774a3260f64b5d179bf2bf0eacb453673329ad54defe6e65c187844888b",
-      "createdAt": "2026-09-02T18:00:00+00:00"
-    }
-  ]
+  "outcomes": []
 }

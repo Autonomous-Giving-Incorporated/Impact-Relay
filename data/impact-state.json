@@ -1,95 +1,29 @@
 {
-  "$schema": "../schemas/impact-state.schema.json",
   "version": "1.0.0",
-  "updatedAt": "2026-08-06",
-  "authority": "public_aggregate_only",
+  "updatedAt": "2026-08-08T00:00:00Z",
   "organization": {
-    "name": "Hacker Dojo",
-    "tagline": "Keep the room where builders become possible.",
-    "homepage": "https://www.hackerdojo.org/",
-    "donationUrl": "https://www.every.org/hacker-dojo",
-    "processor": "Every.org"
+    "name": "AGI Impact Relay",
+    "tagline": "Tenant-specific evidence is available to authorized operators after sign-in.",
+    "processor": "none"
   },
   "campaign": {
-    "name": "SupperHappyFundHouse Campaign",
-    "eventDate": "2026-08-21",
-    "currency": "USD",
-    "minimumTarget": 420000.0,
-    "stretchTarget": 2000000.0,
-    "raisedPublic": 12840.0,
-    "committedPublic": 2500.0,
-    "donorCountPublic": 37,
-    "lastReconciledAt": "2026-08-01T15:00:00Z",
-    "status": "active",
-    "raisedSource": "pilot_synthetic",
-    "raisedClaimLabel": "PILOT",
-    "aggregateSource": "fixture://every.org/aggregate:hacker-dojo"
+    "name": "No public campaign feed",
+    "status": "awaiting_authorization",
+    "eventDate": null,
+    "raisedPublic": 0,
+    "committedPublic": 0,
+    "minimumTarget": 0,
+    "raisedSource": "not_available",
+    "raisedClaimLabel": "NOT_PUBLIC",
+    "lastReconciledAt": null
   },
-  "milestones": [
-    {
-      "id": "stabilize-ops",
-      "label": "Stabilize operations",
-      "threshold": 420000,
-      "state": "open",
-      "impact": "Keep the lights on and the room open for builders."
-    },
-    {
-      "id": "growth-capacity",
-      "label": "Growth capacity",
-      "threshold": 750000,
-      "state": "open",
-      "impact": "Expand programs and community infrastructure."
-    },
-    {
-      "id": "expansion",
-      "label": "Expansion",
-      "threshold": 1200000,
-      "state": "open",
-      "impact": "Scale space and builder pathways."
-    },
-    {
-      "id": "transformation",
-      "label": "Transformation path",
-      "threshold": 2000000,
-      "state": "open",
-      "impact": "Fund the long-horizon transformation case under board governance."
-    }
-  ],
-  "notifications": [
-    {
-      "id": "relay-online",
-      "severity": "info",
-      "title": "Impact Relay is live",
-      "body": "Public aggregate donation progress and milestone notifications are now published from this repository. No personal donor data is stored here.",
-      "publishedAt": "2026-08-01T14:00:00Z"
-    },
-    {
-      "id": "uof-pilot-published",
-      "severity": "success",
-      "title": "Use-of-funds pilot receipts published",
-      "body": "HD-IR-002 published privacy-safe use-of-funds receipts from the verified pilot fixture. Donor identity is not included.",
-      "publishedAt": "2026-08-01T14:30:00Z"
-    },
-    {
-      "id": "reconcile-2026-08-01",
-      "severity": "warning",
-      "title": "Pilot aggregates updated (not live processor cash)",
-      "body": "Synthetic aggregate-only Every.org-style summary. Not live processor data. Personal gifts must never appear here. Source: fixture://every.org/aggregate:hacker-dojo. Claim: PILOT (pilot_synthetic). Raised $12,840; committed $2,500; public donor count 37.",
-      "publishedAt": "2026-08-01T15:00:00Z"
-    },
-    {
-      "id": "notion-public-evidence",
-      "severity": "info",
-      "title": "Notion public evidence baseline loaded",
-      "body": "Notion Public EvidencePack loaded: Form 990 contribution history and 2012 campaign aggregate are OBSERVED; live SupperHappyFundHouse raised remains NOT_COMPUTABLE until authorized processor aggregates arrive.",
-      "publishedAt": "2026-08-01T16:00:00Z"
-    }
-  ],
+  "milestones": [],
+  "notifications": [],
   "privacy": {
     "classification": "public_aggregate_only",
     "piiAllowed": false,
     "donorNamesAllowed": false,
-    "individualAmountsAllowed": false,
-    "contactDataAllowed": false
+    "attendeeNamesAllowed": false,
+    "note": "Canonical Hacker Dojo impact data is not published on the unauthenticated feed."
   }
 }

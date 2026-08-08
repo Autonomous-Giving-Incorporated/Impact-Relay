@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-08-06",
+  "updatedAt": "2026-08-08",
   "source": "notion:HackerDojoPublicEvidencePack",
   "sourcePage": "Hacker Dojo \u2014 Public EvidencePack v1.0",
   "researchCutoff": "2026-07-31",
@@ -14,7 +14,8 @@
     "piiAllowed": false,
     "donorNamesAllowed": false,
     "individualAmountsAllowed": false,
-    "contactDataAllowed": false
+    "contactDataAllowed": false,
+    "note": "Tenant-canonical evidence is not exposed on the public feed."
   },
   "organization": {
     "name": "Hacker Dojo",
