@@ -1,0 +1,11 @@
+# Public aggregate tracker only. Assets-only Worker — no Worker script, no backend.
+# Stage files before deploy or `wrangler dev`: ./scripts/stage_cloudflare_assets.sh
+name = "impact-relay"
+compatibility_date = "2026-08-13"
+workers_dev = true
+preview_urls = true
+
+[assets]
+directory = "./.cloudflare-assets"
+html_handling = "auto-trailing-slash"
+not_found_handling = "none"

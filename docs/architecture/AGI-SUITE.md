@@ -10,7 +10,7 @@ Zero State is credited only as the software builder.
 |-----------|------|---------------------|
 | **AGI public site** | Brand, narrative, suite entry | `https://autogive.app/` (Vercel) |
 | **Portfolio Signals** | Decision workspace, tenant admin shell, authenticated operator UI | `https://autogive.app/portfolio-signals/` · platform Supabase Auth/RLS |
-| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` |
+| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` (Vercel until Cloudflare Workers cutover; see [CLOUDFLARE.md](../CLOUDFLARE.md)) |
 | **Impact Relay (backend)** | Deterministic ledger, receipts, workflows, audit | Library + Cloud Run (recommended for APIs/workers) |
 | **Supabase (platform)** | Identity, multi-tenant Postgres, RLS, Storage | Project ref `utdioxwiskzatwoejgiu` |
 

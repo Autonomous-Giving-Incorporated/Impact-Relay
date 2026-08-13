@@ -253,6 +253,47 @@ jobs:
           test -f data/impact-digests-public.json
           test -f data/public-evidence.json
           test -f data/public-impact.json
+      - name: Stage Cloudflare public assets
+        run: ./scripts/stage_cloudflare_assets.sh
+      - name: Verify Cloudflare asset bundle
+        run: |
+          test -f .cloudflare-assets/impact-relay/index.html
+          test -f .cloudflare-assets/impact-relay/app.js
+          test -f .cloudflare-assets/impact-relay/data/impact-state.json
+          test -f .cloudflare-assets/_headers
+          test -f wrangler.toml
+
+  deploy-cloudflare:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check Cloudflare credentials
+        id: creds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [[ -z "${CLOUDFLARE_API_TOKEN}" || -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
+            echo "CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set; skipping Workers deploy."
+            echo "See docs/CLOUDFLARE.md"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Stage public static assets
+        if: steps.creds.outputs.skip != 'true'
+        run: ./scripts/stage_cloudflare_assets.sh
+      - name: Deploy to Cloudflare Workers
+        if: steps.creds.outputs.skip != 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.123.0"
+          packageManager: npm
+          command: deploy
 
   deploy:
     if: github.event_name != 'pull_request'
@@ -264,9 +305,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v5
-      # Repo source keeps /impact-relay/ for Vercel path rewrites; GH Pages project
-      # site lives at /Impact-Relay/ and needs a matching <base href> so relative
-      # CSS/JS/data resolve (interim until suite returns to autogive.app).
+      # Repo source keeps /impact-relay/ for Vercel and Cloudflare Workers paths;
+      # GH Pages project site lives at /Impact-Relay/ and needs a matching
+      # <base href> so relative CSS/JS/data resolve.
       - name: Point static base at GitHub Pages project path
         run: |
           set -euo pipefail
