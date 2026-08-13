@@ -1,8 +1,8 @@
 # Cloudflare Workers static assets (public tracker)
 
-The Impact Relay **public** surface is a static site: `index.html`, `app.js`, `styles.css`, `tokens.css`, brand assets, and committed `data/*.json` aggregates. There is no Next.js app and no Python runtime on the public host. Vercel already deploys that tree as static files (`vercel.json` `framework: null`, skip install/build). This repo therefore uses the smallest Cloudflare path: an **assets-only Worker** with no `main` script.
+The designed suite stack is **Cloudflare + Supabase**. Impact Relay’s public tracker is a static site on Cloudflare Workers: `index.html`, `app.js`, `styles.css`, `tokens.css`, brand assets, and committed `data/*.json` aggregates. There is no Next.js app and no Python runtime on the public host. Vercel already deploys that tree as static files (`vercel.json` `framework: null`, skip install/build). This repo therefore uses the smallest Cloudflare path: an **assets-only Worker** with no `main` script.
 
-Public aggregates only. Do not put auth, donations, donor-level records, or the console API on this Worker.
+Auth and tenancy stay on platform **Supabase** (Portfolio Signals workspace). Public aggregates only. Do not put auth, donations, donor-level records, or the console API on this Worker.
 
 ## URLs
 
@@ -57,11 +57,17 @@ Vercel config (`vercel.json`, `.vercelignore`) stays until cutover. GitHub Pages
 5. Point canonical links at Cloudflare, then retire the Vercel project `impact-relay`.
 6. Remove `vercel.json` / `.vercelignore` in a follow-up PR after Vercel is disabled.
 
-## Remaining work (not in this repo)
+## Remaining work
 
-- Custom domain / path route for `autogive.app/impact-relay/` (Cloudflare dashboard + DNS).
-- Hosted backend APIs remain the Python library / Cloud Run path. Do not invent a Workers API for ledger, approval, or notifications.
+Operator-owned, still on Cloudflare + Supabase — not a new hosting platform:
+
+- Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then confirm the first Workers deploy.
+- Attach `autogive.app/impact-relay*` as a Cloudflare Worker route (or custom domain). DNS for `autogive.app` stays operator-owned.
+- After smoke-check, retire the Vercel project and delete `vercel.json` / `.vercelignore` in a follow-up PR.
 - GitHub Pages stays an optional fallback until operators drop it.
+- Tenant-scoped operator auth remains platform Supabase. This Worker must not grow a ledger, approval, or notification API.
+
+Do not add another application host for this public surface.
 
 ## Evidence semantics
 

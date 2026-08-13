@@ -10,8 +10,8 @@ Zero State is credited only as the software builder.
 |-----------|------|---------------------|
 | **AGI public site** | Brand, narrative, suite entry | `https://autogive.app/` (Vercel) |
 | **Portfolio Signals** | Decision workspace, tenant admin shell, authenticated operator UI | `https://autogive.app/portfolio-signals/` · platform Supabase Auth/RLS |
-| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` (Vercel until Cloudflare Workers cutover; see [CLOUDFLARE.md](../CLOUDFLARE.md)) |
-| **Impact Relay (backend)** | Deterministic ledger, receipts, workflows, audit | Library + Cloud Run (recommended for APIs/workers) |
+| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` (Cloudflare Workers static assets; Vercel until cutover; see [CLOUDFLARE.md](../CLOUDFLARE.md)) |
+| **Impact Relay (library)** | Deterministic ledger, receipts, workflows, audit | Python library in this repo; not hosted on the public Worker |
 | **Supabase (platform)** | Identity, multi-tenant Postgres, RLS, Storage | Project ref `utdioxwiskzatwoejgiu` |
 
 Portfolio Signals presents campaign, donor, and review workflows without becoming the ledger of record. Impact Relay is the financial truth surface after human approval.
@@ -46,15 +46,12 @@ Preferred AGI public + operator shape:
 
 ```text
 autogive.app/                 AGI brand site
-autogive.app/portfolio-signals/     Portfolio Signals UI + workspace
-autogive.app/impact-relay/    public aggregate tracker
+autogive.app/portfolio-signals/     Portfolio Signals UI + workspace (Supabase Auth/RLS)
+autogive.app/impact-relay/    public aggregate tracker (Cloudflare Workers)
         │
-        │  Supabase session + client_id (platform project)
+        │  operator workspace uses Supabase session + client_id
         ▼
-Cloud Run Impact Relay gateway/API  (when live APIs are enabled)
-        │  validated tenant_id, RBAC, SoD
-        ▼
-Impact Relay deterministic services, workflow store, object storage, audit receipts
+Impact Relay Python library (ledger, workflows, receipts) — not on the public Worker
 ```
 
 GitHub Pages remains optional fallback only.

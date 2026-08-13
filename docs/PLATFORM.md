@@ -23,7 +23,7 @@ Static tracker + `data/public-impact.json` and related public aggregates. Author
 
 ## Deploy (public)
 
-The public tracker is static HTML/CSS/JS plus committed `data/` JSON. Cloudflare Workers static assets is the destination host; Vercel remains until cutover. Details: [CLOUDFLARE.md](CLOUDFLARE.md).
+Designed stack: **Cloudflare + Supabase**. The public tracker is static HTML/CSS/JS plus committed `data/` JSON on Cloudflare Workers; operator auth/tenancy remain platform Supabase. Vercel remains until cutover. Details: [CLOUDFLARE.md](CLOUDFLARE.md).
 
 ```bash
 ./scripts/stage_cloudflare_assets.sh
