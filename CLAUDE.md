@@ -48,7 +48,7 @@ Changes to `AGENTS.md`, `policies/`, `schemas/`, or attribution/evidence/notific
 
 ## Public UI / brand (AGI suite)
 
-Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated)) and **Portfolio Signals** ([Fund-Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
+Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated)) and **Portfolio Signals** ([Portfolio-Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
 
 - Contract and checklist: [`docs/AGI-DESIGN-SYSTEM.md`](docs/AGI-DESIGN-SYSTEM.md)
 - Product layout (evidence-led IA): [`design.md`](design.md)
