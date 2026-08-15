@@ -6,7 +6,7 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://autogive.app/impact-relay/) · [GitHub Pages fallback](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://autogive.app/impact-relay/) · [Vercel until cutover](https://impact-relay.vercel.app) · [Cloudflare Workers](docs/CLOUDFLARE.md) · [GitHub Pages fallback](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
 Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder. Hacker Dojo is the **reference tenant**, not product identity (tenant assets live with Portfolio Signals under `assets/tenants/hacker-dojo/`).
 
@@ -89,7 +89,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | RBAC roles, SoD, OIDC ports, HD role map | `auth/` |
 | Host façade + finance/donor consoles | `host/` · `console_server.py` |
 | Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
-| Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
+| Aggregate public tracker and privacy-safe exports | Cloudflare Workers static assets + Vercel until cutover + GitHub Pages fallback + `data/` |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
 | Operational health and metrics summaries | `observability.py` |
 | Ops threat model, runbooks, pilot findings template | `docs/ops/` · `docs/pilot/` |
@@ -199,7 +199,7 @@ See [docs/HD-IR-007.md](docs/HD-IR-007.md), [docs/DURABLE-QUICKSTART.md](docs/DU
 
 ## AGI-001: A.G.I. suite boundary
 
-Autonomously Giving Incorporated (**A.G.I.**) is the product-suite frame around Fund-Intel and Impact Relay. Fund-Intel is the GitHub Pages / Supabase frontend surface; Impact Relay remains the governed backend and deterministic financial transparency library, with Cloud Run recommended for hosted backend APIs and workers.
+Autonomously Giving Incorporated (**A.G.I.**) is the product-suite frame around Fund-Intel and Impact Relay. The designed public stack is **Cloudflare + Supabase**: Impact Relay’s aggregate tracker ships as Cloudflare Workers static assets; operator identity and tenancy stay on platform Supabase. Impact Relay remains the governed Python library for ledger, receipts, and workflows — not a public Worker API.
 
 The shared tenant contract is `client_id == tenant_id`. Hacker Dojo (`hacker-dojo`) is the reference tenant and clone template. Master admins manage platform onboarding and infrastructure; tenant directors manage nonprofit roles and workflows, but neither boundary bypasses finance, publication, notification, or policy approval gates. Planned production hardening includes Supabase JWT validation at the backend gateway before privileged calls are accepted. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
 
@@ -249,7 +249,7 @@ These rules outrank model output, operator convenience, and provider data.
 
 ## Public tracker and privacy boundary
 
-The GitHub Pages surface publishes aggregate campaign progress, public use-of-funds receipts, public impact outcomes, and event digests. It does not store donor names, emails, phone numbers, addresses, private notes, or individual gift records.
+The public tracker publishes aggregate campaign progress, public use-of-funds receipts, public impact outcomes, and event digests. Canonical suite URL: `https://autogive.app/impact-relay/` (Vercel until Cloudflare cutover; see [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md)). GitHub Pages remains a fallback. It does not store donor names, emails, phone numbers, addresses, private notes, or individual gift records.
 
 | Allowed publicly | Prohibited publicly |
 |---|---|
@@ -272,6 +272,7 @@ Impact-Relay/
 ├── ROADMAP.md · TODO.md · SECURITY.md
 ├── docs/
 │   ├── DURABLE-QUICKSTART.md
+│   ├── CLOUDFLARE.md                    # Workers static-assets hosting
 │   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
 │   ├── HD-IR-001.md … HD-IR-007.md      # milestone notes
@@ -297,7 +298,9 @@ Impact-Relay/
 ├── policies/tenants/                    # e.g. hacker-dojo.v1.0.yaml
 ├── fixtures/ · schemas/ · data/
 ├── tests/ · scripts/
-├── index.html · app.js · styles.css     # public Pages tracker
+├── index.html · app.js · styles.css     # public tracker
+├── wrangler.toml · cloudflare/          # Workers static assets (see docs/CLOUDFLARE.md)
+├── vercel.json                          # kept until Cloudflare cutover
 └── .github/workflows/
 ```
 

@@ -2,7 +2,7 @@
 
 Impact Relay has two surfaces:
 
-1. **Public aggregate** publishing (GitHub Pages / `data/`) — no donor PII.
+1. **Public aggregate** publishing (Cloudflare Workers static assets / Vercel until cutover / GitHub Pages fallback / `data/`) — no donor PII.
 2. **Library + pilot data-dir** (local/staging durable store, host consoles) — may hold synthetic or authorized operational records **outside git**.
 
 Ops detail: [docs/ops/](docs/ops/) (threat model, incident response, security checklist).
