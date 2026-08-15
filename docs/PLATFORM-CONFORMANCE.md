@@ -50,23 +50,24 @@ must be reviewed as a platform contract change and reflected in commit notes,
 
 ## Autonomous Giving platform pin
 
-Cross-suite platform canon is pinned at **Specs v1.0.0**:
+Cross-suite platform canon is pinned at **Specs v2.0.0**:
 
-- Release: https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/releases/tag/v1.0.0
+- Release: https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Specs/releases/tag/v2.0.0
+- Tag: `v2.0.0` (commit `c089739`)
 - Manifest: [`platform-spec/conformance.yml`](../platform-spec/conformance.yml)
 - Notes: [`platform-spec/README.md`](../platform-spec/README.md)
 
-This is distinct from the product inventory in `docs/platform-conformance.yml` (HD-IR / agent checks above).
+This is distinct from the product inventory in `docs/platform-conformance.yml` (HD-IR / agent checks above). The pin is a specification cut, not a READY claim.
 
 ## Allocation middleware
 
 Suite product for **transaction-light allocation middleware** (every.org → pots → human allocate → proof → packet).
 
-**Status:** MVP package lives in Fund-Intel; Impact Relay remains the proof/trail discipline boundary (optional deeper ledger binding later).
+**Status:** MVP package lives in Portfolio Signals; Impact Relay remains the proof/trail discipline boundary (optional deeper ledger binding later).
 
 - [docs/ALLOCATION-MIDDLEWARE.md](ALLOCATION-MIDDLEWARE.md) — Impact Relay’s proof/trail role  
-- [Specs design](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/blob/main/docs/superpowers/specs/2026-08-03-allocation-middleware-design.md)  
-- [Fund-Intel pilot](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/HACKER-DOJO-ALLOCATION-PILOT.md)  
+- [Specs design](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Specs/blob/v2.0.0/docs/superpowers/specs/2026-08-03-allocation-middleware-design.md)  
+- [Portfolio Signals pilot](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/HACKER-DOJO-ALLOCATION-PILOT.md)  
 
 Middleware does not replace HD-IR checks; it consumes the same evidence discipline without requiring deep financial system integration.
 

@@ -4,18 +4,23 @@ This repository **pins** the Autonomous Giving Platform Specification at:
 
 | Field | Value |
 | --- | --- |
-| Repository | [scrimshawlife-ctrl/Autonomous-Giving-Specs](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs) |
-| Version | **1.0.0** |
-| Release | https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/releases/tag/v1.0.0 |
+| Repository | [Autonomous-Giving-Incorporated/Autonomous-Giving-Specs](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Specs) |
+| Version | **2.0.0** |
+| Release | https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Specs/releases/tag/v2.0.0 |
+| Tag | `v2.0.0` (commit `c089739`) |
 | Service role | Evidence / transparency (`impact-relay`) |
 
-Do **not** track floating `main` of the specs repository for production behavior. Consume the tagged release package or git tag `v1.0.0`.
+Do **not** track floating `main` of the specs repository for production behavior. Consume the tagged release package or git tag `v2.0.0`. This pin is a specification cut, not a live Worker, product READY claim, or leadership sign-off.
 
 ## Manifest
 
 [`conformance.yml`](conformance.yml) declares which SPECs, contracts, and events Impact Relay implements. Schema:
 
-https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Specs/blob/v1.0.0/schemas/meta/conformance-manifest.schema.json
+https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Specs/blob/v2.0.0/schemas/meta/conformance-manifest.schema.json
+
+Impact Relay **owns** the ImpactNotice artifacts (SPEC-027, CONTRACT-013, EVENT-011). This repository does not yet emit those payloads. They are listed as owned/produced in the manifest and called out as not implemented in the evidence notes. Do not treat the impact loop as READY.
+
+Suite-tracked (not implemented here): SPEC-023, SPEC-024, SPEC-026, SPEC-028. Money lock from the pin: AGI never processes donations; Stripe is tenant/SaaS billing only; P0 connector is every.org. Host lock: Cloudflare + Supabase. Cloud Run / Render are historical only.
 
 ## Relationship to existing IR conformance
 
