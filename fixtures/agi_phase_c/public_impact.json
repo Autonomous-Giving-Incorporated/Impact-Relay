@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-14",
+  "source": "fixture:agi_phase_c",
+  "authority": "public_aggregate_only",
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualDonorAttributionAllowed": false,
+    "operatorIdentityAllowed": false
+  },
+  "summary": {
+    "outcomeCount": 1,
+    "totalParticipantsPublic": 18
+  },
+  "outcomes": [
+    {
+      "publicId": "imp_001",
+      "impactEventId": "evt_workshop_001",
+      "organizationName": "Hacker Dojo",
+      "programName": "Intro to Robotics",
+      "allocationId": "alloc_community_hardware",
+      "allocationName": "Community Hardware Fund",
+      "eventType": "CLASS_HELD",
+      "eventDate": "2026-08-12",
+      "participantsPublic": 18,
+      "evidenceState": "VERIFIED",
+      "description": "Representative public-safe class occurrence for AGI Phase C contract review. Not a live cohort.",
+      "attributionMethod": "aggregate_attendance",
+      "receiptHash": "sha256:public-safe-placeholder",
+      "createdAt": "2026-08-12T16:00:00.000Z"
+    }
+  ]
+}

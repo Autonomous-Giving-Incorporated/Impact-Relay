@@ -52,13 +52,26 @@ Still open (needs credentials or live endpoints, not code):
 
 - [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the governed product suite name.
 - [x] Document Portfolio Signals as the AGI decision workspace (Vercel path `/portfolio-signals/` + platform Supabase).
-- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers; public aggregate surface on `autogive.app/impact-relay/`.
+- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers; public aggregate surface on `autogive.app/impact-relay/`. *(historical: designed stack is now Cloudflare Workers + Supabase; Render is not the host.)*
 - [x] Define the shared `client_id == tenant_id` contract.
 - [x] Identify `hacker-dojo` / `org_hacker_dojo` as the **reference tenant** (fixture and template), not product identity.
 - [x] Clarify master admin versus tenant director boundaries.
 - [x] Track planned Supabase JWT validation at the backend gateway.
 
-**Exit gate:** docs consistently describe A.G.I., Portfolio Signals, Cloud Run, Hacker Dojo as tenant, shared tenancy, admin boundaries, and planned Supabase JWT validation. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
+**Exit gate:** docs consistently describe A.G.I., Portfolio Signals, Cloudflare Workers + Supabase (Cloud Run is a historical backend note), Hacker Dojo as tenant, shared tenancy, admin boundaries, and planned Supabase JWT validation. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
+
+## AGI Phase C — Contract governance (Impact Relay half)
+
+**Goal:** publish public-safe fixtures and align `allocationId` / status vocabulary with AGI and Portfolio Signals without changing live verification semantics.
+
+- [x] Representative public-safe fixtures for public-impact + AGI `ImpactEvent` (`fixtures/agi_phase_c/`).
+- [x] `allocationId` pattern and status glossary aligned to AGI / Portfolio Signals.
+- [x] ImpactEvent field ownership recorded as roles (Impact Relay owner; human filler `scrimshawlife-ctrl`).
+- [ ] Evidence-access / retention / redaction / public-publication rules — **PROPOSED** until leadership + eng sign-off. *(human)*
+
+See [docs/CONTRACT-GOVERNANCE.md](docs/CONTRACT-GOVERNANCE.md). Do not invent READY, freeze SHA, or leadership approval.
+
+**Exit gate (this repo):** fixtures validate; glossary matches suite vocabulary; `VERIFIED` meaning unchanged; evidence-access remains unsigned.
 
 ## v0.5 — Agent Framework and Governance
 

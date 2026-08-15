@@ -273,6 +273,7 @@ Impact-Relay/
 ├── docs/
 │   ├── DURABLE-QUICKSTART.md
 │   ├── CLOUDFLARE.md                    # Workers static-assets hosting
+│   ├── CONTRACT-GOVERNANCE.md           # AGI Phase C fixtures + vocabulary
 │   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
 │   ├── HD-IR-001.md … HD-IR-007.md      # milestone notes

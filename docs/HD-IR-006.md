@@ -36,3 +36,6 @@ python -m impact_relay --publish-pages
 
 python -m impact_relay --all-phases --write-public-impact data/public-impact.json
 ```
+
+Suite join key on public outcomes is `allocationId` (`alloc_[a-z0-9_]+`).
+Phase C fixtures and vocabulary: [CONTRACT-GOVERNANCE.md](CONTRACT-GOVERNANCE.md).
