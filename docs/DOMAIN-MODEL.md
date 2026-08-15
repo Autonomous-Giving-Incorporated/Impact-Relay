@@ -99,7 +99,8 @@ are represented as additional rows + lineage, not as overwrites.
 - `ImpactReceipt`
 
 Impact records are independent of donor identity in public projections and are linked
-internally by event and allocation identifiers.
+internally by event and allocation identifiers. The public suite join key is
+`allocationId` (`alloc_[a-z0-9_]+`); see [CONTRACT-GOVERNANCE.md](CONTRACT-GOVERNANCE.md).
 
 ### 5) Notifications aggregate
 

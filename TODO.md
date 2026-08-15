@@ -8,7 +8,7 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - [x] Add concise architecture note: `docs/architecture/AGI-SUITE.md`.
 - [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the product suite around Fund-Intel and Impact Relay.
 - [x] Document Fund-Intel frontend target: GitHub Pages with Supabase auth and tenant metadata.
-- [x] Document Impact Relay backend recommendation: Cloud Run for hosted APIs and workers.
+- [x] Document Impact Relay backend recommendation: Cloud Run for hosted APIs and workers. *(historical; designed stack is Cloudflare Workers + Supabase.)*
 - [x] Document shared `client_id == tenant_id` contract.
 - [x] Document `hacker-dojo` as the reference tenant.
 - [x] Clarify master admin versus tenant director boundaries.

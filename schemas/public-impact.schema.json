@@ -62,13 +62,17 @@
           "programName": { "type": "string" },
           "allocationId": {
             "type": "string",
-            "description": "Stable public allocation identifier for suite join with Fund-Intel and AGI (not a donor id)"
+            "pattern": "^alloc_[a-z0-9_]+$",
+            "description": "Stable public allocation identifier for suite join with Fund-Intel and AGI (not a donor id). Pattern matches AGI validate-public.ts."
           },
           "allocationName": { "type": "string" },
           "eventType": { "type": "string" },
           "eventDate": { "type": "string" },
           "participantsPublic": { "type": "integer", "minimum": 0 },
-          "evidenceState": { "type": "string" },
+          "evidenceState": {
+            "type": "string",
+            "description": "Source-system evidence state. VERIFIED means a human program verifier approved the event; it is not donor attribution and is not OBSERVED. Live verification semantics are frozen."
+          },
           "description": { "type": "string" },
           "attributionMethod": { "type": "string" },
           "receiptHash": { "type": "string" },

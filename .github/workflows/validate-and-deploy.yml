@@ -127,6 +127,8 @@ jobs:
               'data/impact-state.json',
               'data/public-evidence.json',
               'data/public-impact.json',
+              'fixtures/agi_phase_c/public_impact.json',
+              'fixtures/agi_phase_c/impact_events.json',
           ]
           banned = (
               'donor_alice',
@@ -208,6 +210,22 @@ jobs:
           -c ajv-formats
           -s schemas/public-impact.schema.json
           -d data/public-impact.json
+      - name: Validate Phase C public-impact fixture
+        run: >-
+          npx --yes --package=ajv-cli@5 --package=ajv-formats@3
+          ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s schemas/public-impact.schema.json
+          -d fixtures/agi_phase_c/public_impact.json
+      - name: Validate Phase C ImpactEvent fixture
+        run: >-
+          npx --yes --package=ajv-cli@5 --package=ajv-formats@3
+          ajv validate
+          --spec=draft2020
+          -c ajv-formats
+          -s schemas/agi-impact-event.schema.json
+          -d fixtures/agi_phase_c/impact_events.json
       - name: Enforce privacy contract flags
         shell: bash
         run: |
@@ -221,6 +239,7 @@ jobs:
               ('data/impact-digests-public.json', ['piiAllowed', 'attendeeNamesAllowed']),
               ('data/public-evidence.json', ['piiAllowed', 'donorNamesAllowed']),
               ('data/public-impact.json', ['piiAllowed', 'donorNamesAllowed']),
+              ('fixtures/agi_phase_c/public_impact.json', ['piiAllowed', 'donorNamesAllowed']),
           ]
           for path, keys in checks:
               privacy = json.loads(Path(path).read_text()).get('privacy') or {}

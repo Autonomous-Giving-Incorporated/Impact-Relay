@@ -56,6 +56,14 @@ Impact Relay Python library (ledger, workflows, receipts) — not on the public 
 
 GitHub Pages remains optional fallback only.
 
+An earlier AGI-001 note recommended Cloud Run for hosted APIs. That
+recommendation is historical. Designed stack is Cloudflare Workers +
+Supabase. Render is not the host.
+
+Phase C contract governance (fixtures, `allocationId` glossary, ImpactEvent
+role owners) is recorded in [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md).
+Evidence-access policy remains PROPOSED until leadership + eng sign-off.
+
 Planned Supabase JWT validation must verify issuer, audience, expiry, signature, role claims, and the `client_id == tenant_id` binding before privileged requests reach finance, donor, publication, or notification APIs. Until that validation is active, production hosts must validate JWTs before forwarding trusted principals.
 
 ## Phase status (2026-08-07)
@@ -74,3 +82,4 @@ Planned Supabase JWT validation must verify issuer, audience, expiry, signature,
 - Portfolio Signals platform canon: Fund-Intel `docs/PLATFORM.md`
 - Portfolio Signals suite architecture: Fund-Intel `docs/AGI-SUITE-ARCHITECTURE.md`
 - Design system: [AGI-DESIGN-SYSTEM.md](../AGI-DESIGN-SYSTEM.md)
+- Phase C contract governance: [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md)
