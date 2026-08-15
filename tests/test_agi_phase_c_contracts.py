@@ -154,9 +154,7 @@ def test_live_public_impact_does_not_claim_observed_or_ready() -> None:
 
 def test_schema_allocation_id_pattern_matches_agi() -> None:
     schema = _load(PUBLIC_IMPACT_SCHEMA)
-    pattern = schema["properties"]["outcomes"]["items"]["properties"]["allocationId"][
-        "pattern"
-    ]
+    pattern = schema["properties"]["outcomes"]["items"]["properties"]["allocationId"]["pattern"]
     assert pattern == ALLOCATION_ID_RE.pattern
     assert ALLOCATION_ID_RE.match(SHARED_ALLOCATION_ID)
     assert not ALLOCATION_ID_RE.match("donor_alice")
