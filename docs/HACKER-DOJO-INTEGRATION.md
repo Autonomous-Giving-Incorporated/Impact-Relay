@@ -1,15 +1,15 @@
 # Hacker Dojo integration (canonical pilot + nonprofit template)
 
 Impact Relay is a **reusable** donor-impact / ledger-workflow library.  
-**Hacker Dojo** is the **canonical test and product integration** — the path every CI fixture and the Hacker-Dojo application repo should exercise first. Other nonprofits copy the same shape, not a fork of the money rules.
+**Hacker Dojo** is the **canonical test and product integration** — the path every CI fixture and the Portfolio Signals host should exercise first. Other nonprofits copy the same shape, not a fork of the money rules.
 
 ## Roles
 
 | Repo / system | Role |
 |---|---|
 | **Impact Relay** (this repo) | Domain ledger, agents L0–L3, durable workflows, public aggregates, multi-tenant storage ports |
-| **Hacker-Dojo app** (sibling / host repo) | UX, OIDC, finance console, donor screens, org-specific branding — **consumes** Impact Relay |
-| **Future nonprofit apps** | Same as Hacker-Dojo app: host UX + tenant config; **reuse** Impact Relay + clone policy template |
+| **Portfolio Signals** (host repo) | UX, OIDC, finance console, donor screens, org-specific branding — **consumes** Impact Relay. Hacker Dojo is the reference tenant, not a separate host repo. |
+| **Future nonprofit apps** | Same as Portfolio Signals host: host UX + tenant config; **reuse** Impact Relay + clone policy template |
 
 ## Canonical identifiers
 
@@ -38,7 +38,7 @@ Hacker-Dojo App (template for other nonprofits)
   └── Public Pages (optional) — publish digests / UOF aggregates
 ```
 
-### Preferred API (Hacker-Dojo app)
+### Preferred API (Portfolio Signals host)
 
 ```python
 from impact_relay.host import open_hacker_dojo_session
@@ -75,7 +75,7 @@ not alternatives:
 
 | Layer | What it is | Where |
 |---|---|---|
-| **Supabase** | Hacker Dojo's *actual* IdP. Owns login, MFA, and the `profile.role` values (`director`, `campaign_lead`, `data_steward`, …). | Hacker-Dojo app (sibling repo) |
+| **Supabase** | Hacker Dojo's *actual* IdP. Owns login, MFA, and the `profile.role` values (`director`, `campaign_lead`, `data_steward`, …). | Portfolio Signals host |
 | **Campaign-role bridge** | Maps a Supabase `profile.role` to Impact Relay RBAC roles. | `impact_relay.auth.role_map` |
 | **OIDC ports** | The generic, vendor-neutral boundary any nonprofit host implements. | `impact_relay.auth.oidc` |
 | **JWKS validation** | Optional in-library token validation for hosts that don't terminate auth at a gateway. | `impact_relay.auth.jwt_oidc` (`[oidc]` extra) |
@@ -133,7 +133,7 @@ with open_host_session(
 
 ## Onboarding another nonprofit (template pattern)
 
-**Suite operator path (FI + IR):** Portfolio Signals commercial lifecycle, then this clone — see Fund-Intel [`docs/SECOND-TENANT-ONBOARDING.md`](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/SECOND-TENANT-ONBOARDING.md) (slice D). Shared id contract: **`client_id` == `tenant_id`** (`org_*`).
+**Suite operator path (FI + IR):** Portfolio Signals commercial lifecycle, then this clone — see Portfolio Signals [`docs/SECOND-TENANT-ONBOARDING.md`](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/SECOND-TENANT-ONBOARDING.md) (slice D). Shared id contract: **`client_id` == `tenant_id`** (`org_*`).
 
 1. Clone policy from Hacker Dojo (same confidence / evidence / L3 set; new ids).
 2. Register tenant in storage registry.
@@ -255,4 +255,3 @@ Or via host session after durable runs: `session.donor_api()`.
 - `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith boundary  
 - `docs/pilot/HACKER-DOJO-PILOT.md` — pilot process  
 - `docs/ops/` — threat model, incident response, runbooks  
-
