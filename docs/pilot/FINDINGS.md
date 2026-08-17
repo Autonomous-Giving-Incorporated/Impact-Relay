@@ -3,7 +3,7 @@
 Operational log for Hacker Dojo Impact Relay integration.  
 **Do not put secrets, donor PII lists, or service-role keys here.**
 
-Related: [HACKER-DOJO-PILOT.md](./HACKER-DOJO-PILOT.md) · host [IMPACT-RELAY-SHADOW.md](https://github.com/scrimshawlife-ctrl/Hacker-Dojo/blob/main/docs/IMPACT-RELAY-SHADOW.md) · [IMPACT-RELAY-LIVE-COHORT.md](https://github.com/scrimshawlife-ctrl/Hacker-Dojo/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md)
+Related: [HACKER-DOJO-PILOT.md](./HACKER-DOJO-PILOT.md) · host [IMPACT-RELAY-SHADOW.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-SHADOW.md) · [IMPACT-RELAY-LIVE-COHORT.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md)
 
 ---
 

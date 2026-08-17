@@ -19,7 +19,7 @@ Full suite table: [Autonomous-Giving-Incorporated/docs/PLATFORM.md](https://gith
 
 Static tracker + `data/public-impact.json` and related public aggregates. Authority on public impact projection: `public_aggregate_only`. No donor PII.
 
-**Live:** https://autogive.app/impact-relay/ (Vercel until Cloudflare cutover). Direct Vercel URL: https://impact-relay.vercel.app. Suite Phase 2 (Portfolio Signals workspace Auth) is operator-complete; Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Portfolio Signals).
+**Live:** https://autogive.app/impact-relay/ (Vercel until Cloudflare cutover). Direct Vercel URL: https://impact-relay.vercel.app. Suite Phase 2 (Portfolio Signals workspace Auth) and AGI login / SPEC-028 remain **PARKED** — do not treat earlier “operator-complete” copy as current. Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Portfolio Signals). Do not relabel empty or fixture outcomes `OBSERVED` or `VERIFIED`.
 
 ## Deploy (public)
 
@@ -40,3 +40,7 @@ vercel deploy --prod --yes --scope scrimshawlife-8819s-projects
 ```
 
 Config kept until cutover: `vercel.json`, `.vercelignore` (excludes Python package, venv, node_modules).
+
+## Suite stack audit
+
+Informative copy: [audits/SUITE_STACK_AUDIT_2026-08-17.md](audits/SUITE_STACK_AUDIT_2026-08-17.md). Canonical file lives in Portfolio Signals. Not READY. Do not fill `data/public-impact.json` with fixture `VERIFIED` outcomes.
