@@ -40,7 +40,7 @@ owner role. No other individuals are named.
 | Field (AGI `ImpactEvent`) | IR public-impact counterpart | Role owner | Notes |
 | --- | --- | --- | --- |
 | `schemaVersion` | document `version` + this contract date | AGI contract steward | Date string `2026-08-02`; bump on breaking change |
-| `allocationId` | `outcomes[].allocationId` | Fund-Intel issues at decision publish; **Impact Relay owner** stores and exports the same value | Suite join key only. Never a donor id. |
+| `allocationId` | `outcomes[].allocationId` | Portfolio Signals issues at decision publish; **Impact Relay owner** stores and exports the same value | Suite join key only. Never a donor id. |
 | `eventId` | `outcomes[].impactEventId` | **Impact Relay owner** | Stable public event identity |
 | `type` | `outcomes[].eventType` | **Impact Relay owner** | Domain taxonomy; map to AGI types below. Do not silently coerce unmapped types. |
 | `occurredAt` | `outcomes[].eventDate` | **Impact Relay owner** | Date-only on the public aggregate; ISO-8601 on the narrative contract |
@@ -62,7 +62,7 @@ Human filler for the Impact Relay owner role: `scrimshawlife-ctrl`.
 | --- | --- |
 | Pattern | `^alloc_[a-z0-9_]+$` (AGI `validate-public.ts` + this repo’s public-impact schema) |
 | Representative example | `alloc_community_hardware` |
-| Issuer | Fund-Intel / Portfolio Signals at decision publish |
+| Issuer | Portfolio Signals at decision publish |
 | Consumer | Impact Relay public outcome export; AGI joins only on this value |
 | Not | donor id, donation id, operator identity, or a secret |
 
@@ -73,7 +73,7 @@ public identifier.
 AGI’s earlier draft suggested `alloc_<slug>_<nnn>`. The **implemented**
 suite vocabulary (AGI fixtures + validator, Portfolio Signals campaign
 allocations, this repo’s ledger) is `alloc_[a-z0-9_]+` without a mandatory
-sequence suffix. A suffix is allowed when Fund-Intel issues one; Impact Relay
+sequence suffix. A suffix is allowed when Portfolio Signals issues one; Impact Relay
 must echo it unchanged.
 
 ### Verification status (do not change live `VERIFIED` semantics)
@@ -84,7 +84,7 @@ approved that the activity occurred and is sufficiently evidenced. It is a
 `OBSERVED` raised-claim provenance, and not a live-cohort declaration.
 
 | Impact Relay domain `ImpactEventState` | Public `evidenceState` | AGI `verificationStatus` | Public export? |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | `DRAFT` | — | — | No |
 | `SUBMITTED` | — | `pending` (internal / narrative only) | No |
 | `VERIFIED` | `VERIFIED` | `verified` | Yes, after human verify |
