@@ -223,3 +223,15 @@ Each agent requires:
 ## Change control
 
 Changes to this file, financial policies, attribution rules, evidence thresholds, receipt schemas, or notification gates require review by a maintainer who is not the author of the change.
+
+## Cursor Cloud specific instructions
+
+> Non-obvious dev-environment notes for Cloud Agents. Standard build/verify commands live in `CLAUDE.md` (`pip install -e ".[dev]"`, `pytest`, `ruff check`, `ruff format`, `mypy`) — follow those; the update script already runs `pip install -e ".[dev]"` and `npm ci` on startup.
+
+- **Interpreter:** only `python3` exists (no bare `python`). Console scripts (`impact-relay`, `pytest`, `ruff`, `mypy`) install to `~/.local/bin`, which is not on `PATH`; invoke tools as modules (`python3 -m pytest`, `python3 -m ruff check .`, `python3 -m mypy`, `python3 -m impact_relay ...`).
+- **Base package is stdlib-only.** The optional `[db]`/`[s3]`/`[oidc]` extras are only needed for the Postgres store suite (`tests/test_workflow_sql_store.py` against a live Postgres via `IMPACT_RELAY_DATABASE_URL`) and boto3/JWKS paths; the default `pytest` run passes without them (one Postgres SKIP-LOCKED test is skipped when no DB is present).
+- **Core library E2E (hello-world):** `python3 -m impact_relay --expense-approval-slice` runs fixture expense → allocation → human approval → ledger commit → use-of-funds receipt. `--all-phases` and `--durable {seed,list,approve,check,status,worker --once}` exercise the rest.
+- **Console HTTP API:** seed first (`python3 -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo`), then `python3 -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787 --allow-unauthenticated-pilot`. Auth is default-deny; `--allow-unauthenticated-pilot` is for local demos only (never shadow/live cohorts). `/api/health` is unauthenticated; `/api/finance/queue` and `POST /api/finance/cases/{workflow_id}/approve` drive the review→approve gate.
+- **Static public tracker UI:** `index.html` uses `<base href="/impact-relay/">`, so serving the repo root directly 404s CSS/JS/data. Run `./scripts/stage_cloudflare_assets.sh`, then `python3 -m http.server 4174` from `.cloudflare-assets/` and open `http://127.0.0.1:4174/impact-relay/index.html`.
+- **Browser acceptance tests** (`npm run test:browser`) need the Playwright Chromium binary; install once per fresh machine with `npx playwright install --with-deps chromium` (kept out of the startup script because it is a heavy/brittle network download).
+- **Public `data/*.json` are intentionally a zeroed, schema-valid public shell** (aggregates are empty until authorized OBSERVED data is applied). CI diffs these against regenerated exports, so do not run `python3 -m impact_relay --publish-pages` casually — it rewrites `updatedAt` and fails the stability gate.
