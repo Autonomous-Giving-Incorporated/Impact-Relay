@@ -12,7 +12,7 @@ The work queue is `ROADMAP.md` — start with **v0.9.1 (Hardening and Fidelity)*
 
 ```bash
 pip install -e ".[dev]"
-pytest                # ~260 tests, offline, ~1s — must stay that way
+pytest                # ~385 tests, offline, ~1s — must stay that way
 ruff check . --fix    # lint
 ruff format .         # formatter is canonical; CI runs --check
 mypy                  # config in pyproject; strict on auth/, donor/, agents.privacy
@@ -58,4 +58,4 @@ Host finance/donor screens still follow the same shell rules when they surface I
 
 ## Out of scope (sibling repo)
 
-Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals / the Hacker-Dojo host path. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.
+Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.

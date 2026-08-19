@@ -227,7 +227,7 @@ with open_hacker_dojo_session(".impact-relay/hacker-dojo") as session:
         session.approve(workflow_id=waiting["cases"][0]["workflow_id"])
 ```
 
-Host screens live in the sibling [Hacker-Dojo](https://github.com/scrimshawlife-ctrl/Hacker-Dojo) repo (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Full wiring: [docs/HACKER-DOJO-INTEGRATION.md](docs/HACKER-DOJO-INTEGRATION.md).
+Host screens live in [Portfolio Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals) (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Full wiring: [docs/HACKER-DOJO-INTEGRATION.md](docs/HACKER-DOJO-INTEGRATION.md).
 
 ---
 

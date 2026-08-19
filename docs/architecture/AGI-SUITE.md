@@ -77,9 +77,9 @@ Planned Supabase JWT validation must verify issuer, audience, expiry, signature,
 
 ## Related
 
-- Suite phase map: [AGI docs/PLATFORM.md](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md)
-- Portfolio Signals live receipt: Fund-Intel `docs/CURRENT-STATE.md`
-- Portfolio Signals platform canon: Fund-Intel `docs/PLATFORM.md`
-- Portfolio Signals suite architecture: Fund-Intel `docs/AGI-SUITE-ARCHITECTURE.md`
+- Suite phase map: [AGI docs/PLATFORM.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md)
+- Portfolio Signals live receipt: [docs/CURRENT-STATE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/CURRENT-STATE.md)
+- Portfolio Signals platform canon: [docs/PLATFORM.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/PLATFORM.md)
+- Portfolio Signals suite architecture: [docs/AGI-SUITE-ARCHITECTURE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/AGI-SUITE-ARCHITECTURE.md)
 - Design system: [AGI-DESIGN-SYSTEM.md](../AGI-DESIGN-SYSTEM.md)
 - Phase C contract governance: [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md)
