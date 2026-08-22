@@ -353,9 +353,11 @@ Resend uses the same governed boundary and the official `POST /emails` API:
 ```bash
 export IMPACT_RELAY_EMAIL_BACKEND=resend
 export IMPACT_RELAY_RESEND_API_KEY='from-your-secret-manager'  # or RESEND_API_KEY
-export IMPACT_RELAY_RESEND_FROM='Impact Relay <impact@example.org>'
+export IMPACT_RELAY_RESEND_FROM='Impact Relay <noreply@auth.autogive.app>'
 export IMPACT_RELAY_RESEND_REPLY_TO=reply@example.org         # optional
 ```
+
+Autogive Relay mail uses the verified `auth.autogive.app` subdomain. Do not send from `noema.guru`. Do not reuse `AUTH_EMAIL_FROM` / `auth@autogive.app` — that address is Portfolio Signals login mail. Fixture email remains the default; setting the backend to `resend` is a host decision and does not activate production donor cohorts.
 
 Optional Mailosaur capture for synthetic Resend probes (never a production backend):
 
