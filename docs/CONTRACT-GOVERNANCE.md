@@ -8,6 +8,7 @@ Canonical AGI references:
 
 - [INTEGRATION_CONTRACTS.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/INTEGRATION_CONTRACTS.md)
 - [CONTRACT_GOVERNANCE.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/CONTRACT_GOVERNANCE.md)
+- [PUBLIC_DATA_POLICY.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/PUBLIC_DATA_POLICY.md) (C3 decision packet; still **PROPOSED**)
 - [THREE_REPO_INTEGRATION.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/THREE_REPO_INTEGRATION.md)
 - Contract version: `2026-08-02` (`integration/contracts.ts`)
 
@@ -25,7 +26,7 @@ Related in this repo: [public-impact schema](../schemas/public-impact.schema.jso
 | Representative public-safe fixtures | Published under `fixtures/agi_phase_c/` |
 | `allocationId` + status vocabulary | Aligned below; live `VERIFIED` meaning unchanged |
 | ImpactEvent field ownership | Recorded as **roles** (see C1) |
-| Evidence-access, retention, redaction, and public-publication rules | **PROPOSED** — remains unsigned until leadership + eng sign-off |
+| Evidence-access, retention, redaction, and public-publication rules | **PROPOSED** — AGI decision packet is ready; sign-off table is empty |
 | Phase C exit (reviewed schemas, approved public-data rules, named owners confirmed) | **Not complete** |
 
 Do not treat this document as leadership approval.
@@ -129,9 +130,12 @@ Unmapped domain types must not be silently coerced into an AGI type.
 
 ## C3 — Evidence-access policy (PROPOSED)
 
+Canonical decision packet: [AGI `PUBLIC_DATA_POLICY.md`](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/PUBLIC_DATA_POLICY.md) ([AGI PR 23](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/pull/23)).
+
 Restatement of the public-data rules already enforced on this repo’s public
 aggregates. **Not approved.** Leadership + eng sign-off is still required
-before this is treated as suite policy.
+before this is treated as suite policy. An agent must not fill the AGI
+sign-off table.
 
 1. Join only by `allocationId`. Never by donor identity.
 2. Accept only `authority: "public_aggregate_only"` on this surface.
@@ -180,4 +184,4 @@ already landed (`wrangler.toml`); this Phase C work does not add Wrangler.
 
 ---
 
-Last updated: 2026-08-15
+Last updated: 2026-08-22
