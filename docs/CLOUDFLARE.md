@@ -8,10 +8,10 @@ Auth and tenancy stay on platform **Supabase** (Portfolio Signals workspace). Pu
 
 | Surface | URL | Status |
 | --- | --- | --- |
-| Canonical suite path | `https://autogive.app/impact-relay/` | Production intent; still on Vercel until cutover |
-| Vercel project | `https://impact-relay.vercel.app` | Kept until cutover is complete |
-| Cloudflare Worker | `https://impact-relay.<account-subdomain>.workers.dev/impact-relay/` | Created on first `wrangler deploy` |
-| GitHub Pages fallback | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` | Unchanged |
+| Canonical suite path | `https://autogive.app/impact-relay/` | OBSERVED 200 (2026-08-22) via suite gateway; Vercel remains the proxied origin until an IR Worker is attached |
+| Vercel project | `https://impact-relay.vercel.app` | OBSERVED 200; kept until IR Worker cutover |
+| Cloudflare Worker | do not invent a `workers.dev` URL | Named IR Worker not claimed live |
+| GitHub Pages | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` | OBSERVED 404 (2026-08-22). Org Pages also 404. Mirror only; not a live host |
 
 `<base href="/impact-relay/">` is load-bearing. The staging script nests the tracker under `/impact-relay/` so Workers, Vercel path rewrites, and the suite URL all resolve CSS/JS/`data/` the same way.
 
@@ -46,7 +46,7 @@ On `main`, after the existing validate job, GitHub Actions stages assets and run
 
 If either secret is missing, the Cloudflare deploy step is skipped so CI stays green until credentials exist. Create a token from [Cloudflare API tokens](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) and copy the account ID from the dashboard.
 
-Vercel config (`vercel.json`, `.vercelignore`) stays until cutover. GitHub Pages remains an optional fallback: the `deploy` job probes the repo Pages site and skips cleanly when Pages is not enabled (or not set to GitHub Actions). Enable Pages with **Source = GitHub Actions** to activate that path.
+Vercel config (`vercel.json`, `.vercelignore`) stays until cutover. GitHub Pages remains an optional mirror. The personal `scrimshawlife-ctrl.github.io/Impact-Relay/` URL and org Pages URL both returned 404 on 2026-08-22. The `deploy` job probes Pages and skips cleanly when Pages is not enabled (or not set to GitHub Actions). Do not advertise a 404 as a live fallback.
 
 ## Cutover (operator)
 

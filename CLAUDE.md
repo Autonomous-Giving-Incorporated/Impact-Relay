@@ -12,7 +12,7 @@ The work queue is `ROADMAP.md` — start with **v0.9.1 (Hardening and Fidelity)*
 
 ```bash
 pip install -e ".[dev]"
-pytest                # ~385 tests, offline, ~1s — must stay that way
+pytest                # 413 collected 2026-08-22, offline, ~1s — must stay that way
 ruff check . --fix    # lint
 ruff format .         # formatter is canonical; CI runs --check
 mypy                  # config in pyproject; strict on auth/, donor/, agents.privacy

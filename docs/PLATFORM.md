@@ -9,7 +9,7 @@ This repo participates in the **AGI suite**. Public hosting and tenancy identifi
 | Public URL (production intent) | `https://autogive.app/impact-relay/` |
 | Vercel project (until cutover) | `impact-relay` (team `scrimshawlife-8819s-projects`) · `https://impact-relay.vercel.app` |
 | Cloudflare Worker | `impact-relay` (assets-only; see [CLOUDFLARE.md](CLOUDFLARE.md)) |
-| GitHub Pages fallback | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` |
+| GitHub Pages | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` — OBSERVED 404 (2026-08-22); org Pages also 404; mirror only |
 | Tenant id alignment | Impact Relay `tenant_id` = Portfolio Signals `clients.id` |
 | **Supabase platform (suite)** | `utdioxwiskzatwoejgiu` (auth/tenancy via Portfolio Signals path; IR durable API later) |
 
@@ -19,7 +19,7 @@ Full suite table: [Autonomous-Giving-Incorporated/docs/PLATFORM.md](https://gith
 
 Static tracker + `data/public-impact.json` and related public aggregates. Authority on public impact projection: `public_aggregate_only`. No donor PII.
 
-**Live:** https://autogive.app/impact-relay/ (Vercel until Cloudflare cutover). Direct Vercel URL: https://impact-relay.vercel.app. Suite Phase 2 (Portfolio Signals workspace Auth) and AGI login / SPEC-028 remain **PARKED** — do not treat earlier “operator-complete” copy as current. Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Portfolio Signals). Do not relabel empty or fixture outcomes `OBSERVED` or `VERIFIED`.
+**Live:** https://autogive.app/impact-relay/ (OBSERVED 200 via suite gateway; Vercel remains the proxied origin until an IR Worker is attached). Direct Vercel URL: https://impact-relay.vercel.app. Do not invent a `workers.dev` URL. GitHub Pages is a 404 mirror. Suite Phase 2 (Portfolio Signals workspace Auth) and AGI login / SPEC-028 remain **PARKED** — do not treat earlier “operator-complete” copy as current. Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Portfolio Signals). Do not relabel empty or fixture outcomes `OBSERVED` or `VERIFIED`.
 
 ## Deploy (public)
 
