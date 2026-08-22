@@ -51,6 +51,14 @@ Local `--workflow-ops` sessions use a versioned JSON format with an explicit cla
 - The endpoint must use HTTPS. Production should retain the default `https://api.postmarkapp.com/email`; endpoint overrides exist for controlled gateways and should be domain-allowlisted by the host.
 - Provider response messages can contain recipient details and are never persisted. Durable delivery records retain only the Postmark `MessageID`, numeric error code classification, and sanitized status.
 
+## Resend credentials and delivery responses
+
+- Keep `IMPACT_RELAY_RESEND_API_KEY` (or `RESEND_API_KEY`) in the host secret manager or process environment. It is redacted from configuration representations and must never appear in fixtures, logs, receipts, findings, or git.
+- Resend uses the same host-owned donor resolver, consent checks, enabled-preference checks, and independently approved content boundary as SMTP and Postmark. Selecting Resend never creates consent or falls back to fixture delivery.
+- The endpoint must use HTTPS. Production should retain the default `https://api.resend.com/emails`; endpoint overrides exist for controlled gateways and should be domain-allowlisted by the host.
+- Provider response messages can contain recipient details and are never persisted. Durable delivery records retain only the Resend `id`, sanitized HTTP status, and named API error classification.
+- Mailosaur is an optional capture inbox for synthetic probes only. Keep `MAILOSAUR_API_KEY` out of git. Never send live-cohort or real-donor mail to Mailosaur, and never treat a Mailosaur capture as production `OBSERVED` donor delivery.
+
 ## Aggregate HTTP bridge credentials
 
 - Every.org and Notion HTTP inputs are operator-configured bridges for pre-aggregated JSON documents. They are not direct donor, gift, transaction, or Notion-row APIs.

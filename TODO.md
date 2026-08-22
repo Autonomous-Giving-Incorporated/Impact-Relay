@@ -145,4 +145,4 @@ This backlog translates the roadmap into an implementation sequence. Items are o
 - Microservice decomposition.
 - Autonomous financial approval.
 - Host UI consoles (finance review / donor screens) — built in Hacker-Dojo app.
-- Live OIDC JWT validation (host IdP SDK) and live SMTP/Postmark/APNs/FCM credentials.
+- Live OIDC JWT validation (host IdP SDK) and live SMTP/Postmark/Resend/APNs/FCM credentials.
