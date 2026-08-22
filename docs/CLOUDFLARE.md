@@ -46,7 +46,7 @@ On `main`, after the existing validate job, GitHub Actions stages assets and run
 
 If either secret is missing, the Cloudflare deploy step is skipped so CI stays green until credentials exist. Create a token from [Cloudflare API tokens](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) and copy the account ID from the dashboard.
 
-Vercel config (`vercel.json`, `.vercelignore`) stays until cutover. GitHub Pages deploy is unchanged.
+Vercel config (`vercel.json`, `.vercelignore`) stays until cutover. GitHub Pages remains an optional fallback: the `deploy` job probes the repo Pages site and skips cleanly when Pages is not enabled (or not set to GitHub Actions). Enable Pages with **Source = GitHub Actions** to activate that path.
 
 ## Cutover (operator)
 
@@ -64,7 +64,7 @@ Operator-owned, still on Cloudflare + Supabase — not a new hosting platform:
 - Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then confirm the first Workers deploy.
 - Attach `autogive.app/impact-relay*` as a Cloudflare Worker route (or custom domain). DNS for `autogive.app` stays operator-owned.
 - After smoke-check, retire the Vercel project and delete `vercel.json` / `.vercelignore` in a follow-up PR.
-- GitHub Pages stays an optional fallback until operators drop it.
+- GitHub Pages stays an optional fallback until operators drop it (CI skips the Pages deploy until Pages Source = GitHub Actions is enabled).
 - Tenant-scoped operator auth remains platform Supabase. This Worker must not grow a ledger, approval, or notification API.
 
 Do not add another application host for this public surface.

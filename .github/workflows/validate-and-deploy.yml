@@ -333,11 +333,45 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      # Pages is an optional fallback (Cloudflare is the designed public host).
+      # Skip cleanly when the repo has no Pages site yet so main stays green
+      # until an operator enables Actions-based Pages - same pattern as the
+      # Cloudflare credential gate above.
+      - name: Check GitHub Pages availability
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/pages-site.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/pages" || true)
+          if [[ "${code}" != "200" ]]; then
+            echo "GitHub Pages is not enabled for this repository (HTTP ${code}); skipping Pages deploy."
+            echo "Enable Pages with Source = GitHub Actions to activate this fallback."
+            echo "See docs/CLOUDFLARE.md"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          build_type=$(python3 -c "import json; print(json.load(open('/tmp/pages-site.json')).get('build_type') or '')")
+          if [[ "${build_type}" != "workflow" ]]; then
+            echo "GitHub Pages build_type is '${build_type:-unset}', not 'workflow'; skipping Pages deploy."
+            echo "Set Pages Source = GitHub Actions to activate this fallback."
+            echo "See docs/CLOUDFLARE.md"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "GitHub Pages site is configured for Actions; proceeding with deploy."
+          echo "skip=false" >> "$GITHUB_OUTPUT"
       - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.skip != 'true'
       # Repo source keeps /impact-relay/ for Vercel and Cloudflare Workers paths;
       # GH Pages project site lives at /Impact-Relay/ and needs a matching
       # <base href> so relative CSS/JS/data resolve.
       - name: Point static base at GitHub Pages project path
+        if: steps.pages.outputs.skip != 'true'
         run: |
           set -euo pipefail
           if ! grep -q 'href="/impact-relay/"' index.html; then
@@ -348,8 +382,10 @@ jobs:
           grep -q 'href="/Impact-Relay/"' index.html
           echo "Rewrote base href for GitHub Pages project site."
       - uses: actions/upload-pages-artifact@v5
+        if: steps.pages.outputs.skip != 'true'
         with:
           path: .
       - name: Deploy to GitHub Pages
+        if: steps.pages.outputs.skip != 'true'
         id: deployment
         uses: actions/deploy-pages@v5
