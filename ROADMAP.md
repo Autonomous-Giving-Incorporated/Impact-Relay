@@ -27,7 +27,7 @@ Shipped:
 Open (ops / production):
 
 - authorized live accounting endpoint/provider mapping beyond fixture batch (provider-neutral HTTPS JSON expense adapter shipped);
-- production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/APNs/FCM adapters shipped; SMS production client remains open);
+- production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/Resend/APNs/FCM adapters shipped; SMS production client remains open);
 - production multi-tenant workflow DR / multi-region observability;
 - live OIDC JWT validation wiring (library now ships a JWKS provider, `impact_relay.auth.jwt_oidc`; the host must point it at a real issuer or keep terminating auth at its gateway);
 - execute live finance cohort and fill `docs/pilot/FINDINGS.md`;
@@ -43,7 +43,7 @@ Closed in v0.9.1 (previously the honest gaps between the language above and the 
 
 Still open (needs credentials or live endpoints, not code):
 
-- SMTP/Postmark/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
+- SMTP/Postmark/Resend/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
 - authorized Every.org and Notion aggregate endpoints for the shipped HTTPS fetchers.
 
 ## AGI-001 — A.G.I. suite documentation
@@ -151,7 +151,7 @@ See [docs/CONTRACT-GOVERNANCE.md](docs/CONTRACT-GOVERNANCE.md). Do not invent RE
 - [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
 - [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists). *(ops: requires authorized live data)*
 - [ ] Integrate one live accounting/expense source (provider-neutral HTTPS JSON expense adapter shipped; fixture batch remains default). *(ops: requires provider access and host endpoint mapping)*
-- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
+- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark/Resend email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
 - [ ] Complete privacy, security, and finance review with leadership. *(human)*
 - [ ] Run correction and provider-outage exercises with operators. *(human)*
 - [ ] Execute live cohort and fill findings template. *(human)*
@@ -188,6 +188,7 @@ See [docs/CONTRACT-GOVERNANCE.md](docs/CONTRACT-GOVERNANCE.md). Do not invent RE
 - [x] Provider-neutral HTTPS JSON accounting expense adapter, feeding the existing `NormalizedExpenseImport` workflow contract; credentials and vendor/proxy endpoint mapping remain host-owned.
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
+- [x] Resend email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, API `id` receipts, sanitized HTTP/API failures, and an optional Mailosaur capture probe that stays out of default pytest.
 - [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
 - [x] Deterministic operational snapshots for storage, workflows, outbox, object backend, and ledger/audit counts (`observability.py`); production alerting/SLO dashboards remain host ops work.
 - [x] Object storage retention controls: per-object retention metadata, legal holds, local expired-object purge receipts, and S3 metadata/SSE compatibility (`storage/objects.py`).
@@ -226,7 +227,7 @@ Not a substitute for HD-IR / v1.0 gates. Fund-Intel hosts the transaction-light 
 - [ ] Production alerting/SLO dashboards and audit explorer (deterministic operational snapshot helpers shipped).
 - [ ] Live OIDC JWT validation in host gateway (library ports + RBAC already shipped).
 - [ ] Full encrypted evidence storage policy rollout and retention UX (object ports, S3 SSE, per-object retention metadata, local purge receipts shipped).
-- [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/APNs/FCM adapter code already shipped).
+- [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/Resend/APNs/FCM adapter code already shipped).
 - [ ] Consent and preference center (model shipped; full UX deferred).
 - [ ] SLA/SLO definitions and incident response (runbooks drafted; SLOs not signed).
 - [ ] External security assessment.

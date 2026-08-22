@@ -78,7 +78,7 @@ Do not split into microservices until independently scaling or isolating a bound
 | Identity | OIDC |
 | Policy | versioned YAML evaluated by deterministic application code |
 | Observability | OpenTelemetry, structured logs, Prometheus-compatible metrics |
-| Email | Shipped: standard-library SMTP and Postmark adapters. Other scale options: SendGrid or SES adapter |
+| Email | Shipped: standard-library SMTP, Postmark, and Resend adapters. Resend is the AGI suite-aligned HTTP backend. Other scale options: SendGrid or SES adapter |
 | SMS | Twilio adapter after explicit-consent validation |
 | Push | APNs and FCM adapters |
 
