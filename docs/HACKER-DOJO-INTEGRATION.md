@@ -191,7 +191,7 @@ store.objects.put(
 )
 ```
 
-## What the Hacker-Dojo repo should test
+## What the Portfolio Signals host should test
 
 Prefer **library integration tests** that:
 
@@ -228,7 +228,7 @@ curl http://127.0.0.1:8787/api/finance/queue \
 | GET | `/api/donors/{id}/receipts` | Receipt list |
 | GET | `/api/donors/{id}/receipts/{rid}` | Receipt detail |
 
-Hacker-Dojo static pages: `finance-impact.html`, `donor-impact.html` (point `IMPACT_RELAY_API` at the server).
+Host static pages live in [Portfolio Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals) (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Point `IMPACT_RELAY_API` at the console server. There is no separate Hacker-Dojo host repo.
 
 ## Donor experience API (v0.7)
 
