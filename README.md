@@ -78,7 +78,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
 | Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
 | Donor-scoped data export and notification-state deletion primitives | `privacy_ops.py` |
-| Consent, preferences, fixture + SMTP/Postmark email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
+| Consent, preferences, fixture + SMTP/Postmark/Resend email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
 | Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · `accounting.py` · [HD-IR-007](docs/HD-IR-007.md) |
@@ -100,7 +100,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 - production Every.org donation ingestion (aggregate dry-run path exists);
 - production multi-region workflow DR and production alerting/SLO dashboards (pilot local+SQL path, object retention controls, and deterministic observability summaries shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
-- production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
+- production SMTP/Postmark/Resend/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);
 - self-service multi-nonprofit onboarding UI and full privacy self-service UX (clone-from-Hacker-Dojo template API plus donor data export/deletion primitives shipped).
 
@@ -326,7 +326,7 @@ Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up
 
 ### Production email adapters
 
-The library ships standard-library SMTP and Postmark adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid.
+The library ships standard-library SMTP, Postmark, and Resend adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid. Resend is the AGI suite-aligned HTTP email backend.
 
 ```bash
 export IMPACT_RELAY_EMAIL_BACKEND=smtp
@@ -348,6 +348,23 @@ export IMPACT_RELAY_POSTMARK_REPLY_TO=reply@example.org       # optional
 export IMPACT_RELAY_POSTMARK_MESSAGE_STREAM=outbound          # optional
 ```
 
+Resend uses the same governed boundary and the official `POST /emails` API:
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=resend
+export IMPACT_RELAY_RESEND_API_KEY='from-your-secret-manager'  # or RESEND_API_KEY
+export IMPACT_RELAY_RESEND_FROM='Impact Relay <impact@example.org>'
+export IMPACT_RELAY_RESEND_REPLY_TO=reply@example.org         # optional
+```
+
+Optional Mailosaur capture for synthetic Resend probes (never a production backend):
+
+```bash
+export MAILOSAUR_API_KEY='from-your-secret-manager'
+export MAILOSAUR_SERVER_ID=qpbqeifu
+python scripts/probe_resend_mailosaur.py
+```
+
 Recipient lookup is deliberately host-owned because donor contact data must stay outside this repository. Bind the adapter to a tenant workspace with a resolver after the host has authenticated and loaded its private contact record:
 
 ```python
@@ -364,7 +381,7 @@ assert workspace is not None
 workspace.configure_notification_adapters({NotificationChannel.EMAIL: email})
 ```
 
-Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Both production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections.
+Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections; Resend records the API `id` and treats named API errors plus HTTP 4xx (except 429) as permanent rejections.
 
 ## Pilot commands
 
