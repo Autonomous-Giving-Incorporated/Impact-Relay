@@ -50,7 +50,7 @@ Impact Relay API
                ▼
         PostgreSQL + object storage
                │
-       ┌──────┬────────┐
+       ┌───────┴────────┐
        ▼                ▼
  Workflow workers   Provider adapters
 ```
