@@ -38,6 +38,7 @@ from impact_relay.pilot import build_ledger_from_fixture, load_fixture
 ROOT = Path(__file__).resolve().parents[1]
 BATCH = ROOT / "fixtures" / "expense_intake_batch_v1.json"
 DEFAULT_LOCAL_PART = "ir-p8"
+DEFAULT_RESEND_FROM = "Impact Relay <noreply@auth.autogive.app>"
 
 
 def _skip(reason: str) -> int:
@@ -49,8 +50,7 @@ def _from_address() -> str:
     return (
         os.environ.get("IMPACT_RELAY_RESEND_FROM")
         or os.environ.get("RESEND_FROM")
-        or os.environ.get("AUTH_EMAIL_FROM")
-        or ""
+        or DEFAULT_RESEND_FROM
     ).strip()
 
 
