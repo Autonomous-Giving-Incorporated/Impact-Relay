@@ -34,6 +34,9 @@ DEFAULT_FIXTURE = Path(__file__).resolve().parents[2] / "fixtures" / "pilot_hd_i
 DEFAULT_ALL_PHASES_FIXTURE = (
     Path(__file__).resolve().parents[2] / "fixtures" / "pilot_all_phases.json"
 )
+DEFAULT_SYNTHETIC_V1_FIXTURE = (
+    Path(__file__).resolve().parents[2] / "fixtures" / "synthetic_v1" / "civic_forge_ledger_v1.json"
+)
 
 
 def load_fixture(path: Path | str | None = None) -> dict[str, Any]:

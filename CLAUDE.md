@@ -56,6 +56,10 @@ Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Givi
 
 Host finance/donor screens still follow the same shell rules when they surface Impact Relay data.
 
+Synthetic Civic Forge (`org_synthetic_civic_forge`) is a disposable second tenant.
+Fixtures live in [`fixtures/synthetic_v1/`](fixtures/synthetic_v1/). Do not label
+them `OBSERVED` and do not publish them into `data/`. See [docs/SYNTHETIC-DATASET.md](docs/SYNTHETIC-DATASET.md).
+
 ## Out of scope (sibling repo)
 
 Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.

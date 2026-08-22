@@ -67,6 +67,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Representative public-safe fixtures for public-impact + AGI `ImpactEvent` (`fixtures/agi_phase_c/`).
 - [x] `allocationId` pattern and status glossary aligned to AGI / Portfolio Signals.
 - [x] ImpactEvent field ownership recorded as roles (Impact Relay owner; human filler `scrimshawlife-ctrl`).
+- [x] AutoGive Synthetic Dataset v1 Civic Forge compact ledger + public-impact fixture (`fixtures/synthetic_v1/`). `SYNTHETIC_ONLY`; does not overwrite `data/` or the HD pilot.
 - [ ] Evidence-access / retention / redaction / public-publication rules — **PROPOSED** until leadership + eng sign-off. *(human)*
 
 See [docs/CONTRACT-GOVERNANCE.md](docs/CONTRACT-GOVERNANCE.md). Do not invent READY, freeze SHA, or leadership approval.

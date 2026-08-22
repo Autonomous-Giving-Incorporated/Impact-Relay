@@ -83,3 +83,4 @@ Planned Supabase JWT validation must verify issuer, audience, expiry, signature,
 - Portfolio Signals suite architecture: [docs/AGI-SUITE-ARCHITECTURE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/AGI-SUITE-ARCHITECTURE.md)
 - Design system: [AGI-DESIGN-SYSTEM.md](../AGI-DESIGN-SYSTEM.md)
 - Phase C contract governance: [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md)
+- Synthetic Civic Forge fixture: [SYNTHETIC-DATASET.md](../SYNTHETIC-DATASET.md)
