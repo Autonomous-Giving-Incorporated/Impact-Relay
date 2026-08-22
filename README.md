@@ -373,7 +373,10 @@ Use-of-funds pilot:
 ```bash
 python -m impact_relay
 python -m impact_relay --fixture fixtures/pilot_hd_ir_001.json
+python -m impact_relay --fixture fixtures/synthetic_v1/civic_forge_ledger_v1.json
 ```
+
+Civic Forge is a disposable `SYNTHETIC_ONLY` tenant. See [docs/SYNTHETIC-DATASET.md](docs/SYNTHETIC-DATASET.md). Do not publish it into `data/`.
 
 All fixture-backed phases:
 
