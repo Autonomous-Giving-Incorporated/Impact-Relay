@@ -13,7 +13,8 @@ Canonical AGI references:
 
 Related in this repo: [public-impact schema](../schemas/public-impact.schema.json),
 [public_impact.py](../src/impact_relay/public_impact.py),
-[HD-IR-006](HD-IR-006.md).
+[HD-IR-006](HD-IR-006.md),
+[synthetic Civic Forge fixtures](SYNTHETIC-DATASET.md).
 
 ---
 
