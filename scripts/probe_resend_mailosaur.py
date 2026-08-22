@@ -189,7 +189,17 @@ def main() -> int:
         timeout_seconds=30,
         interval_seconds=1,
     )
-    ok = preview.subject == captured["subject"] and preview.body_text in captured["text"]
+    captured_text = captured["text"].rstrip()
+    fact_keys = (
+        "organization_name",
+        "allocation_name",
+        "gross_amount",
+        "attributed_amount",
+        "vendor",
+    )
+    facts_match = all(preview.facts[key] in captured_text for key in fact_keys)
+    body_matches = preview.body_text.rstrip() in captured_text
+    ok = preview.subject == captured["subject"] and facts_match
     if captured.get("id"):
         client.delete_message(captured["id"])
     report = {
@@ -198,7 +208,8 @@ def main() -> int:
         "provider": "resend",
         "recipient_domain": "mailosaur.net",
         "subject_matches": preview.subject == captured["subject"],
-        "body_matches": preview.body_text in captured["text"],
+        "body_matches": body_matches,
+        "facts_match": facts_match,
         "subject": captured["subject"],
         "text_preview": captured["text"][:240],
         "message_deleted": True,
