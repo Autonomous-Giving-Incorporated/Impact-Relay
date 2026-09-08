@@ -36,9 +36,9 @@ from impact_relay.auth.rbac import AuthorizationError
 from impact_relay.auth.role_map import principal_from_host_headers
 from impact_relay.domain.types import NotFoundError
 from impact_relay.host.console import open_donor_console, open_finance_console
-from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID, clone_tenant_from_hacker_dojo
-from impact_relay.storage import open_storage
 from impact_relay.policy import tenant_slug
+from impact_relay.storage import open_storage
+from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID, clone_tenant_from_hacker_dojo
 
 DEFAULT_MAX_BODY_BYTES = 1 << 20  # 1 MiB — console payloads are tiny
 
@@ -196,7 +196,7 @@ def make_handler(
                 store = open_storage(REGISTRY_BASE)
                 shared_tenants = store.tenants.list()
                 tenants.extend(shared_tenants)
-            except:
+            except Exception:
                 pass
 
             # Also scan for tenant subdirectories (each has its own DB)
@@ -208,9 +208,9 @@ def make_handler(
                             tenant = store.tenants.get(entry.name)
                             if tenant and not any(t.tenant_id == tenant.tenant_id for t in tenants):
                                 tenants.append(tenant)
-                        except:
+                        except Exception:
                             pass
-            except:
+            except Exception:
                 pass
 
             return {
@@ -229,13 +229,17 @@ def make_handler(
                     for t in tenants
                 ]
             }
-        except Exception as e:  # noqa: BLE001  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
             return {"ok": False, "error": "internal_error", "message": str(e)}
 
     def await_verify_tenant(tenant_id: str) -> dict[str, Any]:
         """Verify tenant isolation and health for a specific tenant."""
         try:
-            tenant_dir = (\n    cfg.data_dir.parent / tenant_id\n    if cfg.data_dir.name != "storage"\n    else cfg.data_dir\n)
+            tenant_dir = (
+                cfg.data_dir.parent / tenant_id
+                if cfg.data_dir.name != "storage"
+                else cfg.data_dir
+            )
             if not tenant_dir.exists():
                 tenant_dir = cfg.data_dir / tenant_id
 
@@ -268,7 +272,7 @@ def make_handler(
             try:
                 other_tenants = store.tenants.list()
                 cross_tenant_access = len(other_tenants) > 1
-            except:
+            except Exception:
                 pass
 
             return {
@@ -285,7 +289,7 @@ def make_handler(
                 "cross_tenant_access": cross_tenant_access,
                 "meta": tenant.meta
             }
-        except Exception as e:  # noqa: BLE001  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
             return {"ok": False, "error": "internal_error", "message": str(e)}
 
     class Handler(BaseHTTPRequestHandler):
@@ -439,9 +443,9 @@ def make_handler(
                     raise AuthenticationRequired("admin endpoint requires authentication")
                 # Check for admin role (finance_approver or tenant_admin)
                 if principal:
-    roles = getattr(principal, 'roles', [])
-    if not any(r in roles for r in ['finance_approver', 'tenant_admin']):
-                    raise AuthorizationError("admin role required")
+                    roles = getattr(principal, "roles", [])
+                    if not any(r in roles for r in ["finance_approver", "tenant_admin"]):
+                        raise AuthorizationError("admin role required")
                 return 200, await_list_tenants()
 
             if path == "/api/admin/tenants/verify":
@@ -511,9 +515,9 @@ def make_handler(
                     raise AuthenticationRequired("admin endpoint requires authentication")
                 # Check for admin role (finance_approver or tenant_admin)
                 if principal:
-    roles = getattr(principal, 'roles', [])
-    if not any(r in roles for r in ['finance_approver', 'tenant_admin']):
-                    raise AuthorizationError("admin role required")
+                    roles = getattr(principal, "roles", [])
+                    if not any(r in roles for r in ["finance_approver", "tenant_admin"]):
+                        raise AuthorizationError("admin role required")
                 body = self._read_body()
                 tenant_id = (body.get("tenant_id") or "").strip()
                 display_name = (body.get("display_name") or "").strip()
@@ -533,7 +537,11 @@ def make_handler(
                     )
 
                     # Register in tenant-specific storage
-                    tenant_dir = (\n    cfg.data_dir.parent / tenant_id\n    if cfg.data_dir.name != "storage"\n    else cfg.data_dir\n)
+                    tenant_dir = (
+                        cfg.data_dir.parent / tenant_id
+                        if cfg.data_dir.name != "storage"
+                        else cfg.data_dir
+                    )
                     tenant_dir.mkdir(parents=True, exist_ok=True)
                     store = open_storage(tenant_dir)
                     store.tenants.upsert_from_policy(
@@ -552,7 +560,7 @@ def make_handler(
     "display_name": display_name,
     "template_source": template_source,
 }
-                except Exception as e:  # noqa: BLE001  # noqa: BLE001
+                except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
                     return 500, _error_body("clone_failed", str(e))
 
             return 404, _error_body("not_found")
