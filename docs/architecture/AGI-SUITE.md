@@ -10,8 +10,8 @@ Zero State is credited only as the software builder.
 |-----------|------|---------------------|
 | **AGI public site** | Brand, narrative, suite entry | `https://autogive.app/` (Vercel) |
 | **Portfolio Signals** | Decision workspace, tenant admin shell, authenticated operator UI | `https://autogive.app/portfolio-signals/` · platform Supabase Auth/RLS |
-| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` |
-| **Impact Relay (backend)** | Deterministic ledger, receipts, workflows, audit | Library + Cloud Run (recommended for APIs/workers) |
+| **Impact Relay (public)** | Aggregate-only use-of-funds / impact tracker | `https://autogive.app/impact-relay/` (Cloudflare Workers static assets; Vercel until cutover; see [CLOUDFLARE.md](../CLOUDFLARE.md)) |
+| **Impact Relay (library)** | Deterministic ledger, receipts, workflows, audit | Python library in this repo; not hosted on the public Worker |
 | **Supabase (platform)** | Identity, multi-tenant Postgres, RLS, Storage | Project ref `utdioxwiskzatwoejgiu` |
 
 Portfolio Signals presents campaign, donor, and review workflows without becoming the ledger of record. Impact Relay is the financial truth surface after human approval.
@@ -46,18 +46,23 @@ Preferred AGI public + operator shape:
 
 ```text
 autogive.app/                 AGI brand site
-autogive.app/portfolio-signals/     Portfolio Signals UI + workspace
-autogive.app/impact-relay/    public aggregate tracker
+autogive.app/portfolio-signals/     Portfolio Signals UI + workspace (Supabase Auth/RLS)
+autogive.app/impact-relay/    public aggregate tracker (Cloudflare Workers)
         │
-        │  Supabase session + client_id (platform project)
+        │  operator workspace uses Supabase session + client_id
         ▼
-Cloud Run Impact Relay gateway/API  (when live APIs are enabled)
-        │  validated tenant_id, RBAC, SoD
-        ▼
-Impact Relay deterministic services, workflow store, object storage, audit receipts
+Impact Relay Python library (ledger, workflows, receipts) — not on the public Worker
 ```
 
 GitHub Pages remains optional fallback only.
+
+An earlier AGI-001 note recommended Cloud Run for hosted APIs. That
+recommendation is historical. Designed stack is Cloudflare Workers +
+Supabase. Render is not the host.
+
+Phase C contract governance (fixtures, `allocationId` glossary, ImpactEvent
+role owners) is recorded in [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md).
+Evidence-access policy remains PROPOSED until leadership + eng sign-off.
 
 Planned Supabase JWT validation must verify issuer, audience, expiry, signature, role claims, and the `client_id == tenant_id` binding before privileged requests reach finance, donor, publication, or notification APIs. Until that validation is active, production hosts must validate JWTs before forwarding trusted principals.
 
@@ -72,8 +77,10 @@ Planned Supabase JWT validation must verify issuer, audience, expiry, signature,
 
 ## Related
 
-- Suite phase map: [AGI docs/PLATFORM.md](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md)
-- Portfolio Signals live receipt: Fund-Intel `docs/CURRENT-STATE.md`
-- Portfolio Signals platform canon: Fund-Intel `docs/PLATFORM.md`
-- Portfolio Signals suite architecture: Fund-Intel `docs/AGI-SUITE-ARCHITECTURE.md`
+- Suite phase map: [AGI docs/PLATFORM.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md)
+- Portfolio Signals live receipt: [docs/CURRENT-STATE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/CURRENT-STATE.md)
+- Portfolio Signals platform canon: [docs/PLATFORM.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/PLATFORM.md)
+- Portfolio Signals suite architecture: [docs/AGI-SUITE-ARCHITECTURE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/AGI-SUITE-ARCHITECTURE.md)
 - Design system: [AGI-DESIGN-SYSTEM.md](../AGI-DESIGN-SYSTEM.md)
+- Phase C contract governance: [CONTRACT-GOVERNANCE.md](../CONTRACT-GOVERNANCE.md)
+- Synthetic Civic Forge fixture: [SYNTHETIC-DATASET.md](../SYNTHETIC-DATASET.md)

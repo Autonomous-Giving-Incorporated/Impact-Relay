@@ -1,7 +1,8 @@
 """Channel adapter contracts and governed transport implementations.
 
-Fixture adapters keep Hacker Dojo pilot offline and deterministic. SMTP and
-Postmark email transports are shipped; APNs/FCM remain host integration points.
+Fixture adapters keep Hacker Dojo pilot offline and deterministic. SMTP,
+Postmark, and Resend email transports are shipped; APNs/FCM remain host
+integration points.
 """
 
 from __future__ import annotations
@@ -46,6 +47,20 @@ def _is_single_email_address(value: str) -> bool:
         and value.count("@") == 1
         and not any(ch.isspace() or ch in ",;<>\x00" for ch in value)
     )
+
+
+def _is_from_mailbox(value: str) -> bool:
+    """Accept ``user@domain`` or ``Display Name <user@domain>`` without lists."""
+
+    if not value or any(ch in value for ch in "\r\n\x00"):
+        return False
+    if value.count("<") == 1 and value.endswith(">") and "<" in value:
+        display, _, rest = value.partition("<")
+        email = rest[:-1]
+        if any(ch in display for ch in ",;<>"):
+            return False
+        return bool(display.strip()) and _is_single_email_address(email)
+    return _is_single_email_address(value)
 
 
 @dataclass(frozen=True)
@@ -147,6 +162,49 @@ class PostmarkConfig:
             endpoint=values.get(
                 "IMPACT_RELAY_POSTMARK_ENDPOINT", "https://api.postmarkapp.com/email"
             ),
+        )
+
+
+@dataclass(frozen=True)
+class ResendConfig:
+    """Validated Resend transport configuration with a redacted API key."""
+
+    api_key: str = field(repr=False)
+    from_address: str
+    reply_to: str = ""
+    timeout_seconds: float = 10.0
+    endpoint: str = "https://api.resend.com/emails"
+
+    def __post_init__(self) -> None:
+        if not self.api_key.strip():
+            raise NotificationConfigurationError("Resend API key is required")
+        if not _is_from_mailbox(self.from_address):
+            raise NotificationConfigurationError("Resend from address must be an email address")
+        if self.reply_to and not _is_single_email_address(self.reply_to):
+            raise NotificationConfigurationError("Resend reply-to must be an email address")
+        if self.timeout_seconds <= 0:
+            raise NotificationConfigurationError("Resend timeout must be positive")
+        parsed = urlsplit(self.endpoint)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise NotificationConfigurationError("Resend endpoint must be an absolute HTTPS URL")
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise NotificationConfigurationError(
+                "Resend endpoint must not contain userinfo, a query, or a fragment"
+            )
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str] | None = None) -> ResendConfig:
+        values = env if env is not None else os.environ
+        try:
+            timeout = float(values.get("IMPACT_RELAY_RESEND_TIMEOUT_SECONDS", "10"))
+        except ValueError as exc:
+            raise NotificationConfigurationError("Resend timeout must be numeric") from exc
+        return cls(
+            api_key=values.get("IMPACT_RELAY_RESEND_API_KEY") or values.get("RESEND_API_KEY", ""),
+            from_address=values.get("IMPACT_RELAY_RESEND_FROM") or values.get("RESEND_FROM", ""),
+            reply_to=values.get("IMPACT_RELAY_RESEND_REPLY_TO", ""),
+            timeout_seconds=timeout,
+            endpoint=values.get("IMPACT_RELAY_RESEND_ENDPOINT", "https://api.resend.com/emails"),
         )
 
 
@@ -325,6 +383,7 @@ class FixtureEmailAdapter:
 SMTPClientFactory = Callable[[SMTPConfig], Any]
 EmailAddressResolver = Callable[[NotificationIntent], str]
 PostmarkOpener = Callable[[Request, float], Any]
+ResendOpener = Callable[[Request, float], Any]
 PushTokenResolver = Callable[[NotificationIntent], str]
 APNsOpener = Callable[[Request, float], Any]
 FCMOpener = Callable[[Request, float], Any]
@@ -657,6 +716,182 @@ class PostmarkEmailAdapter:
         ).as_tuple()
 
 
+def _open_resend(request: Request, timeout: float) -> Any:
+    return urlopen(request, timeout=timeout)
+
+
+def _resend_header_name(key: str) -> str:
+    safe_key = "".join(ch if ch.isalnum() else "-" for ch in key).strip("-")
+    return f"X-Impact-{safe_key}" if safe_key else ""
+
+
+def _resend_tag_name(key: str) -> str:
+    safe_key = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in key).strip("-_")
+    return safe_key
+
+
+class ResendEmailAdapter:
+    """Resend transactional email transport using the governed email boundary."""
+
+    provider_name = "resend"
+
+    def __init__(
+        self,
+        config: ResendConfig,
+        *,
+        address_resolver: EmailAddressResolver | None = None,
+        opener: ResendOpener | None = None,
+    ) -> None:
+        self.config = config
+        self.address_resolver = address_resolver
+        self._opener = opener or _open_resend
+
+    def _recipient_for(self, intent: NotificationIntent) -> str:
+        address = (
+            self.address_resolver(intent)
+            if self.address_resolver is not None
+            else str(intent.payload.get("donor_email") or "")
+        )
+        if not _is_single_email_address(address):
+            raise NotificationConfigurationError(
+                "Resend delivery requires a host-provided donor email resolver"
+            )
+        return address
+
+    def send_email(
+        self,
+        *,
+        to_address: str,
+        subject: str,
+        body_text: str,
+        body_html: str | None = None,
+        metadata: dict[str, str] | None = None,
+    ) -> DeliveryResult:
+        safe_metadata = {
+            key: value
+            for key, value in sorted((metadata or {}).items())
+            if key
+            and "\n" not in key
+            and "\r" not in key
+            and "\n" not in value
+            and "\r" not in value
+        }
+        payload: dict[str, Any] = {
+            "from": self.config.from_address,
+            "to": [to_address],
+            "subject": subject,
+            "text": body_text,
+        }
+        if body_html:
+            payload["html"] = body_html
+        if self.config.reply_to:
+            payload["reply_to"] = self.config.reply_to
+        headers = {
+            _resend_header_name(key): value
+            for key, value in safe_metadata.items()
+            if _resend_header_name(key)
+        }
+        if headers:
+            payload["headers"] = headers
+        tags = [
+            {"name": _resend_tag_name(key), "value": value}
+            for key, value in safe_metadata.items()
+            if _resend_tag_name(key)
+        ]
+        if tags:
+            payload["tags"] = tags
+
+        request_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.config.api_key}",
+            "User-Agent": "impact-relay/0.9",
+        }
+        idempotency = safe_metadata.get("intent-id", "").strip()
+        if idempotency:
+            request_headers["Idempotency-Key"] = idempotency
+        request = Request(
+            self.config.endpoint,
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers=request_headers,
+            method="POST",
+        )
+        try:
+            with self._opener(request, self.config.timeout_seconds) as response:
+                content_type = str(response.headers.get("Content-Type", ""))
+                media_type = content_type.partition(";")[0].strip().lower()
+                if media_type != "application/json" and not media_type.endswith("+json"):
+                    return DeliveryResult(False, "", "temporary invalid Resend response")
+                raw_body = response.read(65_537)
+        except HTTPError as exc:
+            permanent = 400 <= exc.code < 500 and exc.code != 429
+            prefix = "permanent: " if permanent else ""
+            return DeliveryResult(
+                False,
+                "",
+                f"{prefix}Resend returned HTTP {exc.code}",
+                permanent_failure=permanent,
+            )
+        except (URLError, OSError, TimeoutError):
+            return DeliveryResult(False, "", "temporary Resend transport failure")
+
+        if len(raw_body) > 65_536:
+            return DeliveryResult(False, "", "temporary invalid Resend response")
+        try:
+            result = json.loads(raw_body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return DeliveryResult(False, "", "temporary invalid Resend response")
+        if not isinstance(result, dict):
+            return DeliveryResult(False, "", "temporary invalid Resend response")
+        message_id = str(result.get("id") or "")
+        error_name = str(result.get("name") or "").strip()
+        if message_id and not error_name:
+            return DeliveryResult(True, message_id, "accepted by Resend")
+        if error_name:
+            safe_name = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in error_name)
+            return DeliveryResult(
+                False,
+                message_id,
+                f"permanent: Resend rejected message with {safe_name}",
+                permanent_failure=True,
+            )
+        return DeliveryResult(False, message_id, "temporary invalid Resend response")
+
+    def deliver(self, intent: NotificationIntent) -> tuple[bool, str, str]:
+        try:
+            recipient = self._recipient_for(intent)
+        except NotificationConfigurationError as exc:
+            return DeliveryResult(False, "", f"permanent: {exc}", permanent_failure=True).as_tuple()
+        except Exception:  # noqa: BLE001 - host resolver details may contain donor PII
+            return DeliveryResult(
+                False,
+                "",
+                "permanent: donor email resolution failed",
+                permanent_failure=True,
+            ).as_tuple()
+        subject = str(
+            intent.payload.get("email_subject")
+            or f"[{intent.message_class.value}] Impact Relay update"
+        )
+        body_text = str(
+            intent.payload.get("email_body_text")
+            or intent.payload.get("description")
+            or intent.source_id
+        )
+        body_html_raw = intent.payload.get("email_body_html")
+        return self.send_email(
+            to_address=recipient,
+            subject=subject,
+            body_text=body_text,
+            body_html=str(body_html_raw) if body_html_raw else None,
+            metadata={
+                "intent-id": intent.id,
+                "tenant-id": intent.organization_id,
+                "source-id": intent.source_id,
+            },
+        ).as_tuple()
+
+
 def open_email_adapter(
     *,
     backend: str | None = None,
@@ -664,11 +899,12 @@ def open_email_adapter(
     address_resolver: EmailAddressResolver | None = None,
     client_factory: SMTPClientFactory | None = None,
     postmark_opener: PostmarkOpener | None = None,
+    resend_opener: ResendOpener | None = None,
 ) -> EmailAdapter:
-    """Open the explicit fixture, SMTP, or Postmark email backend.
+    """Open the explicit fixture, SMTP, Postmark, or Resend email backend.
 
     Production configuration is validated immediately. No fallback to fixture
-    delivery occurs after ``smtp`` or ``postmark`` is selected.
+    delivery occurs after ``smtp``, ``postmark``, or ``resend`` is selected.
     """
 
     values = env if env is not None else os.environ
@@ -687,8 +923,14 @@ def open_email_adapter(
             address_resolver=address_resolver,
             opener=postmark_opener,
         )
+    if kind == "resend":
+        return ResendEmailAdapter(
+            ResendConfig.from_env(values),
+            address_resolver=address_resolver,
+            opener=resend_opener,
+        )
     raise NotificationConfigurationError(
-        f"unknown IMPACT_RELAY_EMAIL_BACKEND={kind!r} (use fixture, smtp, or postmark)"
+        f"unknown IMPACT_RELAY_EMAIL_BACKEND={kind!r} (use fixture, smtp, postmark, or resend)"
     )
 
 

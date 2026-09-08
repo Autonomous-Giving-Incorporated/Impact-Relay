@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "dataset": "autogive-synthetic-dataset",
+    "version": "1.0.0",
+    "seed": 20260821,
+    "classification": "SYNTHETIC_ONLY",
+    "campaign_id": "cmp_synthetic_builder_fund_2026",
+    "source": "fixture:autogive-synthetic-v1",
+    "description": "Compact Civic Forge ledger for Impact Relay. Does not dump all 438 Portfolio Signals gifts. Cleared pot credits: hardware 90910, scholarships 67880, undesignated 125200 (NATIVE in PS, omitted here). fund_003 and fund_004 have zero cleared gifts.",
+    "systems_of_record": {
+      "payment": "fixture://autogive-synthetic-v1/gifts",
+      "accounting": "fixture://autogive-synthetic-v1/expenses",
+      "crm": "fixture://autogive-synthetic-v1/donors",
+      "note": "Synthetic compact ledger. Not Every.org. Not OBSERVED. Hacker Dojo remains the reference tenant."
+    }
+  },
+  "organization": {
+    "id": "org_synthetic_civic_forge",
+    "name": "Civic Forge Makerspace",
+    "policy_version": "v1.0"
+  },
+  "donors": [
+    {
+      "id": "donor_syn_0001",
+      "display_name": "Synthetic Donor 0001"
+    },
+    {
+      "id": "donor_syn_0002",
+      "display_name": "Synthetic Donor 0002"
+    },
+    {
+      "id": "donor_syn_0003",
+      "display_name": "Synthetic Donor 0003"
+    }
+  ],
+  "allocations": [
+    {
+      "id": "alloc_community_hardware",
+      "name": "Community Hardware Fund",
+      "purpose": "Robotics kits and classroom compute",
+      "restriction_type": "DONOR_RESTRICTED"
+    },
+    {
+      "id": "alloc_access_scholarships",
+      "name": "Access Scholarships",
+      "purpose": "Training scholarships",
+      "restriction_type": "DONOR_RESTRICTED"
+    },
+    {
+      "id": "alloc_facility_resilience",
+      "name": "Facility Resilience",
+      "purpose": "Facility continuity. Registered for suite ID stability; no cleared gifts debit this pot.",
+      "restriction_type": "DONOR_RESTRICTED"
+    },
+    {
+      "id": "alloc_community_programs",
+      "name": "Community Programs",
+      "purpose": "Agent-proposed only. Must not be auto-approved.",
+      "restriction_type": "DONOR_RESTRICTED"
+    }
+  ],
+  "donations": [
+    {
+      "id": "don_syn_hw_a",
+      "donor_id": "donor_syn_0001",
+      "amount": "50000.00",
+      "currency": "USD",
+      "cleared": true,
+      "external_source_id": "fixture-gift_syn_hw_a",
+      "received_at": "2026-07-08",
+      "allocations": [
+        {
+          "id": "da_syn_hw_a",
+          "allocation_id": "alloc_community_hardware",
+          "amount": "50000.00"
+        }
+      ]
+    },
+    {
+      "id": "don_syn_hw_b",
+      "donor_id": "donor_syn_0002",
+      "amount": "40910.00",
+      "currency": "USD",
+      "cleared": true,
+      "external_source_id": "fixture-gift_syn_hw_b",
+      "received_at": "2026-07-15",
+      "allocations": [
+        {
+          "id": "da_syn_hw_b",
+          "allocation_id": "alloc_community_hardware",
+          "amount": "40910.00"
+        }
+      ]
+    },
+    {
+      "id": "don_syn_sch_a",
+      "donor_id": "donor_syn_0003",
+      "amount": "67880.00",
+      "currency": "USD",
+      "cleared": true,
+      "external_source_id": "fixture-gift_syn_sch_a",
+      "received_at": "2026-07-22",
+      "allocations": [
+        {
+          "id": "da_syn_sch_a",
+          "allocation_id": "alloc_access_scholarships",
+          "amount": "67880.00"
+        }
+      ]
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp_syn_001",
+      "vendor": "Synthetic Robotics Supply",
+      "amount": "18750.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-09",
+      "category": "CLASSROOM_HARDWARE",
+      "description": "Robotics kits",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_001",
+      "allocation_id": "alloc_community_hardware",
+      "evidence": [
+        {
+          "id": "ev_syn_001",
+          "kind": "invoice",
+          "summary": "Invoice fixture://evidence/invoice-001.pdf for robotics kits ($18750). digest=sha256:synthetic001",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_002",
+      "vendor": "Synthetic Compute Co.",
+      "amount": "24300.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-11",
+      "category": "CLASSROOM_HARDWARE",
+      "description": "Workshop laptops",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_002",
+      "allocation_id": "alloc_community_hardware",
+      "evidence": [
+        {
+          "id": "ev_syn_002",
+          "kind": "invoice",
+          "summary": "Invoice fixture://evidence/invoice-002.pdf for workshop laptops ($24300). digest=sha256:synthetic002",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_003",
+      "vendor": "Synthetic Learning Lab",
+      "amount": "12500.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-12",
+      "category": "SCHOLARSHIP",
+      "description": "Training scholarships",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_003",
+      "allocation_id": "alloc_access_scholarships",
+      "evidence": [
+        {
+          "id": "ev_syn_003",
+          "kind": "invoice",
+          "summary": "Approval packet mapped to invoice for EvidenceValidator sufficiency. fixture://evidence/approval-003.json ($12500). digest=sha256:synthetic003",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_004",
+      "vendor": "Synthetic Facilities LLC",
+      "amount": "8900.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-13",
+      "category": "FACILITY",
+      "description": "Electrical repair",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_004",
+      "allocation_id": "alloc_facility_resilience",
+      "evidence": [
+        {
+          "id": "ev_syn_004",
+          "kind": "invoice",
+          "summary": "Invoice fixture://evidence/invoice-004.pdf for electrical repair ($8900). No cleared gifts on this pot.",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_005",
+      "vendor": "Synthetic Compliance Group",
+      "amount": "4100.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-14",
+      "category": "FACILITY",
+      "description": "Safety inspection",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_005",
+      "allocation_id": "alloc_facility_resilience",
+      "evidence": [
+        {
+          "id": "ev_syn_005",
+          "kind": "invoice",
+          "summary": "Inspection report mapped to invoice. fixture://evidence/report-005.pdf ($4100). No cleared gifts on this pot.",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_006",
+      "vendor": "Synthetic Event Supply",
+      "amount": "6200.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-18",
+      "category": "PROGRAM",
+      "description": "Community event materials",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_006",
+      "allocation_id": "alloc_community_programs",
+      "evidence": [
+        {
+          "id": "ev_syn_006",
+          "kind": "estimate",
+          "summary": "Estimate only. Agent-proposed community programs spend. Must not auto-approve.",
+          "donor_visible": true
+        }
+      ]
+    },
+    {
+      "id": "exp_syn_008",
+      "vendor": "Synthetic Vendor",
+      "amount": "3200.00",
+      "currency": "USD",
+      "purchase_date": "2026-08-20",
+      "category": "SCHOLARSHIP",
+      "description": "Missing evidence test",
+      "state": "IMPORTED",
+      "external_source_id": "acct_exp_syn_008",
+      "allocation_id": "alloc_access_scholarships",
+      "evidence": []
+    }
+  ],
+  "programs": [
+    {
+      "id": "prog_syn_001",
+      "name": "Intro Robotics Workshop",
+      "active": true
+    },
+    {
+      "id": "prog_syn_002",
+      "name": "Access Scholarship Cohort",
+      "active": true
+    },
+    {
+      "id": "prog_syn_003",
+      "name": "Facility Continuity Program",
+      "active": true
+    }
+  ],
+  "publish": [
+    {
+      "donor_id": "donor_syn_0001",
+      "donation_id": "don_syn_hw_a",
+      "expense_id": "exp_syn_001",
+      "allocation_id": "alloc_community_hardware",
+      "attribution_method": "DIRECT_RESTRICTED",
+      "attributed_amount": "18750.00",
+      "created_at": "2026-08-16T12:00:00+00:00"
+    },
+    {
+      "donor_id": "donor_syn_0001",
+      "donation_id": "don_syn_hw_a",
+      "expense_id": "exp_syn_002",
+      "allocation_id": "alloc_community_hardware",
+      "attribution_method": "DIRECT_RESTRICTED",
+      "attributed_amount": "24300.00",
+      "created_at": "2026-08-16T12:05:00+00:00"
+    },
+    {
+      "donor_id": "donor_syn_0003",
+      "donation_id": "don_syn_sch_a",
+      "expense_id": "exp_syn_003",
+      "allocation_id": "alloc_access_scholarships",
+      "attribution_method": "DIRECT_RESTRICTED",
+      "attributed_amount": "12500.00",
+      "created_at": "2026-08-16T12:10:00+00:00"
+    }
+  ],
+  "edge": {
+    "duplicate_invoice": {
+      "id": "exp_syn_007",
+      "vendor": "Synthetic Robotics Supply",
+      "amount": "18750.00",
+      "external_source_id": "acct_exp_syn_001",
+      "content_digest": "sha256:synthetic001",
+      "note": "Same invoice digest and provider id as exp_syn_001. Do not import as a second ledger row; executor must skip."
+    },
+    "unverified_outcome": {
+      "outcome_id": "out_syn_005",
+      "program_id": "prog_syn_003",
+      "metric": "downtime_avoided_hours",
+      "claim_label": "NOT_COMPUTABLE",
+      "verification_status": "proposed",
+      "note": "Must not be verified or published as a public outcome."
+    }
+  }
+}

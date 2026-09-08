@@ -1,0 +1,83 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-08-21",
+  "source": "fixture:autogive-synthetic-v1",
+  "authority": "public_aggregate_only",
+  "privacy": {
+    "classification": "public_aggregate_only",
+    "piiAllowed": false,
+    "donorNamesAllowed": false,
+    "individualDonorAttributionAllowed": false,
+    "operatorIdentityAllowed": false
+  },
+  "summary": {
+    "outcomeCount": 4,
+    "totalParticipantsPublic": 46
+  },
+  "outcomes": [
+    {
+      "publicId": "imp_syn_001",
+      "impactEventId": "evt_syn_robotics_001",
+      "organizationName": "Civic Forge Makerspace",
+      "programName": "Intro Robotics Workshop",
+      "allocationId": "alloc_community_hardware",
+      "allocationName": "Community Hardware Fund",
+      "eventType": "CLASS_HELD",
+      "eventDate": "2026-08-17",
+      "participantsPublic": 32,
+      "evidenceState": "VERIFIED",
+      "description": "Synthetic PILOT workshop occurrence. Not a live cohort.",
+      "attributionMethod": "aggregate_attendance",
+      "receiptHash": "sha256:synthetic-public-placeholder-001",
+      "createdAt": "2026-08-17T18:00:00.000Z"
+    },
+    {
+      "publicId": "imp_syn_002",
+      "impactEventId": "evt_syn_kits_002",
+      "organizationName": "Civic Forge Makerspace",
+      "programName": "Intro Robotics Workshop",
+      "allocationId": "alloc_community_hardware",
+      "allocationName": "Community Hardware Fund",
+      "eventType": "EQUIPMENT_DEPLOYED",
+      "eventDate": "2026-08-17",
+      "participantsPublic": 0,
+      "evidenceState": "VERIFIED",
+      "description": "Synthetic PILOT: 18 kits deployed. Count is equipment, not attendees.",
+      "attributionMethod": "aggregate_attendance",
+      "receiptHash": "sha256:synthetic-public-placeholder-002",
+      "createdAt": "2026-08-17T18:10:00.000Z"
+    },
+    {
+      "publicId": "imp_syn_003",
+      "impactEventId": "evt_syn_scholar_003",
+      "organizationName": "Civic Forge Makerspace",
+      "programName": "Access Scholarship Cohort",
+      "allocationId": "alloc_access_scholarships",
+      "allocationName": "Access Scholarships",
+      "eventType": "SCHOLARSHIP_AWARDED",
+      "eventDate": "2026-08-18",
+      "participantsPublic": 14,
+      "evidenceState": "VERIFIED",
+      "description": "Synthetic PILOT scholarship awards. Fixture-only claim.",
+      "attributionMethod": "aggregate_attendance",
+      "receiptHash": "sha256:synthetic-public-placeholder-003",
+      "createdAt": "2026-08-18T17:00:00.000Z"
+    },
+    {
+      "publicId": "imp_syn_004",
+      "impactEventId": "evt_syn_repair_004",
+      "organizationName": "Civic Forge Makerspace",
+      "programName": "Facility Continuity Program",
+      "allocationId": "alloc_facility_resilience",
+      "allocationName": "Facility Resilience",
+      "eventType": "FACILITY_REPAIR",
+      "eventDate": "2026-08-19",
+      "participantsPublic": 0,
+      "evidenceState": "VERIFIED",
+      "description": "Synthetic PILOT: 2 critical repairs completed. Facility pot has no cleared gifts in the compact ledger.",
+      "attributionMethod": "aggregate_attendance",
+      "receiptHash": "sha256:synthetic-public-placeholder-004",
+      "createdAt": "2026-08-19T16:00:00.000Z"
+    }
+  ]
+}

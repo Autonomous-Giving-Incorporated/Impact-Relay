@@ -4,8 +4,8 @@
 
 | Product | Repository | Role |
 |---|---|---|
-| **AGI** | [Autonomous-Giving-Incorporated](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) | Corporate master brand and explanatory workbench |
-| **Portfolio Signals** | [Fund-Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel) | Decision workspace and campaign operations |
+| **AGI** | [Autonomous-Giving-Incorporated](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated) | Corporate master brand and explanatory workbench |
+| **Portfolio Signals** | [Portfolio-Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals) | Decision workspace and campaign operations |
 | **Impact Relay** | this repo | Public evidence, ledger truth, and impact receipts |
 
 Information density differs by product job. **Identity, palette, typography, focus, status language, suite navigation, and footer governance must match.** Do not invent a separate brand for this repository.
@@ -20,9 +20,9 @@ Canonical public origins use the `autogive.app` family:
 
 | Concern | Owner / reference |
 |---|---|
-| Shared visual grammar | AGI [`docs/DESIGN_SYSTEM.md`](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/DESIGN_SYSTEM.md) and AGI [`tokens.css`](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/tokens.css) (public reference values) |
-| Suite identity + decision-workspace shell | Portfolio Signals [`docs/AGI-DESIGN-SYSTEM.md`](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/AGI-DESIGN-SYSTEM.md) and [`docs/BRAND-SYSTEM.md`](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/BRAND-SYSTEM.md) |
-| Cross-repo navigation and token coherence | AGI [`docs/THREE_REPO_INTEGRATION.md`](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/THREE_REPO_INTEGRATION.md) § D |
+| Shared visual grammar | AGI [`docs/DESIGN_SYSTEM.md`](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/DESIGN_SYSTEM.md) and AGI [`tokens.css`](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/tokens.css) (public reference values) |
+| Suite identity + decision-workspace shell | Portfolio Signals [`docs/AGI-DESIGN-SYSTEM.md`](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/AGI-DESIGN-SYSTEM.md) and [`docs/BRAND-SYSTEM.md`](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/BRAND-SYSTEM.md) |
+| Cross-repo navigation and token coherence | AGI [`docs/THREE_REPO_INTEGRATION.md`](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/THREE_REPO_INTEGRATION.md) § D |
 | Impact Relay product layout (evidence-led IA) | [`design.md`](../design.md) |
 | Impact Relay implementation tokens | [`tokens.css`](../tokens.css) → consumed by [`styles.css`](../styles.css) |
 | Visual QA baseline | [`design-qa.md`](../design-qa.md) |
@@ -124,8 +124,8 @@ When those host screens are next touched, apply the same identity hierarchy and 
 - [`design.md`](../design.md) — Impact Relay public surface layout and guardrails
 - [`design-qa.md`](../design-qa.md) — latest visual QA receipt
 - [`../CLAUDE.md`](../CLAUDE.md) — contributor rules (points here for UI work)
-- Portfolio Signals suite architecture: [AGI-SUITE-ARCHITECTURE.md](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/AGI-SUITE-ARCHITECTURE.md)
-- AGI three-repo surface: [THREE_REPO_INTEGRATION.md](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/THREE_REPO_INTEGRATION.md)
+- Portfolio Signals suite architecture: [AGI-SUITE-ARCHITECTURE.md](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/AGI-SUITE-ARCHITECTURE.md)
+- AGI three-repo surface: [THREE_REPO_INTEGRATION.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/THREE_REPO_INTEGRATION.md)
 
 ---
 

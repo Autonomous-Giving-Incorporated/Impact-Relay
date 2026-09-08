@@ -7,24 +7,40 @@ This repo participates in the **AGI suite**. Public hosting and tenancy identifi
 | Concern | Value |
 | --- | --- |
 | Public URL (production intent) | `https://autogive.app/impact-relay/` |
-| Vercel project | `impact-relay` (team `scrimshawlife-8819s-projects`) |
-| GitHub Pages fallback | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` |
+| Vercel project (until cutover) | `impact-relay` (team `scrimshawlife-8819s-projects`) · `https://impact-relay.vercel.app` |
+| Cloudflare Worker | `impact-relay` (assets-only; see [CLOUDFLARE.md](CLOUDFLARE.md)) |
+| GitHub Pages | `https://scrimshawlife-ctrl.github.io/Impact-Relay/` — OBSERVED 404 (2026-08-22); org Pages also 404; mirror only |
 | Tenant id alignment | Impact Relay `tenant_id` = Portfolio Signals `clients.id` |
 | **Supabase platform (suite)** | `utdioxwiskzatwoejgiu` (auth/tenancy via Portfolio Signals path; IR durable API later) |
 
-Full suite table: [Autonomous-Giving-Incorporated/docs/PLATFORM.md](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md).
+Full suite table: [Autonomous-Giving-Incorporated/docs/PLATFORM.md](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated/blob/main/docs/PLATFORM.md).
 
 ## Public surface
 
 Static tracker + `data/public-impact.json` and related public aggregates. Authority on public impact projection: `public_aggregate_only`. No donor PII.
 
-**Live:** https://autogive.app/impact-relay/ (Vercel). Suite Phase 2 (Portfolio Signals workspace Auth) is operator-complete; Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Fund-Intel docs).
+**Live:** https://autogive.app/impact-relay/ (OBSERVED 200 via suite gateway; Vercel remains the proxied origin until an IR Worker is attached). Direct Vercel URL: https://impact-relay.vercel.app. Do not invent a `workers.dev` URL. GitHub Pages is a 404 mirror. Suite Phase 2 (Portfolio Signals workspace Auth) and AGI login / SPEC-028 remain **PARKED** — do not treat earlier “operator-complete” copy as current. Impact Relay public remains aggregate-only until an authorized live cohort promotes OBSERVED data (see [IMPACT-RELAY-LIVE-COHORT](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/blob/main/docs/IMPACT-RELAY-LIVE-COHORT.md) in Portfolio Signals). Do not relabel empty or fixture outcomes `OBSERVED` or `VERIFIED`.
 
 ## Deploy (public)
+
+Designed stack: **Cloudflare + Supabase**. The public tracker is static HTML/CSS/JS plus committed `data/` JSON on Cloudflare Workers; operator auth/tenancy remain platform Supabase. Vercel remains until cutover. Details: [CLOUDFLARE.md](CLOUDFLARE.md).
+
+```bash
+./scripts/stage_cloudflare_assets.sh
+npx wrangler@4.123.0 deploy
+```
+
+GitHub Actions on `main` runs the same path with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
+Vercel remains available until operators attach `autogive.app/impact-relay/` to the Worker and retire the Vercel project:
 
 ```bash
 vercel link --yes --scope scrimshawlife-8819s-projects --project impact-relay
 vercel deploy --prod --yes --scope scrimshawlife-8819s-projects
 ```
 
-Config: `vercel.json`, `.vercelignore` (excludes Python package, venv, node_modules).
+Config kept until cutover: `vercel.json`, `.vercelignore` (excludes Python package, venv, node_modules).
+
+## Suite stack audit
+
+Informative copy: [audits/SUITE_STACK_AUDIT_2026-08-17.md](audits/SUITE_STACK_AUDIT_2026-08-17.md). Canonical file lives in Portfolio Signals. Not READY. Do not fill `data/public-impact.json` with fixture `VERIFIED` outcomes.

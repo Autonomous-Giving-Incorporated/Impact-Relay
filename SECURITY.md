@@ -2,7 +2,7 @@
 
 Impact Relay has two surfaces:
 
-1. **Public aggregate** publishing (GitHub Pages / `data/`) — no donor PII.
+1. **Public aggregate** publishing (Cloudflare Workers static assets / Vercel until cutover / GitHub Pages fallback / `data/`) — no donor PII.
 2. **Library + pilot data-dir** (local/staging durable store, host consoles) — may hold synthetic or authorized operational records **outside git**.
 
 Ops detail: [docs/ops/](docs/ops/) (threat model, incident response, security checklist).
@@ -50,6 +50,15 @@ Local `--workflow-ops` sessions use a versioned JSON format with an explicit cla
 - Postmark uses the same host-owned donor resolver, consent checks, enabled-preference checks, and independently approved content boundary as SMTP. Selecting Postmark never creates consent or falls back to fixture delivery.
 - The endpoint must use HTTPS. Production should retain the default `https://api.postmarkapp.com/email`; endpoint overrides exist for controlled gateways and should be domain-allowlisted by the host.
 - Provider response messages can contain recipient details and are never persisted. Durable delivery records retain only the Postmark `MessageID`, numeric error code classification, and sanitized status.
+
+## Resend credentials and delivery responses
+
+- Keep `IMPACT_RELAY_RESEND_API_KEY` (or `RESEND_API_KEY`) in the host secret manager or process environment. It is redacted from configuration representations and must never appear in fixtures, logs, receipts, findings, or git.
+- Resend uses the same host-owned donor resolver, consent checks, enabled-preference checks, and independently approved content boundary as SMTP and Postmark. Selecting Resend never creates consent or falls back to fixture delivery.
+- The endpoint must use HTTPS. Production should retain the default `https://api.resend.com/emails`; endpoint overrides exist for controlled gateways and should be domain-allowlisted by the host.
+- Provider response messages can contain recipient details and are never persisted. Durable delivery records retain only the Resend `id`, sanitized HTTP status, and named API error classification.
+- Autogive Relay senders use the verified `auth.autogive.app` domain (`Impact Relay <noreply@auth.autogive.app>`). Do not send from `noema.guru`. Do not reuse `AUTH_EMAIL_FROM` / `auth@autogive.app` for receipts.
+- Mailosaur is an optional capture inbox for synthetic probes only. Keep `MAILOSAUR_API_KEY` out of git. Never send live-cohort or real-donor mail to Mailosaur, and never treat a Mailosaur capture as production `OBSERVED` donor delivery.
 
 ## Aggregate HTTP bridge credentials
 

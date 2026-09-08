@@ -12,7 +12,7 @@ The work queue is `ROADMAP.md` — start with **v0.9.1 (Hardening and Fidelity)*
 
 ```bash
 pip install -e ".[dev]"
-pytest                # ~260 tests, offline, ~1s — must stay that way
+pytest                # 413 collected 2026-08-22, offline, ~1s — must stay that way
 ruff check . --fix    # lint
 ruff format .         # formatter is canonical; CI runs --check
 mypy                  # config in pyproject; strict on auth/, donor/, agents.privacy
@@ -48,7 +48,7 @@ Changes to `AGENTS.md`, `policies/`, `schemas/`, or attribution/evidence/notific
 
 ## Public UI / brand (AGI suite)
 
-Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated)) and **Portfolio Signals** ([Fund-Intel](https://github.com/scrimshawlife-ctrl/Fund-Intel)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
+Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Giving-Incorporated](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated)) and **Portfolio Signals** ([Portfolio-Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals)): shared identity hierarchy, `--agi-*` palette, Space Grotesk / Inter / IBM Plex Mono, suite navigation, and footer governance.
 
 - Contract and checklist: [`docs/AGI-DESIGN-SYSTEM.md`](docs/AGI-DESIGN-SYSTEM.md)
 - Product layout (evidence-led IA): [`design.md`](design.md)
@@ -56,6 +56,10 @@ Public Pages UI in this repo must stay consistent with **AGI** ([Autonomous-Givi
 
 Host finance/donor screens still follow the same shell rules when they surface Impact Relay data.
 
+Synthetic Civic Forge (`org_synthetic_civic_forge`) is a disposable second tenant.
+Fixtures live in [`fixtures/synthetic_v1/`](fixtures/synthetic_v1/). Do not label
+them `OBSERVED` and do not publish them into `data/`. See [docs/SYNTHETIC-DATASET.md](docs/SYNTHETIC-DATASET.md).
+
 ## Out of scope (sibling repo)
 
-Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals / the Hacker-Dojo host path. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.
+Host UI screens (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`), shadow/live-cohort ops runbooks, real Supabase JWT/MFA validation, and production notification credentials live in Portfolio Signals. This repo ships the library, console APIs, ports, fixtures, public evidence Pages surface, and CI oracles. Files referenced in docs but absent here are usually in that host repo, not missing.

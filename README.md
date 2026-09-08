@@ -6,11 +6,11 @@ Impact Relay connects a donation to its approved allocation, connects that alloc
 
 > AI proposes. Deterministic services validate. Authorized humans approve. The ledger records. Receipts preserve lineage.
 
-[Live public tracker](https://autogive.app/impact-relay/) · [GitHub Pages fallback](https://scrimshawlife-ctrl.github.io/Impact-Relay/) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
+[Live public tracker](https://autogive.app/impact-relay/) · [Vercel fallback](https://impact-relay.vercel.app) · [Cloudflare](docs/CLOUDFLARE.md) · [Vision](VISION.md) · [Agent contract](AGENTS.md) · [Architecture](docs/architecture/AGENTIC-SYSTEM.md) · [AGI Suite](docs/architecture/AGI-SUITE.md) · [Durable quickstart](docs/DURABLE-QUICKSTART.md) · [Hacker Dojo integration](docs/HACKER-DOJO-INTEGRATION.md) · [Roadmap](ROADMAP.md) · [Execution backlog](TODO.md)
 
 Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer-facing corporate brand; Zero State is credited only as the software builder. Hacker Dojo is the **reference tenant**, not product identity (tenant assets live with Portfolio Signals under `assets/tenants/hacker-dojo/`).
 
-**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/scrimshawlife-ctrl/Autonomous-Giving-Incorporated) and [Portfolio Signals](https://github.com/scrimshawlife-ctrl/Fund-Intel) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
+**Suite UI/UX:** public surfaces must stay consistent with [AGI](https://github.com/Autonomous-Giving-Incorporated/Autonomous-Giving-Incorporated) and [Portfolio Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals) (shared identity, tokens, type, navigation, footer). See [docs/AGI-DESIGN-SYSTEM.md](docs/AGI-DESIGN-SYSTEM.md) and [design.md](design.md).
 
 ---
 
@@ -18,7 +18,7 @@ Impact Relay is an AGI product. Autonomously Giving Incorporated is the customer
 
 Suite product: transaction-light **allocation middleware** (canonical **every.org**). Impact Relay’s role is **proof and trail**, not gift ingestion or approval.
 
-**Status (2026-08-07):** MVP packages ship in [Fund-Intel `services/allocation-middleware/`](https://github.com/scrimshawlife-ctrl/Fund-Intel/tree/main/services/allocation-middleware) with **local pilot smoke** against platform Supabase. This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces (`autogive.app/impact-relay/`); optional deeper IR ledger binding is a later integration.
+**Status (2026-08-07):** MVP packages ship in [Portfolio Signals `services/allocation-middleware/`](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals/tree/main/services/allocation-middleware) with **local pilot smoke** against platform Supabase. This repo keeps full ledger, UOF/impact receipts, and public aggregate surfaces (`autogive.app/impact-relay/`); optional deeper IR ledger binding is a later integration.
 
 See [docs/ALLOCATION-MIDDLEWARE.md](docs/ALLOCATION-MIDDLEWARE.md).
 
@@ -78,7 +78,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | Programs, funded assets, impact receipts | `src/impact_relay/domain/impact.py` |
 | Donor balances, timeline, receipt detail API | `domain/donor_views.py` · `donor/` |
 | Donor-scoped data export and notification-state deletion primitives | `privacy_ops.py` |
-| Consent, preferences, fixture + SMTP/Postmark email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
+| Consent, preferences, fixture + SMTP/Postmark/Resend email + APNs/FCM push delivery | `domain/notifications.py` · `notifications/` |
 | Multi-organization domain isolation | `domain/tenant.py` · `storage/tenants.py` |
 | Agent contracts L0–L3, Privacy Sentinel, simulation | `src/impact_relay/agents/` |
 | Expense intake → human approval → UOF slice | `agents/expense_workflow.py` · `accounting.py` · [HD-IR-007](docs/HD-IR-007.md) |
@@ -89,7 +89,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 | RBAC roles, SoD, OIDC ports, HD role map | `auth/` |
 | Host façade + finance/donor consoles | `host/` · `console_server.py` |
 | Hacker Dojo canonical pilot / clone template | `storage/template.py` · [integration](docs/HACKER-DOJO-INTEGRATION.md) |
-| Aggregate public tracker and privacy-safe exports | GitHub Pages + `data/` |
+| Aggregate public tracker and privacy-safe exports | Suite path on `autogive.app/impact-relay/` + Vercel origin + committed `data/` (GitHub Pages is a 404 mirror, not a live host) |
 | Every.org aggregate and Notion public-evidence bridges | CLI adapters and runbooks |
 | Operational health and metrics summaries | `observability.py` |
 | Ops threat model, runbooks, pilot findings template | `docs/ops/` · `docs/pilot/` |
@@ -100,7 +100,7 @@ See [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md).
 - production Every.org donation ingestion (aggregate dry-run path exists);
 - production multi-region workflow DR and production alerting/SLO dashboards (pilot local+SQL path, object retention controls, and deterministic observability summaries shipped);
 - live OIDC JWT validation inside the library (host IdP SDK validates; ports + fixture mapper shipped);
-- production SMTP/Postmark/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
+- production SMTP/Postmark/Resend/APNs/FCM credentials plus host donor-address/device-token resolvers; SMS production client remains open (fixture delivery remains default);
 - human finance live-cohort execution and findings fill (runbooks ready);
 - self-service multi-nonprofit onboarding UI and full privacy self-service UX (clone-from-Hacker-Dojo template API plus donor data export/deletion primitives shipped).
 
@@ -199,7 +199,7 @@ See [docs/HD-IR-007.md](docs/HD-IR-007.md), [docs/DURABLE-QUICKSTART.md](docs/DU
 
 ## AGI-001: A.G.I. suite boundary
 
-Autonomously Giving Incorporated (**A.G.I.**) is the product-suite frame around Fund-Intel and Impact Relay. Fund-Intel is the GitHub Pages / Supabase frontend surface; Impact Relay remains the governed backend and deterministic financial transparency library, with Cloud Run recommended for hosted backend APIs and workers.
+Autonomously Giving Incorporated (**A.G.I.**) is the product-suite frame around Fund-Intel and Impact Relay. The designed public stack is **Cloudflare + Supabase**: Impact Relay’s aggregate tracker ships as Cloudflare Workers static assets; operator identity and tenancy stay on platform Supabase. Impact Relay remains the governed Python library for ledger, receipts, and workflows — not a public Worker API.
 
 The shared tenant contract is `client_id == tenant_id`. Hacker Dojo (`hacker-dojo`) is the reference tenant and clone template. Master admins manage platform onboarding and infrastructure; tenant directors manage nonprofit roles and workflows, but neither boundary bypasses finance, publication, notification, or policy approval gates. Planned production hardening includes Supabase JWT validation at the backend gateway before privileged calls are accepted. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
 
@@ -227,7 +227,7 @@ with open_hacker_dojo_session(".impact-relay/hacker-dojo") as session:
         session.approve(workflow_id=waiting["cases"][0]["workflow_id"])
 ```
 
-Host screens live in the sibling [Hacker-Dojo](https://github.com/scrimshawlife-ctrl/Hacker-Dojo) repo (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Full wiring: [docs/HACKER-DOJO-INTEGRATION.md](docs/HACKER-DOJO-INTEGRATION.md).
+Host screens live in [Portfolio Signals](https://github.com/Autonomous-Giving-Incorporated/Portfolio-Signals) (`finance-impact.html`, `donor-impact.html`, `workspace/impact-relay-bridge.js`). Full wiring: [docs/HACKER-DOJO-INTEGRATION.md](docs/HACKER-DOJO-INTEGRATION.md).
 
 ---
 
@@ -249,7 +249,7 @@ These rules outrank model output, operator convenience, and provider data.
 
 ## Public tracker and privacy boundary
 
-The GitHub Pages surface publishes aggregate campaign progress, public use-of-funds receipts, public impact outcomes, and event digests. It does not store donor names, emails, phone numbers, addresses, private notes, or individual gift records.
+The public tracker publishes aggregate campaign progress, public use-of-funds receipts, public impact outcomes, and event digests. Canonical suite URL: `https://autogive.app/impact-relay/` (OBSERVED 200 via the suite gateway; Vercel remains the proxied origin until an IR Worker is attached — see [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md)). GitHub Pages is a mirror only and currently 404. It does not store donor names, emails, phone numbers, addresses, private notes, or individual gift records.
 
 | Allowed publicly | Prohibited publicly |
 |---|---|
@@ -272,6 +272,8 @@ Impact-Relay/
 ├── ROADMAP.md · TODO.md · SECURITY.md
 ├── docs/
 │   ├── DURABLE-QUICKSTART.md
+│   ├── CLOUDFLARE.md                    # Workers static-assets hosting
+│   ├── CONTRACT-GOVERNANCE.md           # AGI Phase C fixtures + vocabulary
 │   ├── HACKER-DOJO-INTEGRATION.md
 │   ├── EVERYORG-AGGREGATE-RUNBOOK.md
 │   ├── HD-IR-001.md … HD-IR-007.md      # milestone notes
@@ -297,7 +299,9 @@ Impact-Relay/
 ├── policies/tenants/                    # e.g. hacker-dojo.v1.0.yaml
 ├── fixtures/ · schemas/ · data/
 ├── tests/ · scripts/
-├── index.html · app.js · styles.css     # public Pages tracker
+├── index.html · app.js · styles.css     # public tracker
+├── wrangler.toml · cloudflare/          # Workers static assets (see docs/CLOUDFLARE.md)
+├── vercel.json                          # kept until Cloudflare cutover
 └── .github/workflows/
 ```
 
@@ -322,7 +326,7 @@ Optional Postgres pilot stack: `docker compose -f docker-compose.postgres.yml up
 
 ### Production email adapters
 
-The library ships standard-library SMTP and Postmark adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid.
+The library ships standard-library SMTP, Postmark, and Resend adapters. Fixture email remains the default; selecting a production backend never falls back to fixtures when configuration is invalid. Resend is the AGI suite-aligned HTTP email backend.
 
 ```bash
 export IMPACT_RELAY_EMAIL_BACKEND=smtp
@@ -344,6 +348,25 @@ export IMPACT_RELAY_POSTMARK_REPLY_TO=reply@example.org       # optional
 export IMPACT_RELAY_POSTMARK_MESSAGE_STREAM=outbound          # optional
 ```
 
+Resend uses the same governed boundary and the official `POST /emails` API:
+
+```bash
+export IMPACT_RELAY_EMAIL_BACKEND=resend
+export IMPACT_RELAY_RESEND_API_KEY='from-your-secret-manager'  # or RESEND_API_KEY
+export IMPACT_RELAY_RESEND_FROM='Impact Relay <noreply@auth.autogive.app>'
+export IMPACT_RELAY_RESEND_REPLY_TO=reply@example.org         # optional
+```
+
+Autogive Relay mail uses the verified `auth.autogive.app` subdomain. Do not send from `noema.guru`. Do not reuse `AUTH_EMAIL_FROM` / `auth@autogive.app` — that address is Portfolio Signals login mail. Fixture email remains the default; setting the backend to `resend` is a host decision and does not activate production donor cohorts.
+
+Optional Mailosaur capture for synthetic Resend probes (never a production backend):
+
+```bash
+export MAILOSAUR_API_KEY='from-your-secret-manager'
+export MAILOSAUR_SERVER_ID=qpbqeifu
+python scripts/probe_resend_mailosaur.py
+```
+
 Recipient lookup is deliberately host-owned because donor contact data must stay outside this repository. Bind the adapter to a tenant workspace with a resolver after the host has authenticated and loaded its private contact record:
 
 ```python
@@ -360,7 +383,7 @@ assert workspace is not None
 workspace.configure_notification_adapters({NotificationChannel.EMAIL: email})
 ```
 
-Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Both production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections.
+Production delivery requires an existing consent record and enabled preference. Bind the adapter during every worker-process startup; transport objects and recipient resolvers are intentionally not persisted. Only fixture adapters bootstrap synthetic consent for offline demos. Production adapters send the already-approved `EmailPreview` subject and body and sanitize provider failures before durable recording. SMTP records its generated Message-ID; Postmark records the API `MessageID` and treats nonzero `ErrorCode` responses as permanent rejections; Resend records the API `id` and treats named API errors plus HTTP 4xx (except 429) as permanent rejections.
 
 ## Pilot commands
 
@@ -369,7 +392,10 @@ Use-of-funds pilot:
 ```bash
 python -m impact_relay
 python -m impact_relay --fixture fixtures/pilot_hd_ir_001.json
+python -m impact_relay --fixture fixtures/synthetic_v1/civic_forge_ledger_v1.json
 ```
+
+Civic Forge is a disposable `SYNTHETIC_ONLY` tenant. See [docs/SYNTHETIC-DATASET.md](docs/SYNTHETIC-DATASET.md). Do not publish it into `data/`.
 
 All fixture-backed phases:
 

@@ -12,6 +12,7 @@ These pilots do **not** connect to live payment, CRM, accounting, or notificatio
 | Attribution policy | `DIRECT_RESTRICTED` in default fixtures; `PRO_RATA_POOL` covered in tests |
 | Policy version | Organization `policy_version` (default `v1.0`) stamped on receipts and audit |
 | Multi-tenant | Second org `org_other_makerspace` in all-phases fixture for isolation checks only |
+| Synthetic Civic Forge | Compact BRIDGE ledger in `fixtures/synthetic_v1/` — `SYNTHETIC_ONLY`, not OBSERVED, does not replace HD |
 
 Accounting remains authoritative for real operations; Impact Relay mirrors approved financial facts only.
 

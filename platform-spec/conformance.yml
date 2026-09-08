@@ -1,6 +1,6 @@
 platform_spec:
-  repository: scrimshawlife-ctrl/Autonomous-Giving-Specs
-  version: 1.0.0
+  repository: Autonomous-Giving-Incorporated/Autonomous-Giving-Specs
+  version: 2.0.0
 
 service:
   id: impact-relay
@@ -19,11 +19,13 @@ implements:
     - SPEC-009
     - SPEC-012
     - SPEC-013
+    - SPEC-027
   contracts:
     produces:
       - CONTRACT-004
       - CONTRACT-006
       - CONTRACT-007
+      - CONTRACT-013
     consumes:
       - CONTRACT-003
       - CONTRACT-005
@@ -32,6 +34,7 @@ implements:
       - EVENT-007
       - EVENT-009
       - EVENT-010
+      - EVENT-011
     consumes:
       - EVENT-001
       - EVENT-002
@@ -45,5 +48,13 @@ evidence:
   integration_tests: docs/PLATFORM-CONFORMANCE.md
   notes: >
     Evidence, verification, and notification boundary — no silent history edits.
-    Pinned to Autonomous Giving Specs v1.0.0 (tag v1.0.0).
+    Pinned to Autonomous Giving Specs v2.0.0 (tag v2.0.0, commit c089739).
     Product-level HD-IR checks remain in docs/platform-conformance.yml.
+    SPEC-027 / CONTRACT-013 / EVENT-011 (ImpactNotice) are owned by this
+    service and listed as produced here; this repository does not yet emit
+    ImpactNotice. Not READY. No live Worker URL, freeze SHA, or live gift.
+    Suite-tracked (not implemented in this repo): SPEC-023 (AGI never
+    processes donations; Stripe is tenant/SaaS billing only), SPEC-024
+    (every.org is P0), SPEC-026 (donation-source connectors live in
+    Portfolio Signals), SPEC-028 (AGI control plane). Host lock is
+    Cloudflare + Supabase; Cloud Run / Render are historical only.

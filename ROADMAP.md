@@ -27,7 +27,7 @@ Shipped:
 Open (ops / production):
 
 - authorized live accounting endpoint/provider mapping beyond fixture batch (provider-neutral HTTPS JSON expense adapter shipped);
-- production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/APNs/FCM adapters shipped; SMS production client remains open);
+- production email/push credentials and host donor-address/device-token resolvers (SMTP/Postmark/Resend/APNs/FCM adapters shipped; SMS production client remains open);
 - production multi-tenant workflow DR / multi-region observability;
 - live OIDC JWT validation wiring (library now ships a JWKS provider, `impact_relay.auth.jwt_oidc`; the host must point it at a real issuer or keep terminating auth at its gateway);
 - execute live finance cohort and fill `docs/pilot/FINDINGS.md`;
@@ -43,7 +43,7 @@ Closed in v0.9.1 (previously the honest gaps between the language above and the 
 
 Still open (needs credentials or live endpoints, not code):
 
-- SMTP/Postmark/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
+- SMTP/Postmark/Resend/APNs/FCM credentials and host-owned donor address/device-token resolvers for live delivery;
 - authorized Every.org and Notion aggregate endpoints for the shipped HTTPS fetchers.
 
 ## AGI-001 — A.G.I. suite documentation
@@ -52,13 +52,27 @@ Still open (needs credentials or live endpoints, not code):
 
 - [x] Define Autonomously Giving Incorporated (**A.G.I.**) as the governed product suite name.
 - [x] Document Portfolio Signals as the AGI decision workspace (Vercel path `/portfolio-signals/` + platform Supabase).
-- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers; public aggregate surface on `autogive.app/impact-relay/`.
+- [x] Recommend Impact Relay backend deployment on Cloud Run for hosted APIs and workers; public aggregate surface on `autogive.app/impact-relay/`. *(historical: designed stack is now Cloudflare Workers + Supabase; Render is not the host.)*
 - [x] Define the shared `client_id == tenant_id` contract.
 - [x] Identify `hacker-dojo` / `org_hacker_dojo` as the **reference tenant** (fixture and template), not product identity.
 - [x] Clarify master admin versus tenant director boundaries.
 - [x] Track planned Supabase JWT validation at the backend gateway.
 
-**Exit gate:** docs consistently describe A.G.I., Portfolio Signals, Cloud Run, Hacker Dojo as tenant, shared tenancy, admin boundaries, and planned Supabase JWT validation. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
+**Exit gate:** docs consistently describe A.G.I., Portfolio Signals, Cloudflare Workers + Supabase (Cloud Run is a historical backend note), Hacker Dojo as tenant, shared tenancy, admin boundaries, and planned Supabase JWT validation. See [docs/architecture/AGI-SUITE.md](docs/architecture/AGI-SUITE.md).
+
+## AGI Phase C — Contract governance (Impact Relay half)
+
+**Goal:** publish public-safe fixtures and align `allocationId` / status vocabulary with AGI and Portfolio Signals without changing live verification semantics.
+
+- [x] Representative public-safe fixtures for public-impact + AGI `ImpactEvent` (`fixtures/agi_phase_c/`).
+- [x] `allocationId` pattern and status glossary aligned to AGI / Portfolio Signals.
+- [x] ImpactEvent field ownership recorded as roles (Impact Relay owner; human filler `scrimshawlife-ctrl`).
+- [x] AutoGive Synthetic Dataset v1 Civic Forge compact ledger + public-impact fixture (`fixtures/synthetic_v1/`). `SYNTHETIC_ONLY`; does not overwrite `data/` or the HD pilot.
+- [ ] Evidence-access / retention / redaction / public-publication rules — **PROPOSED** until leadership + eng sign-off. *(human)*
+
+See [docs/CONTRACT-GOVERNANCE.md](docs/CONTRACT-GOVERNANCE.md). Do not invent READY, freeze SHA, or leadership approval.
+
+**Exit gate (this repo):** fixtures validate; glossary matches suite vocabulary; `VERIFIED` meaning unchanged; evidence-access remains unsigned.
 
 ## v0.5 — Agent Framework and Governance
 
@@ -137,7 +151,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Shadow-mode and live-cohort runbooks; MFA gate for privileged host roles.
 - [ ] Integrate an authorized OBSERVED donation aggregate (dry-run path exists). *(ops: requires authorized live data)*
 - [ ] Integrate one live accounting/expense source (provider-neutral HTTPS JSON expense adapter shipped; fixture batch remains default). *(ops: requires provider access and host endpoint mapping)*
-- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
+- [ ] Enable email and app push in controlled cohorts (SMTP/Postmark/Resend email and APNs/FCM push adapters shipped). *(ops: credentials, host donor address/device-token resolvers, and cohort rollout)*
 - [ ] Complete privacy, security, and finance review with leadership. *(human)*
 - [ ] Run correction and provider-outage exercises with operators. *(human)*
 - [ ] Execute live cohort and fill findings template. *(human)*
@@ -174,6 +188,7 @@ Still open (needs credentials or live endpoints, not code):
 - [x] Provider-neutral HTTPS JSON accounting expense adapter, feeding the existing `NormalizedExpenseImport` workflow contract; credentials and vendor/proxy endpoint mapping remain host-owned.
 - [x] Standard-library SMTP email adapter behind the existing protocol, env-configured with fail-closed selection, host-owned recipient resolution, sanitized failures, and governed end-to-end tests; fixture email remains the default test path.
 - [x] Postmark email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, `MessageID` receipts, error-code classification, sanitized failures, and offline governed tests.
+- [x] Resend email adapter behind the existing protocol, with HTTPS-only configuration, host-owned recipient resolution, approved-content delivery, API `id` receipts, sanitized HTTP/API failures, and an optional Mailosaur capture probe that stays out of default pytest.
 - [x] APNs/FCM clients behind the existing protocols; credentials and donor/device lookup remain host-owned.
 - [x] Deterministic operational snapshots for storage, workflows, outbox, object backend, and ledger/audit counts (`observability.py`); production alerting/SLO dashboards remain host ops work.
 - [x] Object storage retention controls: per-object retention metadata, legal holds, local expired-object purge receipts, and S3 metadata/SSE compatibility (`storage/objects.py`).
@@ -212,7 +227,7 @@ Not a substitute for HD-IR / v1.0 gates. Fund-Intel hosts the transaction-light 
 - [ ] Production alerting/SLO dashboards and audit explorer (deterministic operational snapshot helpers shipped).
 - [ ] Live OIDC JWT validation in host gateway (library ports + RBAC already shipped).
 - [ ] Full encrypted evidence storage policy rollout and retention UX (object ports, S3 SSE, per-object retention metadata, local purge receipts shipped).
-- [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/APNs/FCM adapter code already shipped).
+- [ ] Production email and push delivery credentials/cohort enablement (SMTP/Postmark/Resend/APNs/FCM adapter code already shipped).
 - [ ] Consent and preference center (model shipped; full UX deferred).
 - [ ] SLA/SLO definitions and incident response (runbooks drafted; SLOs not signed).
 - [ ] External security assessment.
