@@ -1,24 +1,25 @@
 # Hacker Dojo integration (canonical pilot + nonprofit template)
 
-Impact Relay is a **reusable** donor-impact / ledger-workflow library.  
+Impact Relay is a **reusable** donor-impact / ledger-workflow library. 
 **Hacker Dojo** is the **canonical test and product integration** — the path every CI fixture and the Hacker-Dojo application repo should exercise first. Other nonprofits copy the same shape, not a fork of the money rules.
 
 ## Roles
 
-| Repo / system | Role |
-|---|---|
-| **Impact Relay** (this repo) | Domain ledger, agents L0–L3, durable workflows, public aggregates, multi-tenant storage ports |
-| **Hacker-Dojo app** (sibling / host repo) | UX, OIDC, finance console, donor screens, org-specific branding — **consumes** Impact Relay |
-| **Future nonprofit apps** | Same as Hacker-Dojo app: host UX + tenant config; **reuse** Impact Relay + clone policy template |
+|| Repo / system | Role |
+||---|---|
+|| **Impact Relay** (this repo) | Domain ledger, agents L0–L3, durable workflows, public aggregates, multi-tenant storage ports |
+|| **Hacker-Dojo app** (sibling / host repo) | UX, OIDC, finance console, donor screens, org-specific branding — **consumes** Impact Relay |
+|| **Future nonprofit apps** | Same as Hacker-Dojo app: host UX + tenant config; **reuse** Impact Relay + clone policy template |
+|| **Web-based tenant onboarding** (Portfolio Signals) | Guided workflow with tooltips, dropdowns, and client-side validation — **primary path** for new tenant onboarding |
 
 ## Canonical identifiers
 
-| Item | Value |
-|---|---|
-| Tenant / organization id | `org_hacker_dojo` |
-| Policy pack | `policies/tenants/hacker-dojo.v1.0.yaml` |
-| Display name | Hacker Dojo |
-| Fixture pilots | `fixtures/pilot_hd_ir_001.json`, expense batch, digests, Every.org aggregate |
+|| Item | Value |
+||---|---|
+|| Tenant / organization id | `org_hacker_dojo` |
+|| Policy pack | `policies/tenants/hacker-dojo.v1.0.yaml` |
+|| Display name | Hacker Dojo |
+|| Fixture pilots | `fixtures/pilot_hd_ir_001.json`, expense batch, digests, Every.org aggregate |
 
 ```python
 from impact_relay.storage.template import CANONICAL_PILOT_TENANT_ID, CANONICAL_POLICY_SLUG
@@ -65,58 +66,6 @@ with open_hacker_dojo_session(
         print(exp["id"], exp["state"])
 ```
 
-Default data dir: `.impact-relay/hacker-dojo`  
-Identity: `impact_relay.auth` (roles, RBAC, OIDC ports) + `hacker_dojo_identity()`
-
-### Which identity provider, exactly
-
-Both "Supabase" and "OIDC" appear across these docs; they are different layers,
-not alternatives:
-
-| Layer | What it is | Where |
-|---|---|---|
-| **Supabase** | Hacker Dojo's *actual* IdP. Owns login, MFA, and the `profile.role` values (`director`, `campaign_lead`, `data_steward`, …). | Hacker-Dojo app (sibling repo) |
-| **Campaign-role bridge** | Maps a Supabase `profile.role` to Impact Relay RBAC roles. | `impact_relay.auth.role_map` |
-| **OIDC ports** | The generic, vendor-neutral boundary any nonprofit host implements. | `impact_relay.auth.oidc` |
-| **JWKS validation** | Optional in-library token validation for hosts that don't terminate auth at a gateway. | `impact_relay.auth.jwt_oidc` (`[oidc]` extra) |
-
-The host is responsible for authenticating the user and enforcing MFA. Impact
-Relay only maps an already-authenticated identity to roles — with one exception:
-if you use `JwksOidcProvider`, the library validates the token itself.
-
-`console_server` accepts `X-Impact-*` identity headers **only** when started with
-`--trusted-proxy`, and only a gateway that authenticates the user and strips
-client-supplied copies of those headers may set them. Without that flag the
-headers are ignored and requests are anonymous — which the default posture
-rejects.
-
-**Hacker Dojo / Portfolio Signals host path:** the browser bridge sends only
-`Authorization: Bearer <Supabase JWT>` or a fixture Bearer pilot email. It does
-**not** require `--trusted-proxy`. Prefer that path for local and production-like
-host screens. Enable `--trusted-proxy` only when a real gateway injects identity
-headers after authentication.
-
-### Roles (platform vocabulary)
-
-| Role | Can approve expenses | Notes |
-|------|----------------------|--------|
-| `finance_approver` | yes | L3 money path |
-| `finance_reviewer` | no | list / read |
-| `communications_approver` | no | publish/send later |
-| `auditor` | no | read-only |
-| `tenant_admin` | yes (all perms) | host ops |
-| `donor` | no | own receipts (host filters) |
-
-Separation of duties: same person cannot approve their own proposal (`proposer_id`).
-
-### Easy local pilot (CLI alone)
-
-```bash
-python -m impact_relay --durable seed --data-dir .impact-relay/hacker-dojo
-python -m impact_relay --durable list --data-dir .impact-relay/hacker-dojo
-python -m impact_relay --durable approve --data-dir .impact-relay/hacker-dojo
-```
-
 ### Other nonprofit host (same session class)
 
 ```python
@@ -135,6 +84,15 @@ with open_host_session(
 
 **Suite operator path (FI + IR):** Portfolio Signals commercial lifecycle, then this clone — see Fund-Intel [`docs/SECOND-TENANT-ONBOARDING.md`](https://github.com/scrimshawlife-ctrl/Fund-Intel/blob/main/docs/SECOND-TENANT-ONBOARDING.md) (slice D). Shared id contract: **`client_id` == `tenant_id`** (`org_*`).
 
+**Primary path (recommended):** Use web-based tenant onboarding flow in Portfolio Signals workspace:
+1. Login to https://autogive.app/portfolio-signals/workspace with MFA
+2. Navigate to client provisioning → enter matching `org_*` ID
+3. Configure brand & activate client
+4. Use tenant management panel to clone from Hacker Dojo template
+5. Complete onboarding pack document collection & confirmation
+6. Verify cross-system isolation and readiness
+
+**Legacy operator path (CLI/tooling):** For emergency/operator-only use:
 1. Clone policy from Hacker Dojo (same confidence / evidence / L3 set; new ids).
 2. Register tenant in storage registry.
 3. Point durable data-dir (or Postgres schema) at that tenant only.
@@ -144,13 +102,32 @@ with open_host_session(
 from impact_relay.storage.template import clone_tenant_from_hacker_dojo
 from impact_relay.storage import open_storage
 
-store = open_storage(Path(".impact-relay/storage"))
+store = open_storage(Path("./impact-relay/storage"))
 policy = clone_tenant_from_hacker_dojo(
     tenant_id="org_other_makerspace",
     display_name="Other Makerspace",
 )
 store.tenants.upsert_from_policy(policy, template_source="org_hacker_dojo")
 ```
+
+## Web-Based Tenant Onboarding Integration Points
+
+Impact Relay integrates with the web-based flow through:
+
+1. **Tenant Management API** (secured endpoint):
+   - `POST /api/tenant/clone` - clones policy from template
+   - `GET /api/tenant/{id}/verify` - runs isolation and health checks
+   - Requires MFA-enabled JWT with master_admin/director role
+
+2. **Storage Isolation**:
+   - Object keys always `{tenant_id}/…` (local FS or S3 prefix)
+   - Ledger/workflow/object/outbox reads strictly tenant-scoped
+   - Public exports use Privacy Sentinel (no donor/attendee PII)
+
+3. **Verification Endpoints**:
+   - Cross-system ID matching (FI `client_id` == IR `tenant_id`)
+   - Storage path isolation verification
+   - Policy template source confirmation
 
 Do **not** special-case Hacker Dojo money invariants in product code. Special-casing lives only in:
 
@@ -207,26 +184,28 @@ Host-only UI tests can mock Impact Relay; money truth tests should call the real
 # terminal 1 — from Impact-Relay checkout
 # Prefer default (no --trusted-proxy) with Bearer JWT or fixture email
 python -m impact_relay.console_server --data-dir .impact-relay/hacker-dojo --port 8787
-
-# seed queue
-curl -X POST http://127.0.0.1:8787/api/pilot/seed \
-  -H 'Authorization: Bearer finance.approver@hackersdojo.example'
-curl http://127.0.0.1:8787/api/finance/queue \
-  -H 'Authorization: Bearer finance.approver@hackersdojo.example'
 ```
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/health` | Liveness |
-| GET | `/api/finance/metrics` | Queue counts |
-| GET | `/api/finance/queue` | Waiting / blocked cases |
-| GET | `/api/finance/cases/{id}` | Case + packet + events |
-| POST | `/api/finance/cases/{id}/approve` | L3 approve |
-| POST | `/api/pilot/seed` | Fixture seed |
-| GET | `/api/donors/{id}/dashboard` | Donor screen |
-| GET | `/api/donors/{id}/timeline` | Fund timeline |
-| GET | `/api/donors/{id}/receipts` | Receipt list |
-| GET | `/api/donors/{id}/receipts/{rid}` | Receipt detail |
+```text
+# seed queue
+curl -X POST http://127.0.0.1:8787/api/pilot/seed \
+  -H 'Authorization: Bearer financ...mple'
+curl http://127.0.0.1:8787/api/finance/queue \
+  -H 'Authorization: Bearer financ...mple'
+```
+
+|| Method | Path | Purpose |
+||--------|------|---------|
+|| GET | `/api/health` | Liveness |
+|| GET | `/api/finance/metrics` | Queue counts |
+|| GET | `/api/finance/queue` | Waiting / blocked cases |
+|| GET | `/api/finance/cases/{id}` | Case + packet + events |
+|| POST | `/api/finance/cases/{id}/approve` | L3 approve |
+|| POST | `/api/pilot/seed` | Fixture seed |
+|| GET | `/api/donors/{id}/dashboard` | Donor screen |
+|| GET | `/api/donors/{id}/timeline` | Fund timeline |
+|| GET | `/api/donors/{id}/receipts` | Receipt list |
+|| GET | `/api/donors/{id}/receipts/{rid}` | Receipt detail |
 
 Hacker-Dojo static pages: `finance-impact.html`, `donor-impact.html` (point `IMPACT_RELAY_API` at the server).
 
@@ -255,4 +234,5 @@ Or via host session after durable runs: `session.donor_api()`.
 - `docs/architecture/AGENTIC-SYSTEM.md` — modular monolith boundary  
 - `docs/pilot/HACKER-DOJO-PILOT.md` — pilot process  
 - `docs/ops/` — threat model, incident response, runbooks  
-
+- **WEB_TENANT_ONBOARDING_FLOW.md** — guided web-based onboarding with tooltips/dropdowns
+- **tenant-onboarding-process.md** — legacy backend-only process documentation
