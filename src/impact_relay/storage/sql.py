@@ -85,8 +85,9 @@ def to_postgres_placeholders(statement: str) -> str:
 class SqlEngine:
     """Minimal connection helper shared by storage repositories."""
 
-    def __init__(self, dsn_or_path: str | Path) -> None:
+    def __init__(self, dsn_or_path: str | Path, *, read_only: bool = False) -> None:
         self._dsn = str(dsn_or_path)
+        self._read_only = read_only
         self._lock = threading.RLock()
         self.is_postgres = self._dsn.startswith("postgresql:") or self._dsn.startswith("postgres:")
         if not self.is_postgres:
@@ -94,7 +95,8 @@ class SqlEngine:
             if path.startswith("sqlite:///"):
                 path = path[len("sqlite:///") :]
             self._sqlite_path: Path | None = Path(path)
-            self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+            if not read_only:
+                self._sqlite_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             self._sqlite_path = None
 
@@ -102,7 +104,12 @@ class SqlEngine:
     def conn(self) -> Iterator[Any]:
         with self._lock:
             if not self.is_postgres:
-                c = sqlite3.connect(str(self._sqlite_path), timeout=30)
+                if self._read_only:
+                    assert self._sqlite_path is not None
+                    uri = self._sqlite_path.absolute().as_uri() + "?mode=ro"
+                    c = sqlite3.connect(uri, uri=True, timeout=30)
+                else:
+                    c = sqlite3.connect(str(self._sqlite_path), timeout=30)
                 c.row_factory = sqlite3.Row
                 c.execute("PRAGMA foreign_keys=ON")
                 try:
@@ -123,6 +130,8 @@ class SqlEngine:
                     ) from exc
                 with psycopg.connect(self._dsn, row_factory=dict_row) as pg_conn:
                     try:
+                        if self._read_only:
+                            pg_conn.execute("SET TRANSACTION READ ONLY")
                         yield pg_conn
                         pg_conn.commit()
                     except Exception:
