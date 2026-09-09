@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:impact-relay:ir-empty-scaffold-v1",
+  "title": "Impact Relay inert empty-tenant scaffold v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "tenant_id",
+    "idempotency_key",
+    "policy",
+    "policy_sha256",
+    "empty_state",
+    "readiness"
+  ],
+  "properties": {
+    "format": {
+      "const": "ir-empty-scaffold-v1"
+    },
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?![\\s\\S])"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}(?![\\s\\S])"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "policy"
+      ],
+      "properties": {
+        "format": {
+          "const": "ir-portable-policy-v1"
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "tenant_id",
+            "display_name",
+            "source_path",
+            "confidence",
+            "evidence",
+            "attribution",
+            "notifications",
+            "authority"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?![\\s\\S])"
+            },
+            "tenant_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?![\\s\\S])"
+            },
+            "display_name": {
+              "type": "string"
+            },
+            "source_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "confidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "block_below",
+                "recommend_high"
+              ],
+              "properties": {
+                "block_below": {
+                  "type": "string",
+                  "pattern": "^(0|1|0\\.[0-9]{0,5}[1-9])(?![\\s\\S])"
+                },
+                "recommend_high": {
+                  "type": "string",
+                  "pattern": "^(0|1|0\\.[0-9]{0,5}[1-9])(?![\\s\\S])"
+                }
+              }
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sufficient_kinds",
+                "require_donor_visible"
+              ],
+              "properties": {
+                "sufficient_kinds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "require_donor_visible": {
+                  "const": true
+                }
+              }
+            },
+            "attribution": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "default_method",
+                "allowed_methods"
+              ],
+              "properties": {
+                "default_method": {
+                  "type": "string"
+                },
+                "allowed_methods": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "notifications": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "require_separate_send_approval",
+                "default_email_topics",
+                "fixture_consent_allowed"
+              ],
+              "properties": {
+                "require_separate_send_approval": {
+                  "const": true
+                },
+                "default_email_topics": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "fixture_consent_allowed": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "authority": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "l3_command_types"
+              ],
+              "properties": {
+                "l3_command_types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "allOf": [
+                    {
+                      "contains": {
+                        "const": "approve_expense"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "reject_expense"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "publish_use_of_funds_receipt"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "send_notification"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "publish_public_evidence"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "change_attribution_policy"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "correct_published_amount"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "reverse_expense"
+                      }
+                    },
+                    {
+                      "contains": {
+                        "const": "supersede_expense"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "empty_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ledger_commands",
+        "entities",
+        "outbox_events"
+      ],
+      "properties": {
+        "ledger_commands": {
+          "const": []
+        },
+        "entities": {
+          "const": []
+        },
+        "outbox_events": {
+          "const": []
+        }
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scaffold_verified",
+        "operational"
+      ],
+      "properties": {
+        "scaffold_verified": {
+          "const": false
+        },
+        "operational": {
+          "const": false
+        }
+      }
+    }
+  }
+}

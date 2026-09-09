@@ -15,6 +15,7 @@ from impact_relay.storage.ledger_repo import LedgerEntityRepository
 from impact_relay.storage.objects import LocalObjectStorage, open_object_storage
 from impact_relay.storage.outbox import SqlOutboxStore
 from impact_relay.storage.tenants import SqlTenantRepository
+from impact_relay.storage.workspace import SqlWorkspaceRepository
 
 
 class StorageBundle:
@@ -34,6 +35,7 @@ class StorageBundle:
         self._engine = SqlEngine(dsn or self.data_dir / "storage.db")
         self._engine.migrate()
         self.tenants = SqlTenantRepository(self._engine)
+        self.workspaces = SqlWorkspaceRepository(self._engine)
         self.outbox = SqlOutboxStore(self._engine)
         self.command_log = SqlLedgerCommandLog(self._engine)
         self.ledger = LedgerEntityRepository(self._engine)
@@ -183,6 +185,12 @@ def _split(script: str) -> list[str]:
 
 
 _SQLITE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS workspace_scaffolds (
+  tenant_id TEXT PRIMARY KEY,
+  idempotency_key TEXT NOT NULL,
+  policy_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tenants (
   tenant_id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
@@ -243,6 +251,12 @@ CREATE TABLE IF NOT EXISTS ledger_meta (
 """
 
 _POSTGRES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS workspace_scaffolds (
+  tenant_id TEXT PRIMARY KEY,
+  idempotency_key TEXT NOT NULL,
+  policy_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS tenants (
   tenant_id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,

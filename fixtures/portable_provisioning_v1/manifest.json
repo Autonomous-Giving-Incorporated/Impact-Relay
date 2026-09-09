@@ -1,0 +1,21 @@
+{
+  "format": "ir-portable-conformance-v1",
+  "provenance": "public_synthetic",
+  "vectors": [
+    {
+      "file": "default.json",
+      "scaffold_sha256": "dbb3702d3dfd38f1c59ac4a2e14872dd6b7580f1bb99936885b7afd174336fed",
+      "policy_sha256": "e16d685a5ecf8892b51491ba240b89a18c4b22b3ff58b847b13a795327ee3395"
+    },
+    {
+      "file": "unicode-empty.json",
+      "scaffold_sha256": "1ef6b18c5b8773798e5170010008bb54120baecd7e8d006609d1571e40388b2d",
+      "policy_sha256": "7f0cdabc57e0fd9b88af2cf3546db468ac09aa9b2eae9063b0dbd9c56749081b"
+    },
+    {
+      "file": "null-provenance.json",
+      "scaffold_sha256": "b06e217942ddfc3dffa98ad67e784fc952aa28bc6e19b2942f828c33e1965b7f",
+      "policy_sha256": "db1d7581730a536a9c32f6362c96d3ce1897ba8655b5cb25a7fca1fd96003f9f"
+    }
+  ]
+}
