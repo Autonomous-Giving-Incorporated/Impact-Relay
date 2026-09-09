@@ -40,7 +40,7 @@ def clone_tenant_from_hacker_dojo(
         tenant_id=tenant_id,
         display_name=display_name,
         version=ver,
-        # source_path would mislead — clear via to_dict consumers using tenant_id
+        # source_path retains template provenance, not a persisted clone path.
     )
 
 

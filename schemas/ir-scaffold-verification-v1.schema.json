@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:impact-relay:ir-scaffold-verification-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "tenant_id",
+    "idempotency_key",
+    "policy_sha256",
+    "scaffold_sha256",
+    "readiness"
+  ],
+  "properties": {
+    "format": {
+      "const": "ir-scaffold-verification-v1"
+    },
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?![\\s\\S])"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}(?![\\s\\S])"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "scaffold_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scaffold_verified",
+        "operational"
+      ],
+      "properties": {
+        "scaffold_verified": {
+          "const": true
+        },
+        "operational": {
+          "const": false
+        }
+      }
+    }
+  }
+}

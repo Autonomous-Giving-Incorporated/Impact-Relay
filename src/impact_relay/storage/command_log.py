@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from impact_relay.agents.types import utc_now_iso
 from impact_relay.domain.ledger import Ledger
-from impact_relay.domain.ledger_log import apply_result_json
+from impact_relay.domain.ledger_log import LedgerLogError, apply_result_json
 from impact_relay.domain.types import Organization
 
 if TYPE_CHECKING:
@@ -58,10 +58,11 @@ class SqlLedgerCommandLog:
                 self._engine.execute(
                     conn,
                     """
-                    INSERT OR IGNORE INTO ledger_command_log (
+                    INSERT INTO ledger_command_log (
                       tenant_id, idempotency_key, command_type,
                       payload_json, result_json, created_at
                     ) VALUES (?,?,?,?,?,?)
+                    ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
                     """,
                     (
                         tenant_id,
@@ -72,6 +73,43 @@ class SqlLedgerCommandLog:
                         now,
                     ),
                 )
+
+            # Insert first: the unique constraint arbitrates concurrent writers,
+            # including writers using different engines/processes. Read the winner
+            # in this transaction, not in a preflight check vulnerable to races.
+            if self._engine.is_postgres:
+                row = self._engine.fetchone(
+                    conn,
+                    """
+                    SELECT command_type, payload_json = %s::jsonb AS payload_matches
+                    FROM ledger_command_log
+                    WHERE tenant_id=%s AND idempotency_key=%s
+                    """,
+                    (payload_s, tenant_id, idempotency_key),
+                )
+                # Compare in JSONB space: decoding/re-encoding can change number
+                # notation (1e20 becomes an integer), causing false conflicts.
+                payload_matches = row is not None and row["payload_matches"]
+            else:
+                row = self._engine.fetchone(
+                    conn,
+                    """
+                    SELECT command_type, payload_json FROM ledger_command_log
+                    WHERE tenant_id=? AND idempotency_key=?
+                    """,
+                    (tenant_id, idempotency_key),
+                )
+                payload_matches = (
+                    row is not None
+                    and json.dumps(json.loads(row["payload_json"]), sort_keys=True, default=str)
+                    == payload_s
+                )
+            if row is None:
+                raise LedgerLogError("missing ledger command after append")
+            if row["command_type"] != command_type or not payload_matches:
+                raise LedgerLogError("ledger command idempotency conflict")
+            # Results may contain generated IDs/timestamps. An identical request
+            # keeps the first committed result; rehydrate folds that result only.
 
     def iter_rows(self, tenant_id: str) -> list[dict[str, Any]]:
         with self._engine.conn() as conn:

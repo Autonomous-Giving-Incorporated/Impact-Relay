@@ -60,18 +60,56 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
-      - name: Install package with Postgres driver
-        run: pip install -e ".[dev,db]"
-      - name: Run durable workflow store suite against Postgres
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      - name: Install package with Postgres driver and schema oracle
+        run: pip install -e ".[dev,db]" jsonschema
+      - name: Run durable workflow and SQL storage suites against Postgres
         shell: bash
         run: |
           set -euo pipefail
-          pytest -o addopts='' tests/test_workflow_sql_store.py -v --no-header | tee /tmp/pg.log
-      - name: Assert the Postgres SKIP LOCKED test was not skipped
+          pytest -o addopts='' tests/test_workflow_sql_store.py tests/test_sql_command_log.py tests/test_workspace_repository.py tests/test_portable_provisioning.py tests/test_initialized_workspace.py tests/test_clone_policy_provenance.py -v --no-header | tee /tmp/pg.log
+      - name: Assert Postgres integration tests were not skipped
         shell: bash
         run: |
           set -euo pipefail
           grep -q "test_postgres_store_claim_skip_locked PASSED" /tmp/pg.log
+          grep -q "test_postgres_read_only_transactions_reject_writes_and_reopen PASSED" /tmp/pg.log
+          if grep -q "SKIPPED" /tmp/pg.log; then
+            echo "Postgres integration suite must not skip tests"
+            exit 1
+          fi
+
+  portable-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+      - name: Install package and schema oracle
+        run: pip install -e ".[dev]" jsonschema
+      - name: Run initialized schema and strict wire conformance
+        shell: bash
+        run: |
+          set -euo pipefail
+          pytest -o addopts='' tests/test_initialized_schemas.py -v --no-header | tee /tmp/schema.log
+          if grep -q "SKIPPED" /tmp/schema.log; then
+            echo "Schema conformance must not skip tests"
+            exit 1
+          fi
+          node scripts/check_portable_conformance.mjs
+          node scripts/check_initialized_conformance.mjs
+      - name: Validate initialized fixtures with independent Ajv oracle
+        run: |
+          npx --yes --package=ajv-cli@5 ajv validate --spec=draft2020 -r schemas/ir-empty-scaffold-v1.schema.json -s schemas/ir-initialized-empty-workspace-v1.schema.json -d fixtures/portable_provisioning_v1/initialized-empty.json
+          npx --yes --package=ajv-cli@5 ajv validate --spec=draft2020 -r schemas/ir-empty-scaffold-v1.schema.json -s schemas/ir-initialized-workspace-verification-v1.schema.json -d fixtures/portable_provisioning_v1/initialized-receipt.json
 
   browser-acceptance:
     runs-on: ubuntu-latest
@@ -174,6 +212,7 @@ jobs:
       - quality
       - ledger-tests
       - postgres-store
+      - portable-conformance
       - browser-acceptance
       - platform-conformance
     steps:

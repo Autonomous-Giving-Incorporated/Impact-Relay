@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:impact-relay:ir-initialized-empty-workspace-v1",
+  "title": "ir-initialized-empty-workspace-v1",
+  "$comment": "Structural contract only. Register ir-empty-scaffold-v1.schema.json by its $id. Strict portable.py validation additionally enforces canonical bytes, Unicode scalars, policy ordering, equality bindings and recomputed hashes. Neither schema nor wire validation proves storage provenance, authorization or operational readiness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "scaffold",
+    "ledger_binding",
+    "operational"
+  ],
+  "properties": {
+    "format": {
+      "const": "ir-initialized-empty-workspace-v1"
+    },
+    "scaffold": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1"
+    },
+    "ledger_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "tenant_id",
+        "entities"
+      ],
+      "properties": {
+        "format": {
+          "const": "ir-empty-ledger-binding-v1"
+        },
+        "tenant_id": {
+          "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/tenant_id"
+        },
+        "entities": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allocations",
+            "attributions",
+            "donation_allocations",
+            "donations",
+            "donors",
+            "evidence",
+            "expense_allocations",
+            "expense_receipts",
+            "expenses",
+            "external_index",
+            "receipt_snapshots",
+            "receipts",
+            "organization"
+          ],
+          "properties": {
+            "allocations": {
+              "type": "object",
+              "const": {}
+            },
+            "attributions": {
+              "type": "object",
+              "const": {}
+            },
+            "donation_allocations": {
+              "type": "object",
+              "const": {}
+            },
+            "donations": {
+              "type": "object",
+              "const": {}
+            },
+            "donors": {
+              "type": "object",
+              "const": {}
+            },
+            "evidence": {
+              "type": "object",
+              "const": {}
+            },
+            "expense_allocations": {
+              "type": "object",
+              "const": {}
+            },
+            "expense_receipts": {
+              "type": "object",
+              "const": {}
+            },
+            "expenses": {
+              "type": "object",
+              "const": {}
+            },
+            "external_index": {
+              "type": "object",
+              "const": {}
+            },
+            "receipt_snapshots": {
+              "type": "object",
+              "const": {}
+            },
+            "receipts": {
+              "type": "object",
+              "const": {}
+            },
+            "organization": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name",
+                "policy_version"
+              ],
+              "properties": {
+                "id": {
+                  "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/tenant_id"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "policy_version": {
+                  "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/policy/properties/policy/properties/version"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "operational": {
+      "const": false
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:impact-relay:ir-initialized-workspace-verification-v1",
+  "title": "ir-initialized-workspace-verification-v1",
+  "$comment": "Structural contract only. Register ir-empty-scaffold-v1.schema.json by its $id. Strict portable.py validation additionally enforces canonical bytes, Unicode scalars, policy ordering, equality bindings and recomputed hashes. Neither schema nor wire validation proves storage provenance, authorization or operational readiness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "tenant_id",
+    "idempotency_key",
+    "policy_sha256",
+    "scaffold_sha256",
+    "state_sha256",
+    "storage_scope",
+    "empty_tables",
+    "readiness"
+  ],
+  "properties": {
+    "format": {
+      "const": "ir-initialized-workspace-verification-v1"
+    },
+    "tenant_id": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/tenant_id"
+    },
+    "idempotency_key": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/idempotency_key"
+    },
+    "policy_sha256": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/policy_sha256"
+    },
+    "scaffold_sha256": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/policy_sha256"
+    },
+    "state_sha256": {
+      "$ref": "urn:impact-relay:ir-empty-scaffold-v1#/properties/policy_sha256"
+    },
+    "storage_scope": {
+      "const": "sql-scaffold-empty-tables-v1"
+    },
+    "empty_tables": {
+      "const": [
+        "tenants",
+        "ledger_command_log",
+        "ledger_entity",
+        "ledger_meta",
+        "outbox_events"
+      ]
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_initialized",
+        "artifact_verified",
+        "storage_initialized",
+        "workspace_reopened",
+        "operational"
+      ],
+      "properties": {
+        "policy_initialized": {
+          "const": true
+        },
+        "artifact_verified": {
+          "const": true
+        },
+        "storage_initialized": {
+          "const": true
+        },
+        "workspace_reopened": {
+          "const": true
+        },
+        "operational": {
+          "const": false
+        }
+      }
+    }
+  }
+}
