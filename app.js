@@ -11,6 +11,34 @@ const moneyExact = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2
 });
 
+const ONBOARDING_WORKSPACE_URL =
+  'https://autogive.app/fund-intel/workspace?onboarding=impact-relay';
+const TENANT_ID_PATTERN = /^org_[a-z0-9_]+$/;
+
+function organizationSetupUrl(incomingUrl = window.location.href) {
+  const incoming = new URL(incomingUrl);
+  const tenants = incoming.search.slice(1).split('&').filter(Boolean).flatMap(part => {
+    const separator = part.indexOf('=');
+    const key = separator === -1 ? part : part.slice(0, separator);
+    return key === 'tenant' ? [separator === -1 ? '' : part.slice(separator + 1)] : [];
+  });
+  if (tenants.length !== 1) return ONBOARDING_WORKSPACE_URL;
+
+  const tenant = tenants[0];
+  if (tenant.length > 128 || !TENANT_ID_PATTERN.test(tenant)) {
+    return ONBOARDING_WORKSPACE_URL;
+  }
+
+  const destination = new URL(ONBOARDING_WORKSPACE_URL);
+  destination.searchParams.set('tenant', tenant);
+  return destination.href;
+}
+
+function configureOrganizationSetupLink() {
+  const link = document.getElementById('organizationSetupLink');
+  if (link) link.href = organizationSetupUrl();
+}
+
 function text(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
@@ -357,4 +385,5 @@ async function boot() {
   }
 }
 
+configureOrganizationSetupLink();
 boot();
