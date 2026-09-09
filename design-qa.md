@@ -15,5 +15,15 @@
 - Tokens and type: the evidence-led interface uses the shared AGI palette, Space Grotesk display, and Inter interface typography (aligned with AGI `tokens.css` and Portfolio Signals shell).
 - Navigation: reciprocal product links use the `autogive.app` route family (AGI, Portfolio Signals, Impact Relay).
 - Builder attribution: Zero State appears only in the legal footer beside Tokens, Logo use, and Legal.
+- Public onboarding handoff: the visible CTA remains in the AGI evidence shell, uses the shared
+  primary-action treatment, and pairs with keyboard-operable native `details` / `summary` help.
+- Narrow viewport: the onboarding handoff collapses to one column without horizontal overflow.
 
 final result: passed
+
+Playwright loaded the prefixed production asset paths and public JSON successfully in Chromium on
+desktop and Pixel 7 viewports. All 22 browser cases passed, including expanded-help axe scans,
+keyboard Tab/Enter interaction, exact intercepted handoff navigation, and response/console failure
+guards. Screenshots are written beneath Playwright's repository-relative `test-results/`
+output directories as `onboarding-desktop-chromium.png` and `onboarding-mobile-chromium.png`.
+The external handoff is intercepted for navigation assertions, not a live login/activation test.
