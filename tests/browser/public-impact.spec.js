@@ -128,4 +128,5 @@ test('public Impact Relay remains responsive and accessible', async ({ page }) =
   const results = await new AxeBuilder({ page }).analyze();
   const severe = results.violations.filter(item => ['serious', 'critical'].includes(item.impact));
   expect(severe).toEqual([]);
+  expect(results.violations.filter(item => item.id === 'region')).toEqual([]);
 });
