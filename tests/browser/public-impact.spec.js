@@ -146,6 +146,80 @@ test('keyboard activation reaches only the exact external handoff', async ({ pag
   await expect(page.locator('#opener')).toHaveText('null');
 });
 
+test('keyboard Back restores visible focus to the organization setup handoff', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route('https://autogive.app/**', route => route.fulfill({
+    contentType: 'text/html',
+    body: '<!doctype html><title>Simulated organization setup</title><main>Organization setup</main>'
+  }));
+  await page.goto('index.html');
+  await page.evaluate(() => history.replaceState({ suiteView: 'public' }, ''));
+
+  const handoff = page.locator('#organizationSetupLink');
+  await page.locator('body').focus();
+  for (let tabs = 0; tabs < 20 && !(await handoff.evaluate(node => node === document.activeElement)); tabs += 1) {
+    await page.keyboard.press('Tab');
+  }
+  await expect(handoff).toBeFocused();
+  expect(await handoff.evaluate(node => node.matches(':focus-visible'))).toBe(true);
+
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(ONBOARDING_URL);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/impact-relay\/index\.html$/);
+
+  await expect(handoff).toBeFocused();
+  expect(await handoff.evaluate(node => node.matches(':focus-visible'))).toBe(true);
+  expect(await page.evaluate(() => history.state)).toEqual({ suiteView: 'public' });
+  expect(await page.evaluate(() => ({
+    local: localStorage.length,
+    session: sessionStorage.length
+  }))).toEqual({ local: 0, session: 0 });
+});
+
+test('initial, pointer, programmatic, canceled, and unrelated history navigation do not focus the handoff', async ({ page }) => {
+  await page.route('https://autogive.app/**', route => route.fulfill({
+    contentType: 'text/html',
+    body: '<!doctype html><title>Simulated organization setup</title><main>Organization setup</main>'
+  }));
+  await page.goto('index.html');
+
+  const handoff = page.locator('#organizationSetupLink');
+  await expect(handoff).not.toBeFocused();
+
+  await handoff.click();
+  await expect(page).toHaveURL(ONBOARDING_URL);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/impact-relay\/index\.html$/);
+  await expect(handoff).not.toBeFocused();
+
+  await page.evaluate(() => {
+    const link = document.getElementById('organizationSetupLink');
+    link.focus({ focusVisible: true });
+    link.click();
+  });
+  await expect(page).toHaveURL(ONBOARDING_URL);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/impact-relay\/index\.html$/);
+  await expect(handoff).not.toBeFocused();
+
+  await page.evaluate(() => {
+    document.addEventListener('click', event => event.preventDefault(), { once: true });
+  });
+  await page.locator('body').focus();
+  for (let tabs = 0; tabs < 20 && !(await handoff.evaluate(node => node === document.activeElement)); tabs += 1) {
+    await page.keyboard.press('Tab');
+  }
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/impact-relay\/index\.html$/);
+  await page.reload();
+  await expect(handoff).not.toBeFocused();
+
+  await page.evaluate(() => history.pushState({ unrelated: true }, '', '?view=details'));
+  await page.goBack();
+  await expect(handoff).not.toBeFocused();
+});
+
 test('public Impact Relay remains responsive and accessible', async ({ page }) => {
   await page.goto('index.html');
   await expect(page.locator('main')).toBeVisible();

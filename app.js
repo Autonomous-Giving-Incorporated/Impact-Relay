@@ -14,6 +14,7 @@ const moneyExact = new Intl.NumberFormat('en-US', {
 const ONBOARDING_WORKSPACE_URL =
   'https://autogive.app/fund-intel/workspace?onboarding=impact-relay';
 const TENANT_ID_PATTERN = /^org_[a-z0-9_]+$/;
+const ORGANIZATION_SETUP_FOCUS_RETURN = '__impactRelayOrganizationSetupFocusReturn';
 
 function organizationSetupUrl(incomingUrl = window.location.href) {
   const incoming = new URL(incomingUrl);
@@ -34,9 +35,53 @@ function organizationSetupUrl(incomingUrl = window.location.href) {
   return destination.href;
 }
 
+function rememberOrganizationSetupKeyboardActivation() {
+  try {
+    history.replaceState({
+      [ORGANIZATION_SETUP_FOCUS_RETURN]: {
+        target: 'organizationSetupLink',
+        previousState: history.state
+      }
+    }, '');
+  } catch {
+    // History support is enhancement-only; native link navigation still works.
+  }
+}
+
+function restoreOrganizationSetupKeyboardFocus() {
+  const returnState = history.state?.[ORGANIZATION_SETUP_FOCUS_RETURN];
+  const hasStoredIntent = returnState?.target === 'organizationSetupLink';
+  if (!hasStoredIntent) return;
+
+  try {
+    history.replaceState(returnState.previousState ?? null, '');
+  } catch {
+    return;
+  }
+
+  document.getElementById('organizationSetupLink')?.focus({
+    preventScroll: true,
+    focusVisible: true
+  });
+}
+
 function configureOrganizationSetupLink() {
   const link = document.getElementById('organizationSetupLink');
-  if (link) link.href = organizationSetupUrl();
+  if (!link) return;
+
+  link.href = organizationSetupUrl();
+  window.addEventListener('click', event => {
+    if (
+      event.target === link &&
+      event.isTrusted &&
+      event.detail === 0 &&
+      !event.defaultPrevented &&
+      link.matches(':focus-visible')
+    ) {
+      rememberOrganizationSetupKeyboardActivation();
+    }
+  });
+  window.addEventListener('pageshow', restoreOrganizationSetupKeyboardFocus);
 }
 
 function text(id, value) {
