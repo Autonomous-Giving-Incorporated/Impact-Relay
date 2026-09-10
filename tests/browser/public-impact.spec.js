@@ -68,9 +68,10 @@ for (const [label, query] of [
 
 test('setup help is keyboard operable and the public page performs no mutations', async ({ page }, testInfo) => {
   const requests = [];
-  page.on('request', request => requests.push({ method: request.method(), url: request.url() }));
+  page.context().on('request', request => requests.push({ method: request.method(), url: request.url() }));
 
   await page.goto('index.html');
+  await expect(page.locator('#impactParticipants')).not.toHaveText('—');
   const summary = page.locator('.onboarding-handoff summary');
   await page.locator('body').focus();
   for (let tabs = 0; tabs < 20 && await page.evaluate(() => document.activeElement?.tagName !== 'SUMMARY'); tabs += 1) {
@@ -86,6 +87,33 @@ test('setup help is keyboard operable and the public page performs no mutations'
   const screenshot = testInfo.outputPath(`onboarding-${testInfo.project.name}.png`);
   await page.screenshot({ path: screenshot, fullPage: true });
 
+  const allowedPublicPaths = new Set([
+    '/impact-relay/index.html',
+    '/impact-relay/app.js',
+    '/impact-relay/styles.css',
+    '/impact-relay/tokens.css',
+    '/impact-relay/assets/brand/agi-mark.png',
+    '/impact-relay/assets/brand/agi-wordmark.png',
+    '/impact-relay/data/impact-state.json',
+    '/impact-relay/data/use-of-funds-public.json',
+    '/impact-relay/data/impact-digests-public.json',
+    '/impact-relay/data/public-evidence.json',
+    '/impact-relay/data/public-impact.json'
+  ]);
+  const publicOrigin = new URL(page.url()).origin;
+  const googleFontStylesheet =
+    'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap';
+  expect(requests.filter(request => {
+    const url = new URL(request.url);
+    const isPublicAsset =
+      url.origin === publicOrigin && allowedPublicPaths.has(url.pathname) && url.search === '';
+    const isApprovedFont =
+      request.url === googleFontStylesheet ||
+      (url.origin === 'https://fonts.gstatic.com' &&
+        url.search === '' &&
+        /^\/s\/(?:ibmplexmono|inter|spacegrotesk)\/[^/]+\/[^/]+\.woff2$/.test(url.pathname));
+    return !isPublicAsset && !isApprovedFont;
+  })).toEqual([]);
   expect(requests.filter(request => request.method !== 'GET')).toEqual([]);
   expect(requests.some(request => /(?:tenant|client).*(?:registry|list)/i.test(request.url))).toBe(false);
   expect(requests.some(request => /\/api\//.test(new URL(request.url).pathname))).toBe(false);
